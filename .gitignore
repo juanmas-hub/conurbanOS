@@ -1,3 +1,8 @@
 # Log files
 *.log
 
+# Ejecutables
+cpu/cpu
+kernel/kernel
+memoria/memoria
+
