@@ -1,24 +1,15 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/json"
-	"io"
+	"fmt"
 	"log"
-	"log/slog"
+	"net/http"
 	"os"
-	"strings"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 )
-
-func ConfigurarLogger() {
-	logFile, err := os.OpenFile("kernel.log", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
-	if err != nil {
-		panic(err)
-	}
-	mw := io.MultiWriter(os.Stdout, logFile)
-	log.SetOutput(mw)
-}
 
 func IniciarConfiguracion(filePath string) *globals.Kernel_Config {
 	var config *globals.Kernel_Config
@@ -34,17 +25,37 @@ func IniciarConfiguracion(filePath string) *globals.Kernel_Config {
 	return config
 }
 
-func Log_level_from_string(string_level string) slog.Level {
-	switch strings.ToUpper(string_level) {
-	case "DEBUG":
-		return slog.LevelDebug
-	case "INFO":
-		return slog.LevelInfo
-	case "WARN":
-		return slog.LevelWarn
-	case "ERROR":
-		return slog.LevelError
-	default: //esto hay que cambiarlo
-		return slog.LevelInfo
+func EnviarMensaje(ip string, puerto int64, mensajeTxt string) {
+	mensaje := globals.Mensaje{Mensaje: mensajeTxt}
+	body, err := json.Marshal(mensaje)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
 	}
+
+	// Posible problema con el int64 del puerto
+	url := fmt.Sprintf("http://%s:%d/mensaje", ip, puerto)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+	}
+
+	log.Printf("respuesta del servidor: %s", resp.Status)
+}
+
+func RecibirMensaje(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals.Mensaje
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	log.Println("Me llego un mensaje de un cliente")
+	log.Printf("%+v\n", mensaje)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
 }
