@@ -7,8 +7,8 @@ import (
 	"strconv"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/memoria"
+	utils_memoria "github.com/sisoputnfrba/tp-golang/memoria/utils"
 	utils_logger "github.com/sisoputnfrba/tp-golang/utils/loggers"
-	utils_memoria "github.com/sisoputnfrba/tp-golang/utils/memoria"
 )
 
 func main() {

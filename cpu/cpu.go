@@ -4,8 +4,8 @@ import (
 	"log"
 	"log/slog"
 
+	utils_cpu "github.com/sisoputnfrba/tp-golang/cpu/utils"
 	globals "github.com/sisoputnfrba/tp-golang/globals/cpu"
-	utils_cpu "github.com/sisoputnfrba/tp-golang/utils/cpu"
 	utils_logger "github.com/sisoputnfrba/tp-golang/utils/loggers"
 )
 
