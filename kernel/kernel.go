@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
-	utils_kernel "github.com/sisoputnfrba/tp-golang/utils/kernel"
+	utils_kernel "github.com/sisoputnfrba/tp-golang/kernel/utils"
 	utils_logger "github.com/sisoputnfrba/tp-golang/utils/loggers"
 )
 
