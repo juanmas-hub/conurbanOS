@@ -19,4 +19,8 @@ func main() {
 
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.IoConfig.LogLevel))
 
+	// Cliente (mando mensaje a kernel)
+	mensaje := "Mensaje desde IO"
+	utils_io.EnviarMensajeAKernel(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel, mensaje)
+
 }

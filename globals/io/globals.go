@@ -8,3 +8,7 @@ type Io_Config struct {
 }
 
 var IoConfig *Io_Config
+
+type Mensaje struct {
+	Mensaje string `json:"mensaje"`
+}

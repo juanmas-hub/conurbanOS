@@ -1,8 +1,11 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/io"
@@ -20,4 +23,21 @@ func IniciarConfiguracion(filePath string) *globals.Io_Config {
 	jsonParser.Decode(&config)
 
 	return config
+}
+
+func EnviarMensajeAKernel(ip string, puerto int64, mensajeTxt string) {
+	mensaje := globals.Mensaje{Mensaje: mensajeTxt}
+	body, err := json.Marshal(mensaje)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
+
+	// Posible problema con el int64 del puerto
+	url := fmt.Sprintf("http://%s:%d/mensajeDeIo", ip, puerto)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+	}
+
+	log.Printf("respuesta del servidor: %s", resp.Status)
 }
