@@ -19,3 +19,10 @@ git push origin checkpoint-{número}
 
 Asegúrense de que el código compila y cumple con los requisitos del checkpoint
 antes de subir el tag.
+
+## Orden de ejecución
+
+    1 - Memoria
+    2 - Kernel
+    3 - Cpu
+    4 - Io
