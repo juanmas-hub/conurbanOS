@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"log/slog"
+	"net/http"
+	"strconv"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/io"
 	utils_io "github.com/sisoputnfrba/tp-golang/io/utils"
@@ -22,5 +24,17 @@ func main() {
 	// Cliente (mando mensaje a kernel)
 	mensaje := "Mensaje desde IO"
 	utils_io.EnviarMensajeAKernel(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel, mensaje)
+
+	// Servidor
+	// Cuando se ejecuta IO, hay que mandar a kernel su nombre, puerto e IP para que kernel se pueda conectar (no esta hecho)
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/mensajeDeKernel", utils_io.RecibirMensajeDeKernel)
+
+	puerto := globals.IoConfig.PortIO
+	err := http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)
+	if err != nil {
+		panic(err)
+	}
 
 }
