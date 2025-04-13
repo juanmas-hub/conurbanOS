@@ -32,14 +32,14 @@ func main() {
 	mux.HandleFunc("/mensaje", utils_kernel.RecibirMensaje)
 
 	// Inicia un servidor que escuche en el puerto del config
-	puerto := globals.KernelConfig.Port_memory
+	puerto := globals.KernelConfig.Port_kernel
 	err := http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)
 	if err != nil {
 		panic(err)
 	}
 
-	// Cliente (mandar mensaje a memoria)
+	/*// Cliente (mandar mensaje a memoria)
 	mensaje := "Hola desde kernel (cliente)"
-	utils_kernel.EnviarMensaje(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
+	utils_kernel.EnviarMensaje(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)*/
 
 }
