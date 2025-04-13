@@ -22,15 +22,13 @@ func main() {
 
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.MemoriaConfig.Log_level))
 
-	slog.Info(globals.MemoriaConfig.Log_level)
-
 	// Servidor
 	// Multiplexor de servidor HTTP
 	// Examina la URL de cada solicitud HTTP y la dirige al controlador correspondiente
 	mux := http.NewServeMux()
 
 	// Maneja funciones segun URL de la solicitud
-	mux.HandleFunc("/mensaje", utils_memoria.RecibirMensaje)
+	mux.HandleFunc("/mensajeDeKernel", utils_memoria.RecibirMensajeDeKernel)
 
 	// Inicia un servidor que escuche en el puerto del config
 	puerto := globals.MemoriaConfig.Port_memory

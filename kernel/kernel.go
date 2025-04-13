@@ -21,25 +21,19 @@ func main() {
 
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.KernelConfig.Log_level))
 
-	slog.Info(globals.KernelConfig.Ip_memory)
+	// Cliente (mandar mensaje a memoria)
+	mensaje := "Mensaje desde Kernel"
+	utils_kernel.EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
 
 	// Servidor (recibir mensaje de CPU)
-	// Multiplexor de servidor HTTP
-	// Examina la URL de cada solicitud HTTP y la dirige al controlador correspondiente
 	mux := http.NewServeMux()
 
-	// Maneja funciones segun URL de la solicitud
 	mux.HandleFunc("/mensaje", utils_kernel.RecibirMensaje)
 
-	// Inicia un servidor que escuche en el puerto del config
 	puerto := globals.KernelConfig.Port_kernel
 	err := http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)
 	if err != nil {
 		panic(err)
 	}
-
-	/*// Cliente (mandar mensaje a memoria)
-	mensaje := "Hola desde kernel (cliente)"
-	utils_kernel.EnviarMensaje(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)*/
 
 }

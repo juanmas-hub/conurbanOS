@@ -23,9 +23,7 @@ func IniciarConfiguracion(filePath string) *globals.Memoria_Config {
 	return config
 }
 
-// Funciones para recibir mensajes de kernel
-
-func RecibirMensaje(w http.ResponseWriter, r *http.Request) {
+func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals.Mensaje
 	err := decoder.Decode(&mensaje)
@@ -36,7 +34,7 @@ func RecibirMensaje(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Me llego un mensaje de un cliente")
+	log.Println("Me llego un mensaje de Kernel")
 	log.Printf("%+v\n", mensaje)
 
 	w.WriteHeader(http.StatusOK)
