@@ -29,6 +29,7 @@ func main() {
 
 	// Maneja funciones segun URL de la solicitud
 	mux.HandleFunc("/mensajeDeKernel", utils_memoria.RecibirMensajeDeKernel)
+	mux.HandleFunc("/mensajeDeCpu", utils_memoria.RecibirMensajeDeCpu)
 
 	// Inicia un servidor que escuche en el puerto del config
 	puerto := globals.MemoriaConfig.Port_memory

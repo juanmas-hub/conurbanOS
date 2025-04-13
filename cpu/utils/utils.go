@@ -25,7 +25,6 @@ func IniciarConfiguracion(filePath string) *globals.Cpu_Config {
 	return config
 }
 
-// Funciones para recibir mensajes de kernel
 func EnviarMensaje(ip string, puerto int64, mensajeTxt string) {
 	mensaje := globals.Mensaje{Mensaje: mensajeTxt}
 	body, err := json.Marshal(mensaje)
@@ -34,7 +33,7 @@ func EnviarMensaje(ip string, puerto int64, mensajeTxt string) {
 	}
 
 	// Posible problema con el int64 del puerto
-	url := fmt.Sprintf("http://%s:%d/mensaje", ip, puerto)
+	url := fmt.Sprintf("http://%s:%d/mensajeDeCpu", ip, puerto)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)

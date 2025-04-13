@@ -25,10 +25,11 @@ func main() {
 	mensaje := "Mensaje desde Kernel"
 	utils_kernel.EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
 
-	// Servidor (recibir mensaje de CPU)
+	// Servidor (recibir mensaje de CPU y IO)
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/mensaje", utils_kernel.RecibirMensaje)
+	mux.HandleFunc("/mensajeDeCpu", utils_kernel.RecibirMensajeDeCpu)
+	mux.HandleFunc("/mensajeDeIo", utils_kernel.RecibirMensajeDeIo)
 
 	puerto := globals.KernelConfig.Port_kernel
 	err := http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)

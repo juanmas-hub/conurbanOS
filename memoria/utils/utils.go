@@ -40,3 +40,21 @@ func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
+
+func RecibirMensajeDeCpu(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals.Mensaje
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	log.Println("Me llego un mensaje de CPU")
+	log.Printf("%+v\n", mensaje)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}

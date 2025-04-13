@@ -22,7 +22,8 @@ func main() {
 
 	slog.Info(globals.CpuConfig.Log_level)
 
-	// Cliente (manda mensaje a kernel)
-	mensaje := "Hola desde cpu (cliente)"
+	// Cliente (manda mensaje a kernel y memoria)
+	mensaje := "Mensaje desde CPU"
 	utils_cpu.EnviarMensaje(globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel, mensaje)
+	utils_cpu.EnviarMensaje(globals.CpuConfig.Ip_memory, globals.CpuConfig.Port_memory, mensaje)
 }
