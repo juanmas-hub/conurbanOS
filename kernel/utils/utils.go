@@ -77,3 +77,21 @@ func RecibirMensajeDeIo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
+
+func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var handshake globals.HandshakeIO
+	err := decoder.Decode(&handshake)
+	if err != nil {
+		log.Printf("Error al decodificar handshake: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar handshake"))
+		return
+	}
+
+	log.Println("Me llego un handshake de IO")
+	log.Printf("%+v\n", handshake)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}

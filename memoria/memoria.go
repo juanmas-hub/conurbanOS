@@ -22,6 +22,8 @@ func main() {
 
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.MemoriaConfig.Log_level))
 
+	// PONETE A LABURAR JUANMAAA
+
 	// Servidor
 	// Multiplexor de servidor HTTP
 	// Examina la URL de cada solicitud HTTP y la dirige al controlador correspondiente

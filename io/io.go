@@ -4,6 +4,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/io"
@@ -12,8 +13,9 @@ import (
 )
 
 func main() {
-	utils_logger.ConfigurarLogger("io.log")
 
+	// Configuración
+	utils_logger.ConfigurarLogger("io.log")
 	globals.IoConfig = utils_io.IniciarConfiguracion("config.json")
 	if globals.IoConfig == nil {
 		log.Fatal("No se pudo iniciar el config")
@@ -25,8 +27,23 @@ func main() {
 	mensaje := "Mensaje desde IO"
 	utils_io.EnviarMensajeAKernel(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel, mensaje)
 
+	// Handshake al kernel
+	if len(os.Args) != 2 {
+		log.Fatal("No se paso como argumento el nombre de IO") //por ej:  go run . nombreIO
+	}
+	nombreIO := os.Args[1]
+
+	utils_io.HandshakeAKernel(
+		globals.IoConfig.IpKernel,
+		globals.IoConfig.PortKernel,
+		nombreIO,
+		"127.0.0.1", // Esta es la IP que hay que mandarle a kernel? No se - tomytsa
+		globals.IoConfig.PortIO,
+	)
+
+	// Ahora hay que recibir la petición del Kernel para que el modulo hago un usleep (no esta hecho)
+
 	// Servidor
-	// Cuando se ejecuta IO, hay que mandar a kernel su nombre, puerto e IP para que kernel se pueda conectar (no esta hecho)
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/mensajeDeKernel", utils_io.RecibirMensajeDeKernel)

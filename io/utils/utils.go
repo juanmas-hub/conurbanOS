@@ -12,6 +12,7 @@ import (
 )
 
 func IniciarConfiguracion(filePath string) *globals.Io_Config {
+
 	var config *globals.Io_Config
 	configFile, err := os.Open(filePath)
 	if err != nil {
@@ -26,6 +27,7 @@ func IniciarConfiguracion(filePath string) *globals.Io_Config {
 }
 
 func EnviarMensajeAKernel(ip string, puerto int64, mensajeTxt string) {
+
 	mensaje := globals.Mensaje{Mensaje: mensajeTxt}
 	body, err := json.Marshal(mensaje)
 	if err != nil {
@@ -34,12 +36,39 @@ func EnviarMensajeAKernel(ip string, puerto int64, mensajeTxt string) {
 
 	// Posible problema con el int64 del puerto
 	url := fmt.Sprintf("http://%s:%d/mensajeDeIo", ip, puerto)
+
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+
 	if err != nil {
 		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
 	}
 
 	log.Printf("respuesta del servidor: %s", resp.Status)
+
+}
+
+func HandshakeAKernel(ip string, puerto int64, nombreIO string, ipIO string, puertoIO int64) {
+
+	handshake := globals.HandshakeIO{
+		Nombre: nombreIO,
+		IP:     ipIO,
+		Puerto: puertoIO,
+	}
+	body, err := json.Marshal(handshake)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
+
+	url := fmt.Sprintf("http://%s:%d/handshakeIO", ip, puerto)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+
+	if err != nil {
+		log.Printf("error en el handshake a ip:%s puerto:%d", ip, puerto)
+	}
+
+	log.Printf("respuesta del servidor (handshake): %s", resp.Status)
+
 }
 
 func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {
