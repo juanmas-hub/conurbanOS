@@ -19,3 +19,9 @@ var CpuConfig *Cpu_Config
 type Mensaje struct {
 	Mensaje string `json:"mensaje"`
 }
+
+type HandshakeCPU struct {
+	Nombre string `json:"nombre"`
+	IP     string `json:"ip"`
+	Puerto int64  `json:"puerto"`
+}

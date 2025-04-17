@@ -31,6 +31,7 @@ func main() {
 	mux.HandleFunc("/mensajeDeCpu", utils_kernel.RecibirMensajeDeCpu)
 	mux.HandleFunc("/mensajeDeIo", utils_kernel.RecibirMensajeDeIo)
 	mux.HandleFunc("/handshakeIO", utils_kernel.RecibirHandshakeIO)
+	mux.HandleFunc("/handshakeCPU", utils_kernel.RecibirHandshakeCPU)
 
 	puerto := globals.KernelConfig.Port_kernel
 	err := http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)

@@ -59,3 +59,27 @@ func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
+
+func HandshakeAKernel(ip string, puerto int64, nombreCPU string, ipCPU string, puertoCPU int64) {
+
+	handshake := globals.HandshakeCPU{
+		Nombre: nombreCPU,
+		IP:     ipCPU,
+		Puerto: puertoCPU,
+	}
+	body, err := json.Marshal(handshake)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
+
+	url := fmt.Sprintf("http://%s:%d/handshakeCPU", ip, puerto)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+
+	if err != nil {
+		log.Printf("error en el handshake a ip:%s puerto:%d", ip, puerto)
+	}
+
+	log.Printf("respuesta del servidor (handshake): %s", resp.Status)
+
+}
