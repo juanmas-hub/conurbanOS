@@ -1,0 +1,115 @@
+package utils
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+
+	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
+)
+
+func IniciarConfiguracion(filePath string) *globals.Kernel_Config {
+	var config *globals.Kernel_Config
+	configFile, err := os.Open(filePath)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	defer configFile.Close()
+
+	jsonParser := json.NewDecoder(configFile)
+	jsonParser.Decode(&config)
+
+	return config
+}
+
+func EnviarMensajeAMemoria(ip string, puerto int64, mensajeTxt string) {
+	mensaje := globals.Mensaje{Mensaje: mensajeTxt}
+	body, err := json.Marshal(mensaje)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
+
+	// Posible problema con el int64 del puerto
+	url := fmt.Sprintf("http://%s:%d/mensajeDeKernel", ip, puerto)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+	}
+
+	log.Printf("respuesta del servidor: %s", resp.Status)
+}
+
+func RecibirMensajeDeCpu(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals.Mensaje
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	log.Println("Me llego un mensaje de CPU")
+	log.Printf("%+v\n", mensaje)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+func RecibirMensajeDeIo(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals.Mensaje
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	log.Println("Me llego un mensaje de IO")
+	log.Printf("%+v\n", mensaje)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var handshake globals.HandshakeIO
+	err := decoder.Decode(&handshake)
+	if err != nil {
+		log.Printf("Error al decodificar handshake: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar handshake"))
+		return
+	}
+
+	log.Println("Me llego un handshake de IO")
+	log.Printf("%+v\n", handshake)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+func RecibirHandshakeCPU(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var handshake globals.HandshakeIO
+	err := decoder.Decode(&handshake)
+	if err != nil {
+		log.Printf("Error al decodificar handshake: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar handshake"))
+		return
+	}
+
+	log.Println("Me llego un handshake de CPU")
+	log.Printf("%+v\n", handshake)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
