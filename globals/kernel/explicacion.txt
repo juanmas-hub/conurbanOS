@@ -1,0 +1,17 @@
+Cuando llega un proceso, me llega el archivo de
+pseudocodigo y el tamaño, entonces lo guardo
+en un struct (Proceso_Nuevo) que tiene esas dos
+cosas y el struct Proceso normal.
+
+El struct Proceso tiene el PCB, el estado actual
+y un puntero a un struct Rafaga porque solo se
+va a usar si esta el algoritmo SJF.
+
+El MapaProcesos es un mapa de clave PID y el valor
+es el struct del proceso
+Asi en vez de ir moviendo todo el struct por las
+colas de Estados, moves el PID nomas
+
+La cola de New es de Proceso_Nuevo. Recien cuando entra
+a Ready (el tamaño y el archivo ya no importan) lo ponemos en
+un struct Proceso y lo agregamos al mapa
