@@ -92,6 +92,8 @@ func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
 	log.Println("Me llego un handshake de IO")
 	log.Printf("%+v\n", handshake)
 
+	globals.HandshakesIO = append(globals.HandshakesIO, handshake)
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
@@ -112,4 +114,28 @@ func RecibirHandshakeCPU(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}
+
+// Todavia esta funcion no se usa
+func EnviarSolicitudIO(ipIO string, puertoIO int64, pid int64, tiempo int64) {
+
+	solicitud := globals.SolicitudIO{
+		PID:    pid,
+		Tiempo: tiempo,
+	}
+
+	body, err := json.Marshal(solicitud)
+	if err != nil {
+		log.Printf("Error codificando la solicitud IO: %s", err.Error())
+	}
+
+	url := fmt.Sprintf("http://%s:%d/realizar_io", ipIO, puertoIO)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("Error enviando solicitud IO a ipIO:%s puertoIO:%d", ipIO, puertoIO)
+	}
+
+	log.Printf("Solicitud IO enviada al modulo IO - PID: %d, Tiempo: %dms", pid, tiempo)
+	log.Printf("Respuesta del modulo IO: %s", resp.Status)
 }

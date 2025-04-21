@@ -47,6 +47,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/mensajeDeKernel", utils_io.RecibirMensajeDeKernel)
+	// Todavia no se usa
+	mux.HandleFunc("/solicitudDeIo", utils_io.RecibirSolicitudDeKernel)
 
 	puerto := globals.IoConfig.PortIO
 	err := http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)

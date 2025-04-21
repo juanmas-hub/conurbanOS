@@ -25,6 +25,20 @@ func main() {
 	mensaje := "Mensaje desde Kernel"
 	utils_kernel.EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
 
+	/* Solicitud de IO (Es aproximadamente lo que un proceso usaria para solicitar a IO)
+	if len(globals.HandshakesIO) > 0 {
+		io := globals.HandshakesIO[0]
+		ipIO := io.IP
+		puertoIO := io.Puerto
+		pid := int64(1)
+		tiempo := int64(500)
+
+		utils_kernel.EnviarSolicitudIO(ipIO, puertoIO, pid, tiempo)
+	} else {
+		log.Println("No hay IOs registrados todavía")
+	}
+	*/
+
 	// Servidor (recibir mensaje de CPU y IO)
 	mux := http.NewServeMux()
 

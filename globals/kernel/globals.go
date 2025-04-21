@@ -20,8 +20,11 @@ type Mensaje struct {
 type HandshakeIO struct {
 	Nombre string `json:"nombre"`
 	IP     string `json:"ip"`
-	Puerto int    `json:"puerto"`
+	Puerto int64  `json:"puerto"`
 }
+
+// Lista de los IO disponibles
+var HandshakesIO []HandshakeIO
 
 // Constantes
 const NEW string = "NEW"
@@ -85,3 +88,10 @@ type Estados struct {
 }
 
 var ESTADOS Estados
+
+// Solicitud a IO
+
+type SolicitudIO struct {
+	PID    int64 `json:"pid"`
+	Tiempo int64 `json:"tiempo"`
+}

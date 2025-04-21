@@ -88,3 +88,22 @@ func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
+
+// Todavia esta funcion no se usa
+func RecibirSolicitudDeKernel(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var solicitud globals.SolicitudIO
+	err := decoder.Decode(&solicitud)
+	if err != nil {
+		log.Printf("Error al decodificar solicitud de IO: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar solicitud de IO"))
+		return
+	}
+
+	log.Println("Me llego solicitud de IO")
+	log.Printf("%+v\n", solicitud)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
