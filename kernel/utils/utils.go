@@ -183,9 +183,61 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 	if globals.KernelConfig.New_algorithm == "PMCP" {
 		OrdenarNewPorTamanio()
 	}
+
+	PasarProcesosAReady()
 }
 
 func OrdenarNewPorTamanio() {
 	// No hecho
 	// Con ordenar por tamaño (mas chicho primero) ya el algoritmo PMCP estaria hecho (creo)
+}
+
+func PasarProcesosAReady() {
+	// Esta funcion deberia llamarse cuando llega un proceso a NEW, a EXIT, a SUSP_BLOCKED y (SUSP_READY ???)
+	// Voy a intentar pasar la mayor cantidad de procesos que pueda mientras memoria tenga espacio
+	// Primero me fijo en SUSP READY y despues en NEW --- nose si esta bien hacerlo asi
+
+	var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
+	for {
+		proceso := globals.MapaProcesos[globals.ESTADOS.SUSP_READY[0]]
+		if SolicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso) == false {
+			break
+		}
+
+		proceso.Estado_Actual = globals.READY
+		globals.MapaProcesos[proceso.Pcb.Pid] = proceso
+		globals.ESTADOS.SUSP_READY = globals.ESTADOS.SUSP_READY[1:]
+		lenghtSUSP_READY--
+		globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
+	}
+
+	if lenghtSUSP_READY == 0 {
+		for {
+			if SolicitarInicializarProcesoAMemoria_DesdeNEW(globals.ESTADOS.NEW[0]) == false {
+				break
+			}
+
+			procesoEnNew := globals.ESTADOS.NEW[0]
+			procesoEnReady := globals.Proceso{
+				Pcb:           procesoEnNew.Proceso.Pcb,
+				Estado_Actual: globals.READY,
+				Rafaga:        nil,
+			}
+			globals.MapaProcesos[procesoEnReady.Pcb.Pid] = procesoEnReady
+			globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
+			globals.ESTADOS.READY = append(globals.ESTADOS.READY, procesoEnReady.Pcb.Pid)
+		}
+	}
+}
+
+func SolicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo) bool {
+	// Se pudo iniciarlizar => devuelve true
+	// No se pudo inicializar => devuelve false
+	return true
+}
+
+func SolicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso globals.Proceso) bool {
+	// Se pudo iniciarlizar => devuelve true
+	// No se pudo inicializar => devuelve false
+	return true
 }

@@ -83,11 +83,11 @@ type Execute_Struct struct {
 }
 type Estados struct {
 	NEW          []Proceso_Nuevo
-	READY        []int
+	READY        []int64
 	EXECUTE      []Execute_Struct
-	BLOCKED      []int
-	SUSP_BLOCKED []int
-	SUSP_READY   []int
+	BLOCKED      []int64
+	SUSP_BLOCKED []int64
+	SUSP_READY   []int64
 }
 
 var ESTADOS Estados
