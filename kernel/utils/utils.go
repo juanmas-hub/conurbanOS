@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -136,11 +137,28 @@ func EnviarSolicitudIO(ipIO string, puertoIO int64, pid int64, tiempo int64) {
 		log.Printf("Error enviando solicitud IO a ipIO:%s puertoIO:%d", ipIO, puertoIO)
 	}
 
-	log.Printf("Solicitud IO enviada al modulo IO - PID: %d, Tiempo: %dms", pid, tiempo)
+	log.Printf("Solicitud IO terminada al modulo IO - PID: %d, Tiempo: %dms", pid, tiempo)
 	log.Printf("Respuesta del modulo IO: %s", resp.Status)
 }
 
-func CrearProcesoNuevo(archivo string, tamanio int64) globals.Proceso_Nuevo {
+func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
+	// Espera el Enter en otra rutina asi se puede abrir el servidor
+
+	reader := bufio.NewReader(os.Stdin)
+	log.Println("Planificador de largo plazo en STOP, presionar ENTER: ")
+	for {
+		text, _ := reader.ReadString('\n')
+		log.Print(text)
+
+		if text == "\n" {
+			break
+		}
+	}
+
+	CrearProcesoNuevo(archivo, tamanio)
+}
+
+func CrearProcesoNuevo(archivo string, tamanio int64) {
 	pid := globals.PIDCounter
 	globals.PIDCounter++
 
@@ -148,14 +166,26 @@ func CrearProcesoNuevo(archivo string, tamanio int64) globals.Proceso_Nuevo {
 		Pcb: globals.PCB{
 			Pid: pid,
 			PC:  0,
+			// Las metricas las inicializa en 0
 		},
 		Estado_Actual: globals.NEW,
 		Rafaga:        nil,
 	}
 
-	return globals.Proceso_Nuevo{
+	procesoNuevo := globals.Proceso_Nuevo{
 		Archivo_Pseudocodigo: archivo,
 		Tamaño:               tamanio,
 		Proceso:              proceso,
 	}
+
+	globals.ESTADOS.NEW = append(globals.ESTADOS.NEW, procesoNuevo)
+
+	if globals.KernelConfig.New_algorithm == "PMCP" {
+		OrdenarNewPorTamanio()
+	}
+}
+
+func OrdenarNewPorTamanio() {
+	// No hecho
+	// Con ordenar por tamaño (mas chicho primero) ya el algoritmo PMCP estaria hecho (creo)
 }

@@ -15,6 +15,16 @@ import (
 
 func main() {
 
+	// CONFIG
+	utils_logger.ConfigurarLogger("kernel.log")
+
+	globals.KernelConfig = utils_kernel.IniciarConfiguracion("config.json")
+	if globals.KernelConfig == nil {
+		log.Fatal("No se pudo iniciar el config")
+	}
+
+	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.KernelConfig.Log_level))
+
 	// INIT
 
 	if len(os.Args) != 3 {
@@ -29,22 +39,7 @@ func main() {
 		log.Fatalf("Error al convertir el tamaño a int64: %v", err)
 	}
 
-	procesoNuevo := utils_kernel.CrearProcesoNuevo(archivo, tamanioProceso)
-	log.Println("Proceso creado:", procesoNuevo)
-
-	globals.ESTADOS.NEW = append(globals.ESTADOS.NEW, procesoNuevo)
-
-	log.Println("Proceso agregado a NEW")
-
-	// CONFIG
-	utils_logger.ConfigurarLogger("kernel.log")
-
-	globals.KernelConfig = utils_kernel.IniciarConfiguracion("config.json")
-	if globals.KernelConfig == nil {
-		log.Fatal("No se pudo iniciar el config")
-	}
-
-	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.KernelConfig.Log_level))
+	go utils_kernel.IniciarPlanificadorLargoPlazo(archivo, tamanioProceso)
 
 	// Cliente (mandar mensaje a memoria)
 	mensaje := "Mensaje desde Kernel"
