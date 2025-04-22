@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/io"
 )
@@ -104,6 +105,13 @@ func RecibirSolicitudDeKernel(w http.ResponseWriter, r *http.Request) {
 	log.Println("Me llego solicitud de IO")
 	log.Printf("%+v\n", solicitud)
 
+	USleep(solicitud.Tiempo)
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}
+
+func USleep(tiempo int64) {
+	duracion := time.Duration(tiempo) * time.Millisecond
+	time.Sleep(duracion)
 }

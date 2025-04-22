@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	utils_kernel "github.com/sisoputnfrba/tp-golang/kernel/utils"
@@ -25,19 +26,31 @@ func main() {
 	mensaje := "Mensaje desde Kernel"
 	utils_kernel.EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
 
-	/* Solicitud de IO (Es aproximadamente lo que un proceso usaria para solicitar a IO)
-	if len(globals.HandshakesIO) > 0 {
-		io := globals.HandshakesIO[0]
-		ipIO := io.IP
-		puertoIO := io.Puerto
-		pid := int64(1)
-		tiempo := int64(500)
+	// Solicitud de IO (Es aproximadamente lo que un proceso usaria para solicitar a IO)
+	/*Esto es para probar si funciona IO - espera 10 segundos (a que haga el handshake) y envia solicitud
+	Problema: estoy mandando solicitud y espero la respuesta, bloqueando todo el modulo kernel
+		- creo que el enunciado dice que:
+			1. envio solicitud a IO (una API)
+			2. recibo fin de IO (otra API)
+		- si se puede hacer todo en una sola API (enviar solicitud, y esperar la respuesta):
+			- Solucion (creo): que cada proceso sea un hilo, entonces en cada solicitud a IO
+							   podes bloquear ese hilo tranqui, que el kernel sigue funcionando
 
-		utils_kernel.EnviarSolicitudIO(ipIO, puertoIO, pid, tiempo)
-	} else {
-		log.Println("No hay IOs registrados todavía")
-	}
 	*/
+	go func() {
+		time.Sleep(10 * time.Second)
+		if len(globals.HandshakesIO) > 0 {
+			io := globals.HandshakesIO[0]
+			ipIO := io.IP
+			puertoIO := io.Puerto
+			pid := int64(1)
+			tiempo := int64(5000)
+
+			utils_kernel.EnviarSolicitudIO(ipIO, puertoIO, pid, tiempo)
+		} else {
+			log.Println("No hay IOs registrados todavía")
+		}
+	}()
 
 	// Servidor (recibir mensaje de CPU y IO)
 	mux := http.NewServeMux()

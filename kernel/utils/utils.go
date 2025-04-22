@@ -129,7 +129,7 @@ func EnviarSolicitudIO(ipIO string, puertoIO int64, pid int64, tiempo int64) {
 		log.Printf("Error codificando la solicitud IO: %s", err.Error())
 	}
 
-	url := fmt.Sprintf("http://%s:%d/realizar_io", ipIO, puertoIO)
+	url := fmt.Sprintf("http://%s:%d/solicitudDeIo", ipIO, puertoIO)
 
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {

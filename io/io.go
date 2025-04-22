@@ -37,11 +37,9 @@ func main() {
 		globals.IoConfig.IpKernel,
 		globals.IoConfig.PortKernel,
 		nombreIO,
-		"127.0.0.1", // Esta es la IP que hay que mandarle a kernel? No se - tomytsa
+		globals.IoConfig.IpIO,
 		globals.IoConfig.PortIO,
 	)
-
-	// Ahora hay que recibir la petición del Kernel para que el modulo hago un usleep (no esta hecho)
 
 	// Servidor
 	mux := http.NewServeMux()

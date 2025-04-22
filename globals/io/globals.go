@@ -3,7 +3,7 @@ package globals
 type Io_Config struct {
 	IpKernel   string `json:"ip_kernel"`
 	PortKernel int64  `json:"port_kernel"`
-	IpIO       int64  `json:"ip_io"`
+	IpIO       string `json:"ip_io"`
 	PortIO     int64  `json:"port_io"`
 	LogLevel   string `json:"log_level"`
 }
