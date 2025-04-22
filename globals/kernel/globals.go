@@ -17,6 +17,9 @@ type Mensaje struct {
 	Mensaje string `json:"mensaje"`
 }
 
+// Contador de PID para asignar a nuevos procesos
+var PIDCounter int64 = 0
+
 type HandshakeIO struct {
 	Nombre string `json:"nombre"`
 	IP     string `json:"ip"`

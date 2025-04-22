@@ -4,6 +4,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -13,6 +14,29 @@ import (
 )
 
 func main() {
+
+	// INIT
+
+	if len(os.Args) != 3 {
+		log.Fatal("Uso: go run . archivo tamaño")
+	}
+
+	archivo := os.Args[1]
+	tamanioStr := os.Args[2]
+	tamanioProceso, err := strconv.ParseInt(tamanioStr, 10, 64)
+
+	if err != nil {
+		log.Fatalf("Error al convertir el tamaño a int64: %v", err)
+	}
+
+	procesoNuevo := utils_kernel.CrearProcesoNuevo(archivo, tamanioProceso)
+	log.Println("Proceso creado:", procesoNuevo)
+
+	globals.ESTADOS.NEW = append(globals.ESTADOS.NEW, procesoNuevo)
+
+	log.Println("Proceso agregado a NEW")
+
+	// CONFIG
 	utils_logger.ConfigurarLogger("kernel.log")
 
 	globals.KernelConfig = utils_kernel.IniciarConfiguracion("config.json")
@@ -26,7 +50,6 @@ func main() {
 	mensaje := "Mensaje desde Kernel"
 	utils_kernel.EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
 
-	// Solicitud de IO (Es aproximadamente lo que un proceso usaria para solicitar a IO)
 	/*Esto es para probar si funciona IO - espera 10 segundos (a que haga el handshake) y envia solicitud
 	Problema: estoy mandando solicitud y espero la respuesta, bloqueando todo el modulo kernel
 		- creo que el enunciado dice que:
@@ -61,7 +84,7 @@ func main() {
 	mux.HandleFunc("/handshakeCPU", utils_kernel.RecibirHandshakeCPU)
 
 	puerto := globals.KernelConfig.Port_kernel
-	err := http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)
+	err = http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)
 	if err != nil {
 		panic(err)
 	}

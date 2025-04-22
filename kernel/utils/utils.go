@@ -116,7 +116,7 @@ func RecibirHandshakeCPU(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-// Todavia esta funcion no se usa
+// Todavia esta funcion no se usa (correctamente)
 func EnviarSolicitudIO(ipIO string, puertoIO int64, pid int64, tiempo int64) {
 
 	solicitud := globals.SolicitudIO{
@@ -138,4 +138,24 @@ func EnviarSolicitudIO(ipIO string, puertoIO int64, pid int64, tiempo int64) {
 
 	log.Printf("Solicitud IO enviada al modulo IO - PID: %d, Tiempo: %dms", pid, tiempo)
 	log.Printf("Respuesta del modulo IO: %s", resp.Status)
+}
+
+func CrearProcesoNuevo(archivo string, tamanio int64) globals.Proceso_Nuevo {
+	pid := globals.PIDCounter
+	globals.PIDCounter++
+
+	proceso := globals.Proceso{
+		Pcb: globals.PCB{
+			Pid: pid,
+			PC:  0,
+		},
+		Estado_Actual: globals.NEW,
+		Rafaga:        nil,
+	}
+
+	return globals.Proceso_Nuevo{
+		Archivo_Pseudocodigo: archivo,
+		Tamaño:               tamanio,
+		Proceso:              proceso,
+	}
 }
