@@ -218,21 +218,24 @@ func PasarProcesosAReady() {
 	}
 
 	if lenghtSUSP_READY == 0 {
+
 		for len(globals.ESTADOS.NEW) > 0 {
-			if SolicitarInicializarProcesoAMemoria_DesdeNEW(globals.ESTADOS.NEW[0]) == false {
+			procesoNuevo := globals.ESTADOS.NEW[0]
+
+			if SolicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
 				break
 			}
 
-			procesoEnNew := globals.ESTADOS.NEW[0]
 			procesoEnReady := globals.Proceso{
-				Pcb:           procesoEnNew.Proceso.Pcb,
+				Pcb:           procesoNuevo.Proceso.Pcb,
 				Estado_Actual: globals.READY,
 				Rafaga:        nil,
 			}
 			globals.MapaProcesos[procesoEnReady.Pcb.Pid] = procesoEnReady
 			globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
 			globals.ESTADOS.READY = append(globals.ESTADOS.READY, procesoEnReady.Pcb.Pid)
-			log.Printf("Estado de los procesos en READY: %+v", globals.ESTADOS.READY)
+
+			log.Printf("cantidad de procesos en READY: %+v", len(globals.ESTADOS.READY))
 		}
 	}
 }
