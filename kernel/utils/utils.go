@@ -160,9 +160,10 @@ func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 }
 
 func CrearProcesoNuevo(archivo string, tamanio int64) {
+
 	pid := globals.PIDCounter
 	globals.PIDCounter++
-
+	log.Printf("Creando nuevo proceso con PID %d y tamaño %d\n", pid, tamanio)
 	proceso := globals.Proceso{
 		Pcb: globals.PCB{
 			Pid: pid,
@@ -178,9 +179,10 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		Tamaño:               tamanio,
 		Proceso:              proceso,
 	}
+	log.Printf("Agregando proceso a NEW. Cantidad actual: %d", len(globals.ESTADOS.NEW))
 
 	globals.ESTADOS.NEW = append(globals.ESTADOS.NEW, procesoNuevo)
-
+	log.Printf("Después de agregar, NEW tiene %d procesos", len(globals.ESTADOS.NEW))
 	if globals.KernelConfig.New_algorithm == "PMCP" {
 		OrdenarNewPorTamanio()
 	}
@@ -202,7 +204,7 @@ func PasarProcesosAReady() {
 	// Primero me fijo en SUSP READY y despues en NEW --- nose si esta bien hacerlo asi
 
 	var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
-	for {
+	for len(globals.ESTADOS.SUSP_READY) > 0 {
 		proceso := globals.MapaProcesos[globals.ESTADOS.SUSP_READY[0]]
 		if SolicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso) == false {
 			break
@@ -216,7 +218,7 @@ func PasarProcesosAReady() {
 	}
 
 	if lenghtSUSP_READY == 0 {
-		for {
+		for len(globals.ESTADOS.NEW) > 0 {
 			if SolicitarInicializarProcesoAMemoria_DesdeNEW(globals.ESTADOS.NEW[0]) == false {
 				break
 			}
@@ -230,6 +232,7 @@ func PasarProcesosAReady() {
 			globals.MapaProcesos[procesoEnReady.Pcb.Pid] = procesoEnReady
 			globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
 			globals.ESTADOS.READY = append(globals.ESTADOS.READY, procesoEnReady.Pcb.Pid)
+			log.Printf("Estado de los procesos en READY: %+v", globals.ESTADOS.READY)
 		}
 	}
 }

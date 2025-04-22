@@ -17,12 +17,10 @@ func main() {
 
 	// CONFIG
 	utils_logger.ConfigurarLogger("kernel.log")
-
 	globals.KernelConfig = utils_kernel.IniciarConfiguracion("config.json")
 	if globals.KernelConfig == nil {
 		log.Fatal("No se pudo iniciar el config")
 	}
-
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.KernelConfig.Log_level))
 
 	// INIT
