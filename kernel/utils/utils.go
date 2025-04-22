@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 )
@@ -188,8 +189,11 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 }
 
 func OrdenarNewPorTamanio() {
-	// No hecho
+
 	// Con ordenar por tamaño (mas chicho primero) ya el algoritmo PMCP estaria hecho (creo)
+	sort.Slice(globals.ESTADOS.NEW, func(i, j int) bool {
+		return globals.ESTADOS.NEW[i].Tamaño < globals.ESTADOS.NEW[j].Tamaño
+	})
 }
 
 func PasarProcesosAReady() {
