@@ -53,6 +53,7 @@ func main() {
 							   podes bloquear ese hilo tranqui, que el kernel sigue funcionando
 
 	*/
+
 	go func() {
 		time.Sleep(10 * time.Second)
 		if len(globals.HandshakesIO) > 0 {

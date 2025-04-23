@@ -251,3 +251,34 @@ func SolicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso globals.Proceso
 	// No se pudo inicializar => devuelve false
 	return true
 }
+
+func FinalizarProceso(pid int64) {
+	proceso, ok := globals.MapaProcesos[pid]
+	if !ok {
+		log.Printf("No se encontró el proceso con PID %d", pid)
+		return
+	}
+
+	// El pid lo mande como string, para reutilizar la funcion EnviarMensajeAMemoria
+	// Hay que crear otra funcion para mandar al pid como un JSON, me imagino... (o que Juanma se arregle para formatear el string)
+	mensaje := fmt.Sprintf("finalizar:%d", proceso.Pcb.Pid)
+	EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
+
+	// Confirmación de la memoria aca...
+	RecibirConfirmacionDeMemoria(proceso.Pcb.Pid)
+
+	delete(globals.MapaProcesos, pid)
+	log.Printf("El PCB del proceso con PID %d fue liberado", pid)
+
+	// Me imagino que hay que eliminarlo de de las colas tambien, o no?
+
+	// Iniciar nuevos procesos
+	PasarProcesosAReady()
+
+	// Loguear metricas de estado
+}
+
+func RecibirConfirmacionDeMemoria(pid int64) bool {
+
+	return true
+}
