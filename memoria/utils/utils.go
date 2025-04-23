@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"os"
 
-	globals "github.com/sisoputnfrba/tp-golang/globals/memoria"
+	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
-func IniciarConfiguracion(filePath string) *globals.Memoria_Config {
-	var config *globals.Memoria_Config
+func IniciarConfiguracion(filePath string) *globals_memoria.Memoria_Config {
+	var config *globals_memoria.Memoria_Config
 	configFile, err := os.Open(filePath)
 	if err != nil {
 		log.Fatal(err.Error())
@@ -23,9 +23,17 @@ func IniciarConfiguracion(filePath string) *globals.Memoria_Config {
 	return config
 }
 
+func iniciarProceso() {
+
+}
+
+
+
+
+
 func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	var mensaje globals.Mensaje
+	var mensaje globals_memoria.Mensaje
 	err := decoder.Decode(&mensaje)
 	if err != nil {
 		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
@@ -43,7 +51,7 @@ func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {
 
 func RecibirMensajeDeCpu(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	var mensaje globals.Mensaje
+	var mensaje globals_memoria.Mensaje
 	err := decoder.Decode(&mensaje)
 	if err != nil {
 		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
