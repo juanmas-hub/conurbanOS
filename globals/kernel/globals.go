@@ -1,5 +1,7 @@
 package globals
 
+import "sync"
+
 type Kernel_Config struct {
 	Ip_memory           string `json:"ip_memory"`
 	Port_memory         int64  `json:"port_memory"`
@@ -16,6 +18,9 @@ var KernelConfig *Kernel_Config
 type Mensaje struct {
 	Mensaje string `json:"mensaje"`
 }
+
+// Sincronizacion
+var Mutex sync.Mutex
 
 // Estructura para comunicarle a Memoria que finalice un proceso
 type FinProcesoJSON struct {

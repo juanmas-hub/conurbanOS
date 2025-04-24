@@ -231,11 +231,8 @@ func PasarProcesosAReady() {
 			break
 		}
 
-		proceso.Estado_Actual = globals.READY
-		globals.MapaProcesos[proceso.Pcb.Pid] = proceso
-		globals.ESTADOS.SUSP_READY = globals.ESTADOS.SUSP_READY[1:]
+		SuspReadyAReady(proceso)
 		lenghtSUSP_READY--
-		globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
 	}
 
 	if lenghtSUSP_READY == 0 {
@@ -247,16 +244,7 @@ func PasarProcesosAReady() {
 				break
 			}
 
-			procesoEnReady := globals.Proceso{
-				Pcb:           procesoNuevo.Proceso.Pcb,
-				Estado_Actual: globals.READY,
-				Rafaga:        nil,
-			}
-			globals.MapaProcesos[procesoEnReady.Pcb.Pid] = procesoEnReady
-			globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
-			globals.ESTADOS.READY = append(globals.ESTADOS.READY, procesoEnReady.Pcb.Pid)
-
-			log.Printf("cantidad de procesos en READY: %+v", len(globals.ESTADOS.READY))
+			NewAReady(procesoNuevo)
 		}
 	}
 }
@@ -304,4 +292,34 @@ func FinalizarProceso(pid int64) {
 func RecibirConfirmacionDeMemoria(pid int64) bool {
 
 	return true
+}
+
+// Funciones para no hacer tanto quilombo en pasar procesos de un estado a otro
+
+func NewAReady(proceso globals.Proceso_Nuevo) {
+	globals.Mutex.Lock()
+
+	procesoEnReady := globals.Proceso{
+		Pcb:           proceso.Proceso.Pcb,
+		Estado_Actual: globals.READY,
+		Rafaga:        nil,
+	}
+	globals.MapaProcesos[procesoEnReady.Pcb.Pid] = procesoEnReady
+	globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
+	globals.ESTADOS.READY = append(globals.ESTADOS.READY, procesoEnReady.Pcb.Pid)
+
+	log.Printf("cantidad de procesos en READY: %+v", len(globals.ESTADOS.READY))
+
+	globals.Mutex.Unlock()
+}
+
+func SuspReadyAReady(proceso globals.Proceso) {
+	globals.Mutex.Lock()
+
+	proceso.Estado_Actual = globals.READY
+	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
+	globals.ESTADOS.SUSP_READY = globals.ESTADOS.SUSP_READY[1:]
+	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
+
+	globals.Mutex.Unlock()
 }
