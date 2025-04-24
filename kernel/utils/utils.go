@@ -111,7 +111,9 @@ func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
 	log.Println("Me llego un handshake de IO")
 	log.Printf("%+v\n", handshake)
 
+	globals.HandshakesMutex.Lock()
 	globals.HandshakesIO = append(globals.HandshakesIO, handshake)
+	globals.HandshakesMutex.Unlock()
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
@@ -130,6 +132,10 @@ func RecibirHandshakeCPU(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Me llego un handshake de CPU")
 	log.Printf("%+v\n", handshake)
+
+	globals.HandshakesMutex.Lock()
+	globals.HandshakesCPU = append(globals.HandshakesCPU, handshake)
+	globals.HandshakesMutex.Unlock()
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
@@ -179,8 +185,13 @@ func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 
 func CrearProcesoNuevo(archivo string, tamanio int64) {
 
+	globals.PIDCounterMutex.Lock()
+
 	pid := globals.PIDCounter
 	globals.PIDCounter++
+
+	globals.PIDCounterMutex.Unlock()
+
 	log.Printf("Creando nuevo proceso con PID %d y tamaño %d\n", pid, tamanio)
 	proceso := globals.Proceso{
 		Pcb: globals.PCB{
@@ -197,6 +208,8 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		Tamaño:               tamanio,
 		Proceso:              proceso,
 	}
+
+	globals.EstadosMutex.Lock()
 	log.Printf("Agregando proceso a NEW. Cantidad actual: %d", len(globals.ESTADOS.NEW))
 
 	globals.ESTADOS.NEW = append(globals.ESTADOS.NEW, procesoNuevo)
@@ -204,6 +217,7 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 	if globals.KernelConfig.New_algorithm == "PMCP" {
 		OrdenarNewPorTamanio()
 	}
+	globals.EstadosMutex.Unlock()
 
 	// Si se crea un proceso nuevo antes de que aprete Enter, se agrega a NEW pero no se pasan procesos a READY
 	if globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED == false {
@@ -224,8 +238,11 @@ func PasarProcesosAReady() {
 	// Voy a intentar pasar la mayor cantidad de procesos que pueda mientras memoria tenga espacio
 	// Primero me fijo en SUSP READY y despues en NEW --- nose si esta bien hacerlo asi
 
+	globals.EstadosMutex.Lock()
+	globals.MapaProcesosMutex.Lock()
+
 	var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
-	for len(globals.ESTADOS.SUSP_READY) > 0 {
+	for lenghtSUSP_READY > 0 {
 		proceso := globals.MapaProcesos[globals.ESTADOS.SUSP_READY[0]]
 		if SolicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso) == false {
 			break
@@ -247,6 +264,9 @@ func PasarProcesosAReady() {
 			NewAReady(procesoNuevo)
 		}
 	}
+
+	globals.EstadosMutex.Unlock()
+	globals.MapaProcesosMutex.Unlock()
 }
 
 func SolicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo) bool {
@@ -297,7 +317,6 @@ func RecibirConfirmacionDeMemoria(pid int64) bool {
 // Funciones para no hacer tanto quilombo en pasar procesos de un estado a otro
 
 func NewAReady(proceso globals.Proceso_Nuevo) {
-	globals.Mutex.Lock()
 
 	procesoEnReady := globals.Proceso{
 		Pcb:           proceso.Proceso.Pcb,
@@ -310,16 +329,13 @@ func NewAReady(proceso globals.Proceso_Nuevo) {
 
 	log.Printf("cantidad de procesos en READY: %+v", len(globals.ESTADOS.READY))
 
-	globals.Mutex.Unlock()
 }
 
 func SuspReadyAReady(proceso globals.Proceso) {
-	globals.Mutex.Lock()
 
 	proceso.Estado_Actual = globals.READY
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.ESTADOS.SUSP_READY = globals.ESTADOS.SUSP_READY[1:]
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
 
-	globals.Mutex.Unlock()
 }

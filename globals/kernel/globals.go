@@ -19,8 +19,11 @@ type Mensaje struct {
 	Mensaje string `json:"mensaje"`
 }
 
-// Sincronizacion
-var Mutex sync.Mutex
+// Mutex
+var EstadosMutex sync.Mutex
+var MapaProcesosMutex sync.Mutex
+var PIDCounterMutex sync.Mutex
+var HandshakesMutex sync.Mutex
 
 // Estructura para comunicarle a Memoria que finalice un proceso
 type FinProcesoJSON struct {
@@ -38,6 +41,7 @@ type HandshakeIO struct {
 
 // Lista de los IO disponibles
 var HandshakesIO []HandshakeIO
+var HandshakesCPU []HandshakeIO
 
 // Constantes
 const NEW string = "NEW"
