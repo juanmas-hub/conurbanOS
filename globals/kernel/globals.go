@@ -5,10 +5,11 @@ import "sync"
 type Kernel_Config struct {
 	Ip_memory           string `json:"ip_memory"`
 	Port_memory         int64  `json:"port_memory"`
+	Ip_kernel           string `json:"ip_kernel"`
 	Port_kernel         int64  `json:"port_kernel"`
 	Scheduler_algorithm string `json:"scheduler_algorithm"`
-	New_algorithm       string `json:"new_algorithm"`
-	Alpha               string `json:"alpha"`
+	New_algorithm       string `json:"ready_ingress_algorithm"`
+	Alpha               int64  `json:"alpha"`
 	Suspension_time     int64  `json:"suspension_time"`
 	Log_level           string `json:"log_level"`
 }
