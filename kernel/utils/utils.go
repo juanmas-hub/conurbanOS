@@ -45,7 +45,7 @@ func EnviarMensajeAMemoria(ip string, puerto int64, mensajeTxt string) {
 }
 
 func EnviarFinalizacionDeProceso_AMemoria(ip string, puerto int64, pid int64) {
-	mensaje := globals.FinProcesoJSON{PID: pid}
+	mensaje := globals.PidJSON{PID: pid}
 	body, err := json.Marshal(mensaje)
 	if err != nil {
 		log.Printf("error codificando mensaje: %s", err.Error())
@@ -59,6 +59,23 @@ func EnviarFinalizacionDeProceso_AMemoria(ip string, puerto int64, pid int64) {
 	}
 
 	log.Printf("respuesta del servidor: %s", resp.Status)
+}
+
+func EnviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64) {
+	/*mensaje := globals.PidJSON{PID: pid}
+	body, err := json.Marshal(mensaje)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
+
+	// Posible problema con el int64 del puerto
+	url := fmt.Sprintf("http://%s:%d/dispatchProceso", ip, puerto)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+	}
+
+	log.Printf("respuesta del servidor: %s", resp.Status)*/
 }
 
 func RecibirMensajeDeCpu(w http.ResponseWriter, r *http.Request) {
@@ -183,6 +200,41 @@ func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 	CrearProcesoNuevo(archivo, tamanio)
 }
 
+func EjecutarPlanificadorCortoPlazo() {
+
+	if globals.KernelConfig.Scheduler_algorithm == "FIFO" {
+		globals.EstadosMutex.Lock()
+
+		procesoAEjecutar := globals.ESTADOS.READY[0]
+		ip, port := ElegirCPUlibre()
+		EnviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
+
+		globals.MapaProcesosMutex.Lock()
+
+		ReadyAExecute(globals.MapaProcesos[procesoAEjecutar])
+		log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
+
+		globals.EstadosMutex.Unlock()
+		globals.MapaProcesosMutex.Unlock()
+	}
+
+	if globals.KernelConfig.Scheduler_algorithm == "SJF" {
+		// Sin desalojo
+		// Creo que con ordenar la cola de Ready por rafaga alcanza
+	}
+
+	if globals.KernelConfig.Scheduler_algorithm == "SRT" {
+		// Con desalojo
+		// No se como sería esto. Capaz hay q hacer una funcion aparte porque se llamaria en momentos distintos
+	}
+}
+
+func ElegirCPUlibre() (string, int64) {
+	// Hay que hacerlo. Seguramente haya que cambiar HandshakesCPU para indicar cual esta libre
+
+	return globals.HandshakesCPU[0].IP, globals.HandshakesCPU[0].Puerto
+}
+
 func CrearProcesoNuevo(archivo string, tamanio int64) {
 
 	globals.PIDCounterMutex.Lock()
@@ -267,6 +319,9 @@ func PasarProcesosAReady() {
 
 	globals.EstadosMutex.Unlock()
 	globals.MapaProcesosMutex.Unlock()
+
+	// Esto es solo para probar si funciona, hay que ver en que momentos se llama a esa funcion
+	go EjecutarPlanificadorCortoPlazo()
 }
 
 func SolicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo) bool {
@@ -338,4 +393,13 @@ func SuspReadyAReady(proceso globals.Proceso) {
 	globals.ESTADOS.SUSP_READY = globals.ESTADOS.SUSP_READY[1:]
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
 
+}
+
+func ReadyAExecute(proceso globals.Proceso) {
+	// Esto funcionaría para FIFO y SJF. Nose si SRT
+
+	proceso.Estado_Actual = globals.EXECUTE
+	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
+	globals.ESTADOS.READY = globals.ESTADOS.READY[1:]
+	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE, proceso.Pcb.Pid)
 }

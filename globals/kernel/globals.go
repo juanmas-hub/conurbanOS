@@ -25,8 +25,8 @@ var MapaProcesosMutex sync.Mutex
 var PIDCounterMutex sync.Mutex
 var HandshakesMutex sync.Mutex
 
-// Estructura para comunicarle a Memoria que finalice un proceso
-type FinProcesoJSON struct {
+// Estructura para comunicarle a Memoria y CPU
+type PidJSON struct {
 	PID int64 `json:"pid"`
 }
 
@@ -93,14 +93,10 @@ var MapaProcesos map[int64]Proceso = make(map[int64]Proceso)
 
 // Estructuras para los estados
 
-type Execute_Struct struct {
-	Libre bool
-	Pid   int64
-}
 type Estados struct {
 	NEW          []Proceso_Nuevo
 	READY        []int64
-	EXECUTE      []Execute_Struct
+	EXECUTE      []int64
 	BLOCKED      []int64
 	SUSP_BLOCKED []int64
 	SUSP_READY   []int64
