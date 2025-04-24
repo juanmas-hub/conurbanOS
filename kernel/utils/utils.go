@@ -44,6 +44,23 @@ func EnviarMensajeAMemoria(ip string, puerto int64, mensajeTxt string) {
 	log.Printf("respuesta del servidor: %s", resp.Status)
 }
 
+func EnviarFinalizacionDeProceso_AMemoria(ip string, puerto int64, pid int64) {
+	mensaje := globals.FinProcesoJSON{PID: pid}
+	body, err := json.Marshal(mensaje)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
+
+	// Posible problema con el int64 del puerto
+	url := fmt.Sprintf("http://%s:%d/finalizarProceso", ip, puerto)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+	}
+
+	log.Printf("respuesta del servidor: %s", resp.Status)
+}
+
 func RecibirMensajeDeCpu(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals.Mensaje
@@ -152,6 +169,7 @@ func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 		log.Print(text)
 
 		if text == "\n" {
+			globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED = false
 			break
 		}
 	}
@@ -187,7 +205,10 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		OrdenarNewPorTamanio()
 	}
 
-	PasarProcesosAReady()
+	// Si se crea un proceso nuevo antes de que aprete Enter, se agrega a NEW pero no se pasan procesos a READY
+	if globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED == false {
+		PasarProcesosAReady()
+	}
 }
 
 func OrdenarNewPorTamanio() {
@@ -259,18 +280,20 @@ func FinalizarProceso(pid int64) {
 		return
 	}
 
-	// El pid lo mande como string, para reutilizar la funcion EnviarMensajeAMemoria
-	// Hay que crear otra funcion para mandar al pid como un JSON, me imagino... (o que Juanma se arregle para formatear el string)
-	mensaje := fmt.Sprintf("finalizar:%d", proceso.Pcb.Pid)
-	EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
+	// Mando el PID
+	EnviarFinalizacionDeProceso_AMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, pid)
 
 	// Confirmación de la memoria aca...
+	// Me parece que la confirmacion es por la misma funcion que por la que mandas el mensaje (memoria no tiene ip y port del kernel)
+	// Que pasa si no puede finalizarlo? O no puede pasar eso?
 	RecibirConfirmacionDeMemoria(proceso.Pcb.Pid)
 
 	delete(globals.MapaProcesos, pid)
 	log.Printf("El PCB del proceso con PID %d fue liberado", pid)
 
 	// Me imagino que hay que eliminarlo de de las colas tambien, o no?
+	// Diria yo que ya esta eliminado de las colas, esta funcion se llamaria cuando un proceso pasa a exit, y en todos
+	// los cambios de estado los sacamos de la cola anterior
 
 	// Iniciar nuevos procesos
 	PasarProcesosAReady()

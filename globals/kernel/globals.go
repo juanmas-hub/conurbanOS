@@ -17,6 +17,11 @@ type Mensaje struct {
 	Mensaje string `json:"mensaje"`
 }
 
+// Estructura para comunicarle a Memoria que finalice un proceso
+type FinProcesoJSON struct {
+	PID int64 `json:"pid"`
+}
+
 // Contador de PID para asignar a nuevos procesos
 var PIDCounter int64 = 0
 
@@ -37,6 +42,8 @@ const BLOCKED string = "BLOCKED"
 const SUSP_BLOCKED string = "SUSP_BLOCKED"
 const SUSP_READY string = "SUSP_READY"
 const EXIT string = "EXIT"
+
+var PLANIFICADOR_LARGO_PLAZO_BLOCKED bool = true
 
 // Estructuras para manejo de procesos
 
@@ -93,7 +100,6 @@ type Estados struct {
 var ESTADOS Estados
 
 // Solicitud a IO
-
 type SolicitudIO struct {
 	PID    int64 `json:"pid"`
 	Tiempo int64 `json:"tiempo"`
