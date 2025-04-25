@@ -9,7 +9,8 @@ import (
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
-	utils_kernel "github.com/sisoputnfrba/tp-golang/kernel/utils"
+	utils_general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
+	utils_lp "github.com/sisoputnfrba/tp-golang/kernel/utils/planifLargo"
 	utils_logger "github.com/sisoputnfrba/tp-golang/utils/loggers"
 )
 
@@ -17,7 +18,7 @@ func main() {
 
 	// CONFIG
 	utils_logger.ConfigurarLogger("kernel.log")
-	globals.KernelConfig = utils_kernel.IniciarConfiguracion("config.json")
+	globals.KernelConfig = utils_general.IniciarConfiguracion("config.json")
 	if globals.KernelConfig == nil {
 		log.Fatal("No se pudo iniciar el config")
 	}
@@ -37,11 +38,11 @@ func main() {
 		log.Fatalf("Error al convertir el tamaño a int64: %v", err)
 	}
 
-	go utils_kernel.IniciarPlanificadorLargoPlazo(archivo, tamanioProceso)
+	go utils_lp.IniciarPlanificadorLargoPlazo(archivo, tamanioProceso)
 
 	// Cliente (mandar mensaje a memoria)
 	mensaje := "Mensaje desde Kernel"
-	utils_kernel.EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
+	utils_general.EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
 
 	/*Esto es para probar si funciona IO - espera 10 segundos (a que haga el handshake) y envia solicitud
 	Problema: estoy mandando solicitud y espero la respuesta, bloqueando todo el modulo kernel
@@ -63,7 +64,7 @@ func main() {
 			pid := int64(1)
 			tiempo := int64(5000)
 
-			utils_kernel.EnviarSolicitudIO(ipIO, puertoIO, pid, tiempo)
+			utils_general.EnviarSolicitudIO(ipIO, puertoIO, pid, tiempo)
 		} else {
 			log.Println("No hay IOs registrados todavía")
 		}
@@ -72,10 +73,10 @@ func main() {
 	// Servidor (recibir mensaje de CPU y IO)
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/mensajeDeCpu", utils_kernel.RecibirMensajeDeCpu)
-	mux.HandleFunc("/mensajeDeIo", utils_kernel.RecibirMensajeDeIo)
-	mux.HandleFunc("/handshakeIO", utils_kernel.RecibirHandshakeIO)
-	mux.HandleFunc("/handshakeCPU", utils_kernel.RecibirHandshakeCPU)
+	mux.HandleFunc("/mensajeDeCpu", utils_general.RecibirMensajeDeCpu)
+	mux.HandleFunc("/mensajeDeIo", utils_general.RecibirMensajeDeIo)
+	mux.HandleFunc("/handshakeIO", utils_general.RecibirHandshakeIO)
+	mux.HandleFunc("/handshakeCPU", utils_general.RecibirHandshakeCPU)
 
 	puerto := globals.KernelConfig.Port_kernel
 	err = http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)
