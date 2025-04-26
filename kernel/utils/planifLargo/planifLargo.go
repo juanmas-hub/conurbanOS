@@ -8,7 +8,7 @@ import (
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
-	pc "github.com/sisoputnfrba/tp-golang/kernel/utils/planifCorto"
+	cp "github.com/sisoputnfrba/tp-golang/kernel/utils/planifCorto"
 )
 
 func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
@@ -25,6 +25,8 @@ func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 			break
 		}
 	}
+	// El planificador de corto plazo se ejecuta aca porque no tiene sentido ejecutarlo si no pueden entrar procesos
+	go cp.EjecutarPlanificadorCortoPlazo()
 
 	CrearProcesoNuevo(archivo, tamanio)
 }
@@ -113,9 +115,6 @@ func PasarProcesosAReady() {
 
 	globals.EstadosMutex.Unlock()
 	globals.MapaProcesosMutex.Unlock()
-
-	// Esto es solo para probar si funciona, hay que ver en que momentos se llama a esa funcion
-	go pc.EjecutarPlanificadorCortoPlazo()
 }
 
 func SolicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo) bool {

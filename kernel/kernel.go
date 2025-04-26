@@ -57,8 +57,8 @@ func main() {
 
 	go func() {
 		time.Sleep(10 * time.Second)
-		if len(globals.HandshakesIO) > 0 {
-			io := globals.HandshakesIO[0]
+		if len(globals.ListaIOs) > 0 {
+			io := globals.ListaCPUs[0].Handshake
 			ipIO := io.IP
 			puertoIO := io.Puerto
 			pid := int64(1)

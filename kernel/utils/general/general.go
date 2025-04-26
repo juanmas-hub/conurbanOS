@@ -27,6 +27,14 @@ func IniciarConfiguracion(filePath string) *globals.Kernel_Config {
 	return config
 }
 
+func Wait(semaforo globals.Semaforo) {
+	<-semaforo
+}
+
+func Signal(semaforo globals.Semaforo) {
+	semaforo <- struct{}{}
+}
+
 func EnviarMensajeAMemoria(ip string, puerto int64, mensajeTxt string) {
 	mensaje := globals.Mensaje{Mensaje: mensajeTxt}
 	body, err := json.Marshal(mensaje)
@@ -133,7 +141,7 @@ func RecibirMensajeDeIo(w http.ResponseWriter, r *http.Request) {
 
 func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	var handshake globals.HandshakeIO
+	var handshake globals.Handshake
 	err := decoder.Decode(&handshake)
 	if err != nil {
 		log.Printf("Error al decodificar handshake: %s\n", err.Error())
@@ -145,9 +153,9 @@ func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
 	log.Println("Me llego un handshake de IO")
 	log.Printf("%+v\n", handshake)
 
-	globals.HandshakesMutex.Lock()
-	globals.HandshakesIO = append(globals.HandshakesIO, handshake)
-	globals.HandshakesMutex.Unlock()
+	globals.ListaIOsMutex.Lock()
+	AgregarAListaIOs(handshake)
+	globals.ListaIOsMutex.Unlock()
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
@@ -155,7 +163,7 @@ func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
 
 func RecibirHandshakeCPU(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	var handshake globals.HandshakeIO
+	var handshake globals.Handshake
 	err := decoder.Decode(&handshake)
 	if err != nil {
 		log.Printf("Error al decodificar handshake: %s\n", err.Error())
@@ -167,9 +175,9 @@ func RecibirHandshakeCPU(w http.ResponseWriter, r *http.Request) {
 	log.Println("Me llego un handshake de CPU")
 	log.Printf("%+v\n", handshake)
 
-	globals.HandshakesMutex.Lock()
-	globals.HandshakesCPU = append(globals.HandshakesCPU, handshake)
-	globals.HandshakesMutex.Unlock()
+	globals.ListaCPUsMutex.Lock()
+	AgregarAListaCPUs(handshake)
+	globals.ListaCPUsMutex.Unlock()
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
@@ -197,4 +205,22 @@ func EnviarSolicitudIO(ipIO string, puertoIO int64, pid int64, tiempo int64) {
 
 	log.Printf("Solicitud IO terminada al modulo IO - PID: %d, Tiempo: %dms", pid, tiempo)
 	log.Printf("Respuesta del modulo IO: %s", resp.Status)
+}
+
+func AgregarAListaIOs(handshake globals.Handshake) {
+	elementoAAgregar := globals.ListaIo{
+		Handshake:             handshake,
+		PidProcesoActual:      -1,
+		ColaProcesosEsperando: nil,
+	}
+	globals.ListaIOs = append(globals.ListaIOs, elementoAAgregar)
+}
+
+func AgregarAListaCPUs(handshake globals.Handshake) {
+	elementoAAgregar := globals.ListaCpu{
+		Handshake: handshake,
+		EstaLibre: true,
+	}
+	globals.ListaCPUs = append(globals.ListaCPUs, elementoAAgregar)
+	Signal(globals.Sem_Cpus)
 }

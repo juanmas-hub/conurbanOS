@@ -24,7 +24,8 @@ type Mensaje struct {
 var EstadosMutex sync.Mutex
 var MapaProcesosMutex sync.Mutex
 var PIDCounterMutex sync.Mutex
-var HandshakesMutex sync.Mutex
+var ListaCPUsMutex sync.Mutex
+var ListaIOsMutex sync.Mutex
 
 // Estructura para comunicarle a Memoria y CPU
 type PidJSON struct {
@@ -34,15 +35,26 @@ type PidJSON struct {
 // Contador de PID para asignar a nuevos procesos
 var PIDCounter int64 = 0
 
-type HandshakeIO struct {
+type Handshake struct {
 	Nombre string `json:"nombre"`
 	IP     string `json:"ip"`
 	Puerto int64  `json:"puerto"`
 }
 
-// Lista de los IO disponibles
-var HandshakesIO []HandshakeIO
-var HandshakesCPU []HandshakeIO
+type ListaCpu struct {
+	Handshake Handshake
+	EstaLibre bool
+}
+
+type ListaIo struct {
+	Handshake             Handshake
+	PidProcesoActual      int64 // PID del proceso actual que esta en esta IO
+	ColaProcesosEsperando []int64
+}
+
+// Listas
+var ListaIOs []ListaIo
+var ListaCPUs []ListaCpu
 
 // Constantes
 const NEW string = "NEW"
@@ -54,6 +66,22 @@ const SUSP_READY string = "SUSP_READY"
 const EXIT string = "EXIT"
 
 var PLANIFICADOR_LARGO_PLAZO_BLOCKED bool = true
+
+// Semaforos
+type Semaforo chan struct{} // es un tipo que ocupa 0 bytes, entonces puedo hacer los semaforos mas eficientes
+func CrearSemaforo(maxTareas int) Semaforo {
+	semaforo := make(Semaforo, maxTareas)
+	for i := 0; i < maxTareas; i++ {
+		semaforo <- struct{}{}
+	}
+	return semaforo
+}
+
+var Sem_Cpus = CrearSemaforo(0)
+
+// Empieza en 0:
+//		+ Aumenta cuando sea conecta una CPU, o un proceso sale de CPU (hay cpus libres para usar)
+//		- Disminuye cuando se elije un proceso a ejecutar
 
 // Estructuras para manejo de procesos
 

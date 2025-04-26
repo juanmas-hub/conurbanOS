@@ -9,86 +9,105 @@ import (
 )
 
 func EjecutarPlanificadorCortoPlazo() {
+	// Es un while infinito, pero se queda esperando al principio a que haya CPUs libres (wait es bloqueante)
+	// Cuando reciba que hay CPUs disponibles, va a Ready y se fija si hay procesos para pasar a execute
+	// No se que hacer cuando no hay procesos en Ready
 
 	if globals.KernelConfig.Scheduler_algorithm == "FIFO" {
-		globals.EstadosMutex.Lock()
+		for {
+			general.Wait(globals.Sem_Cpus) // Espero a que haya Cpus
+			globals.EstadosMutex.Lock()
 
-		procesoAEjecutar := globals.ESTADOS.READY[0]
-		ip, port := ElegirCPUlibre()
-		general.EnviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
+			// Esto lo hago asi para probarlo,
+			if len(globals.ESTADOS.READY) > 0 {
+				procesoAEjecutar := globals.ESTADOS.READY[0]
+				ip, port := ElegirCPUlibre()
+				general.EnviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
 
-		globals.MapaProcesosMutex.Lock()
+				globals.MapaProcesosMutex.Lock()
 
-		ReadyAExecute(globals.MapaProcesos[procesoAEjecutar])
-		log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
+				ReadyAExecute(globals.MapaProcesos[procesoAEjecutar])
+				log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
 
-		globals.EstadosMutex.Unlock()
-		globals.MapaProcesosMutex.Unlock()
+				globals.EstadosMutex.Unlock()
+				globals.MapaProcesosMutex.Unlock()
+			} else {
+				// Si no hya procesos en ready, pongo denuevo que la CPU disponible
+				// Esto esta claramente mal pero lo pongo para probarlo, despues hay que buscar que hacer cuando no hay procesos en ready
+				general.Signal(globals.Sem_Cpus)
+			}
+		}
 	}
 
+	// Modifique solamente el de FIFO, hay que modificar los de aca abajo (semaforos)
+
 	if globals.KernelConfig.Scheduler_algorithm == "SJF" {
-		globals.EstadosMutex.Lock()
-		// SJF SIN DESALOJO (Se elige al proceso que tenga la rafaga estimada mas corta)
-		// sort.SLice compara pares de elementos (i y j) si i < j -> true, si j < i -> false
-		sort.Slice(globals.ESTADOS.READY, func(i, j int) bool {
-			pidI := globals.ESTADOS.READY[i]
-			pidJ := globals.ESTADOS.READY[j]
+		for {
+			globals.EstadosMutex.Lock()
+			// SJF SIN DESALOJO (Se elige al proceso que tenga la rafaga estimada mas corta)
+			// sort.SLice compara pares de elementos (i y j) si i < j -> true, si j < i -> false
+			sort.Slice(globals.ESTADOS.READY, func(i, j int) bool {
+				pidI := globals.ESTADOS.READY[i]
+				pidJ := globals.ESTADOS.READY[j]
 
-			// De cada par de procesos sacamos la rafaga que tiene cada uno
-			rafagaI := globals.MapaProcesos[pidI].Rafaga
-			rafagaJ := globals.MapaProcesos[pidJ].Rafaga
-			// Si la rafagaI es menor, la ponemos antes
-			return rafagaI.Est_Sgte < rafagaJ.Est_Sgte
-		})
+				// De cada par de procesos sacamos la rafaga que tiene cada uno
+				rafagaI := globals.MapaProcesos[pidI].Rafaga
+				rafagaJ := globals.MapaProcesos[pidJ].Rafaga
+				// Si la rafagaI es menor, la ponemos antes
+				return rafagaI.Est_Sgte < rafagaJ.Est_Sgte
+			})
 
-		procesoAEjecutar := globals.ESTADOS.READY[0]
-		ip, port := ElegirCPUlibre()
-		general.EnviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
-		globals.MapaProcesosMutex.Lock()
-		ReadyAExecute(globals.MapaProcesos[procesoAEjecutar])
-		log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
-		globals.EstadosMutex.Unlock()
-		globals.MapaProcesosMutex.Unlock()
+			procesoAEjecutar := globals.ESTADOS.READY[0]
+			ip, port := ElegirCPUlibre()
+			general.EnviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
+			globals.MapaProcesosMutex.Lock()
+			ReadyAExecute(globals.MapaProcesos[procesoAEjecutar])
+			log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
+			globals.EstadosMutex.Unlock()
+			globals.MapaProcesosMutex.Unlock()
+		}
 	}
 
 	if globals.KernelConfig.Scheduler_algorithm == "SRT" {
-		globals.EstadosMutex.Lock()
-		// Con desalojo
-		// Primero ordenamos READY por rafaga
-		sort.Slice(globals.ESTADOS.READY, func(i, j int) bool {
-			pidI := globals.ESTADOS.READY[i]
-			pidJ := globals.ESTADOS.READY[j]
+		for {
+			globals.EstadosMutex.Lock()
+			// Con desalojo
+			// Primero ordenamos READY por rafaga
+			sort.Slice(globals.ESTADOS.READY, func(i, j int) bool {
+				pidI := globals.ESTADOS.READY[i]
+				pidJ := globals.ESTADOS.READY[j]
 
-			// De cada par de procesos sacamos la rafaga que tiene cada uno
-			rafagaI := globals.MapaProcesos[pidI].Rafaga
-			rafagaJ := globals.MapaProcesos[pidJ].Rafaga
-			// Si la rafagaI es menor, la ponemos antes
-			return rafagaI.Est_Sgte < rafagaJ.Est_Sgte
-		})
-		// Si hay un proceso en EXECUTE -> comparamos rafagas
-		if len(globals.ESTADOS.EXECUTE) > 0 {
-			pidEnExec := globals.ESTADOS.EXECUTE[0]
-			rafagaExec := globals.MapaProcesos[pidEnExec].Rafaga.Est_Sgte
-			rafagaNuevo := globals.MapaProcesos[globals.ESTADOS.READY[0]].Rafaga.Est_Sgte
+				// De cada par de procesos sacamos la rafaga que tiene cada uno
+				rafagaI := globals.MapaProcesos[pidI].Rafaga
+				rafagaJ := globals.MapaProcesos[pidJ].Rafaga
+				// Si la rafagaI es menor, la ponemos antes
+				return rafagaI.Est_Sgte < rafagaJ.Est_Sgte
+			})
+			// Si hay un proceso en EXECUTE -> comparamos rafagas
+			if len(globals.ESTADOS.EXECUTE) > 0 {
+				pidEnExec := globals.ESTADOS.EXECUTE[0]
+				rafagaExec := globals.MapaProcesos[pidEnExec].Rafaga.Est_Sgte
+				rafagaNuevo := globals.MapaProcesos[globals.ESTADOS.READY[0]].Rafaga.Est_Sgte
 
-			if rafagaNuevo < rafagaExec {
-				// OjO !! Esto debe estar mal. Hay que saber cual es la CPU que queremos desalojar
-				cpu := globals.HandshakesCPU[0]
-				ipCPU := cpu.IP
-				puertoCPU := cpu.Puerto
-				general.EnviarInterrupcionACPU(ipCPU, puertoCPU, pidEnExec)
-				// Aca la logica para mandar el proceso con rafaga mas corta - despues lo hago me voy a tocar
+				if rafagaNuevo < rafagaExec {
+					// OjO !! Esto debe estar mal. Hay que saber cual es la CPU que queremos desalojar
+					cpu := globals.ListaCPUs[0].Handshake
+					ipCPU := cpu.IP
+					puertoCPU := cpu.Puerto
+					general.EnviarInterrupcionACPU(ipCPU, puertoCPU, pidEnExec)
+					// Aca la logica para mandar el proceso con rafaga mas corta - despues lo hago me voy a tocar
+				}
 			}
+			// Si no hay ningun proceso en EXECUTE -> simplemente agregamos el primero de READY
+			procesoAEjecutar := globals.ESTADOS.READY[0]
+			ip, port := ElegirCPUlibre()
+			general.EnviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
+			globals.MapaProcesosMutex.Lock()
+			ReadyAExecute(globals.MapaProcesos[procesoAEjecutar])
+			log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
+			globals.EstadosMutex.Unlock()
+			globals.MapaProcesosMutex.Unlock()
 		}
-		// Si no hay ningun proceso en EXECUTE -> simplemente agregamos el primero de READY
-		procesoAEjecutar := globals.ESTADOS.READY[0]
-		ip, port := ElegirCPUlibre()
-		general.EnviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
-		globals.MapaProcesosMutex.Lock()
-		ReadyAExecute(globals.MapaProcesos[procesoAEjecutar])
-		log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
-		globals.EstadosMutex.Unlock()
-		globals.MapaProcesosMutex.Unlock()
 	}
 }
 
@@ -107,7 +126,7 @@ func ActualizarEstimado(pid int64, rafagaReal int64) {
 func ElegirCPUlibre() (string, int64) {
 	// Hay que hacerlo. Seguramente haya que cambiar HandshakesCPU para indicar cual esta libre
 
-	return globals.HandshakesCPU[0].IP, globals.HandshakesCPU[0].Puerto
+	return globals.ListaCPUs[0].Handshake.IP, globals.ListaCPUs[0].Handshake.Puerto
 }
 
 func ReadyAExecute(proceso globals.Proceso) {
