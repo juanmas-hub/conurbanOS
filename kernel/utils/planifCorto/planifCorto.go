@@ -69,14 +69,14 @@ func EjecutarPlanificadorCortoPlazo() {
 }
 
 func ActualizarEstimado(pid int64, rafagaReal int64) {
-	// En desarrollo
-	//proceso := globals.MapaProcesos[pid]
-	//alpha := globals.KernelConfig.Alpha
-	//ant := proceso.Rafaga.Est_Sgte
 
+	proceso := globals.MapaProcesos[pid]
+	alpha := globals.KernelConfig.Alpha
+	ant := proceso.Rafaga.Est_Sgte
+	proceso.Rafaga.Est_Sgte = rafagaReal*alpha + ant*(1-alpha)
 	// Est(n+1) =  R(n) + (1-) Est(n) ;    [0,1]
 
-	//globals.MapaProcesos[pid] = proceso
+	globals.MapaProcesos[pid] = proceso
 }
 
 func ElegirCPUlibre() (string, int64) {
