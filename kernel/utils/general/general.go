@@ -78,6 +78,23 @@ func EnviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64) {
 	log.Printf("respuesta del servidor: %s", resp.Status)*/
 }
 
+func EnviarInterrupcionACPU(ip string, puerto int64, pid int64) {
+	mensaje := globals.PidJSON{PID: pid}
+	body, err := json.Marshal(mensaje)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
+
+	// Posible problema con el int64 del puerto
+	url := fmt.Sprintf("http://%s:%d/interrumpir", ip, puerto)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("error enviando interrupción a ip:%s puerto:%d", ip, puerto)
+	}
+	log.Printf("Interrupción enviada a CPU - PID: %d", pid)
+	log.Printf("respuesta de la CPU: %s", resp.Status)
+}
+
 func RecibirMensajeDeCpu(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals.Mensaje
