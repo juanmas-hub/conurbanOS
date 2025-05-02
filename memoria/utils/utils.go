@@ -23,12 +23,12 @@ func IniciarConfiguracion(filePath string) *globals_memoria.Memoria_Config {
 	return config
 }
 
-func iniciarProceso() {
+func InicializarMemoria() {
+	tamanio := globals_memoria.MemoriaConfig.Memory_size
 
+	globals_memoria.Memoria = make([]byte, tamanio)
+	globals_memoria.MemoriaOcupada = make([]bool, tamanio)
 }
-
-
-
 
 
 func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {
@@ -65,4 +65,26 @@ func RecibirMensajeDeCpu(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}
+
+func calcularMock () int {
+	libres := 0
+
+    for _, estaOcupado := range globals_memoria.MemoriaOcupada {
+        if !estaOcupado {
+            libres++
+        }
+    }
+    return libres
+}
+
+func ConsultarMock (w http.ResponseWriter, r *http.Request) {
+	mock := calcularMock()
+
+	w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+
+    json.NewEncoder(w).Encode(map[string]int{
+        "espacio_libre": mock,
+    })
 }

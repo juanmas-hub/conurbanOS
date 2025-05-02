@@ -21,7 +21,8 @@ func main() {
 	}
 
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.MemoriaConfig.Log_level))
-
+	
+	utils_memoria.InicializarMemoria()
 
 	// Multiplexor de servidor HTTP
 	mux := http.NewServeMux()
@@ -30,9 +31,15 @@ func main() {
 	mux.HandleFunc("/mensajeDeKernel", utils_memoria.RecibirMensajeDeKernel)
 	mux.HandleFunc("/mensajeDeCpu", utils_memoria.RecibirMensajeDeCpu)
 
+	// General¿?
+	mux.HandleFunc("/consultarMock", utils_memoria.ConsultarMock)
+
+	// KERNEL
 	// mux.HandleFunc("/iniciarProceso", utils_memoria.iniciarProceso)
 	// mux.HandleFunc("/suspenderProceso", utils_memoria.suspenderProceso)
 	// mux.HandleFunc("/finalizarProceso", utils_memoria.finalizarProceso)
+
+	// CPU
 	// mux.HandleFunc("/obtenerMarcoProceso", utils_memoria.obtenerMarcoProceso)
 	// mux.HandleFunc("/accederEspacioUsuario", utils_memoria.accederEspacioUsuario)
 	// mux.HandleFunc("/leerPagina", utils_memoria.leerPagina)
