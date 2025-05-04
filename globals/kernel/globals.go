@@ -12,6 +12,7 @@ type Kernel_Config struct {
 	Alpha               int64  `json:"alpha"`
 	Suspension_time     int64  `json:"suspension_time"`
 	Log_level           string `json:"log_level"`
+	Initial_estimate    int64  `json:"initial_estimate"`
 }
 
 var KernelConfig *Kernel_Config
