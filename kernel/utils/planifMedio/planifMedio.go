@@ -4,6 +4,7 @@ import (
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
+	pl "github.com/sisoputnfrba/tp-golang/kernel/utils/planifLargo"
 )
 
 func ExecuteABlocked(proceso globals.Proceso) {
@@ -61,7 +62,11 @@ func SigueBloqueado(proceso globals.Proceso) {
 	// Para que no siga bloqueado, el proceso tuvo que terminar su IO (lo recibimos como mensaje desde IO, siendo kernel servidor)
 	// Cuando kernel reciba de IO el mensaje, ahí le cambiamos el estado
 
-	if proceso.Estado_Actual == globals.BLOCKED {
+	globals.MapaProcesosMutex.Lock()
+	procesoActualmente := globals.MapaProcesos[proceso.Pcb.Pid]
+	globals.MapaProcesosMutex.Unlock()
+
+	if procesoActualmente.Estado_Actual == globals.BLOCKED {
 		BlockedASuspBlocked(proceso)
 
 		// Aca hay q hacer un par de cosas mas pero me tengo q ir
@@ -69,5 +74,39 @@ func SigueBloqueado(proceso globals.Proceso) {
 }
 
 func BlockedASuspBlocked(proceso globals.Proceso) {
-	// No hecho
+	// Aviso a memoria para swappear (hay q hacerlo)
+
+	// Muevo el proceso en la colas
+	proceso.Estado_Actual = globals.SUSP_BLOCKED
+
+	globals.MapaProcesosMutex.Lock()
+	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
+	globals.MapaProcesosMutex.Unlock()
+
+	pos := BuscarProcesoEnBlocked(proceso.Pcb.Pid)
+
+	globals.EstadosMutex.Lock()
+	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED[:pos], globals.ESTADOS.BLOCKED[pos+1:]...)
+	globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED, proceso.Pcb.Pid)
+	globals.EstadosMutex.Unlock()
+
+	// Libere memoria => llamo a nuevos procesos
+	pl.PasarProcesosAReady()
+}
+
+func BuscarProcesoEnBlocked(pid int64) int64 {
+	globals.EstadosMutex.Lock()
+	colaBlocked := globals.ESTADOS.BLOCKED
+	globals.EstadosMutex.Unlock()
+
+	var posicion int64
+
+	for indice, valor := range colaBlocked {
+		if valor == pid {
+			posicion = int64(indice)
+			break
+		}
+	}
+
+	return posicion
 }
