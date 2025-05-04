@@ -11,6 +11,7 @@ import (
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	utils_general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
 	utils_lp "github.com/sisoputnfrba/tp-golang/kernel/utils/planifLargo"
+	utils_syscallController "github.com/sisoputnfrba/tp-golang/kernel/utils/syscallController"
 	utils_logger "github.com/sisoputnfrba/tp-golang/utils/loggers"
 )
 
@@ -77,6 +78,10 @@ func main() {
 	mux.HandleFunc("/mensajeDeIo", utils_general.RecibirMensajeDeIo)
 	mux.HandleFunc("/handshakeIO", utils_general.RecibirHandshakeIO)
 	mux.HandleFunc("/handshakeCPU", utils_general.RecibirHandshakeCPU)
+	mux.HandleFunc("/syscallIO", utils_syscallController.ManejarIO)
+	mux.HandleFunc("/syscallDUMP_MEMORY", utils_syscallController.ManejarDUMP_MEMORY)
+	mux.HandleFunc("/syscallEXIT", utils_syscallController.ManejarEXIT)
+	mux.HandleFunc("/syscallINIT_PROC", utils_syscallController.ManejarINIT_PROC)
 
 	puerto := globals.KernelConfig.Port_kernel
 	err = http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)
