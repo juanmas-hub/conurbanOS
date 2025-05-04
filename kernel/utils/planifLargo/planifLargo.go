@@ -28,7 +28,7 @@ func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 	// El planificador de corto plazo se ejecuta aca porque no tiene sentido ejecutarlo si no pueden entrar procesos
 	go cp.EjecutarPlanificadorCortoPlazo()
 
-	CrearProcesoNuevo(archivo, tamanio)
+	CrearProcesoNuevo(archivo, tamanio) // Primer proceso
 }
 
 func CrearProcesoNuevo(archivo string, tamanio int64) {
@@ -177,6 +177,7 @@ func NewAReady(proceso globals.Proceso_Nuevo) {
 
 	log.Printf("cantidad de procesos en READY: %+v", len(globals.ESTADOS.READY))
 
+	general.Signal(globals.Sem_ProcesosEnReady) // Nuevo proceso en ready
 }
 
 func SuspReadyAReady(proceso globals.Proceso) {
@@ -185,5 +186,7 @@ func SuspReadyAReady(proceso globals.Proceso) {
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.ESTADOS.SUSP_READY = globals.ESTADOS.SUSP_READY[1:]
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
+
+	general.Signal(globals.Sem_ProcesosEnReady) // Nuevo proceso en ready
 
 }

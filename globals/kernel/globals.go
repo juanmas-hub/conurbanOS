@@ -86,6 +86,10 @@ var Sem_Cpus = CrearSemaforo(0)
 
 // Estructuras para manejo de procesos
 
+var Sem_ProcesosEnReady = CrearSemaforo(0)
+
+// Es un contador de los procesos que hay en Ready: sirve para que no loopee infinito en el planificador de corto plazo
+
 type Metricas struct {
 	New          int64
 	Ready        int64

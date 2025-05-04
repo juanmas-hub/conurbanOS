@@ -15,7 +15,8 @@ func EjecutarPlanificadorCortoPlazo() {
 
 	if globals.KernelConfig.Scheduler_algorithm == "FIFO" {
 		for {
-			general.Wait(globals.Sem_Cpus) // Espero a que haya Cpus
+			general.Wait(globals.Sem_Cpus)            // Espero a que haya Cpus libres
+			general.Wait(globals.Sem_ProcesosEnReady) // Espero a que haya procesos en Ready
 			globals.EstadosMutex.Lock()
 
 			// Esto lo hago asi para probarlo,
@@ -31,10 +32,6 @@ func EjecutarPlanificadorCortoPlazo() {
 
 				globals.EstadosMutex.Unlock()
 				globals.MapaProcesosMutex.Unlock()
-			} else {
-				// Si no hya procesos en ready, pongo denuevo que la CPU disponible
-				// Esto esta claramente mal pero lo pongo para probarlo, despues hay que buscar que hacer cuando no hay procesos en ready
-				general.Signal(globals.Sem_Cpus)
 			}
 		}
 	}
