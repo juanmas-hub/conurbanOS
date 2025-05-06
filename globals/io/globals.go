@@ -10,6 +10,8 @@ type Io_Config struct {
 
 var IoConfig *Io_Config
 
+var NombreIO string
+
 type Mensaje struct {
 	Mensaje string `json:"mensaje"`
 }
@@ -23,4 +25,8 @@ type HandshakeIO struct {
 type SolicitudIO struct {
 	PID    int64 `json:"pid"`
 	Tiempo int64 `json:"tiempo"`
+}
+type FinalizacionIO struct {
+	PID      int64  `json:"pid"`
+	NombreIO string `json:"nombre"`
 }

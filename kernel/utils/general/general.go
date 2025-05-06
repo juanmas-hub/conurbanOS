@@ -203,8 +203,57 @@ func EnviarSolicitudIO(ipIO string, puertoIO int64, pid int64, tiempo int64) {
 		log.Printf("Error enviando solicitud IO a ipIO:%s puertoIO:%d", ipIO, puertoIO)
 	}
 
-	log.Printf("Solicitud IO terminada al modulo IO - PID: %d, Tiempo: %dms", pid, tiempo)
+	log.Printf("Solicitud IO enviada al modulo IO - PID: %d, Tiempo: %dms", pid, tiempo)
 	log.Printf("Respuesta del modulo IO: %s", resp.Status)
+}
+
+func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var finalizacionIo globals.FinalizacionIO
+	err := decoder.Decode(&finalizacionIo)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	log.Printf("Finalizo el IO del PID: %d", finalizacionIo.PID)
+	log.Printf("%+v\n", finalizacionIo)
+
+	go func() {
+		globals.ListaIOsMutex.Lock()
+
+		// Elimino de la cola
+		posIo, _ := ObtenerIO(finalizacionIo.NombreIO)
+		globals.ListaIOs[posIo].PidProcesoActual = -1
+		log.Println("length cola procesos esperando: ", len(globals.ListaIOs[posIo].ColaProcesosEsperando))
+		globals.ListaIOs[posIo].ColaProcesosEsperando = globals.ListaIOs[posIo].ColaProcesosEsperando[1:]
+
+		// Si hay procesos esperando IO, envio solicitud
+		if len(globals.ListaIOs[posIo].ColaProcesosEsperando) > 0 {
+			procesoAIO := globals.ListaIOs[posIo].ColaProcesosEsperando[0]
+			globals.ListaIOs[posIo].PidProcesoActual = procesoAIO.PID
+			EnviarSolicitudIO(
+				globals.ListaIOs[posIo].Handshake.IP,
+				globals.ListaIOs[posIo].Handshake.Puerto,
+				procesoAIO.PID,
+				procesoAIO.Tiempo,
+			)
+
+		}
+
+		globals.ListaIOsMutex.Unlock()
+	}()
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+func ObtenerIO(nombre string) (int64, bool) {
+	// Hay que buscar por nombre en la ListaIOs
+
+	return 0, true
 }
 
 func AgregarAListaIOs(handshake globals.Handshake) {

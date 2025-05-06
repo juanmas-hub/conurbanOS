@@ -31,12 +31,12 @@ func main() {
 	if len(os.Args) != 2 {
 		log.Fatal("No se paso como argumento el nombre de IO") //por ej:  go run . nombreIO
 	}
-	nombreIO := os.Args[1]
+	globals.NombreIO = os.Args[1]
 
 	utils_io.HandshakeAKernel(
 		globals.IoConfig.IpKernel,
 		globals.IoConfig.PortKernel,
-		nombreIO,
+		globals.NombreIO,
 		globals.IoConfig.IpIO,
 		globals.IoConfig.PortIO,
 	)

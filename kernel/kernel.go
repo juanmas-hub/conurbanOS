@@ -45,17 +45,7 @@ func main() {
 	mensaje := "Mensaje desde Kernel"
 	utils_general.EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
 
-	/*Esto es para probar si funciona IO - espera 10 segundos (a que haga el handshake) y envia solicitud
-	Problema: estoy mandando solicitud y espero la respuesta, bloqueando todo el modulo kernel
-		- creo que el enunciado dice que:
-			1. envio solicitud a IO (una API)
-			2. recibo fin de IO (otra API)
-		- si se puede hacer todo en una sola API (enviar solicitud, y esperar la respuesta):
-			- Solucion (creo): que cada proceso sea un hilo, entonces en cada solicitud a IO
-							   podes bloquear ese hilo tranqui, que el kernel sigue funcionando
-
-	*/
-
+	// Prueba IO
 	go func() {
 		time.Sleep(10 * time.Second)
 		if len(globals.ListaIOs) > 0 {
@@ -64,7 +54,14 @@ func main() {
 			puertoIO := io.Puerto
 			pid := int64(1)
 			tiempo := int64(5000)
+			syscallIO := globals.SyscallIO{
+				Nombre: "TECLADO",
+				Tiempo: tiempo,
+				PID:    pid,
+			}
 
+			globals.ListaIOs[0].PidProcesoActual = pid
+			globals.ListaIOs[0].ColaProcesosEsperando = append(globals.ListaIOs[0].ColaProcesosEsperando, syscallIO)
 			utils_general.EnviarSolicitudIO(ipIO, puertoIO, pid, tiempo)
 		} else {
 			log.Println("No hay IOs registrados todavía")
@@ -78,6 +75,9 @@ func main() {
 	mux.HandleFunc("/mensajeDeIo", utils_general.RecibirMensajeDeIo)
 	mux.HandleFunc("/handshakeIO", utils_general.RecibirHandshakeIO)
 	mux.HandleFunc("/handshakeCPU", utils_general.RecibirHandshakeCPU)
+
+	mux.HandleFunc("/finalizacionIO", utils_general.FinalizacionIO)
+
 	mux.HandleFunc("/syscallIO", utils_syscallController.ManejarIO)
 	mux.HandleFunc("/syscallDUMP_MEMORY", utils_syscallController.ManejarDUMP_MEMORY)
 	mux.HandleFunc("/syscallEXIT", utils_syscallController.ManejarEXIT)

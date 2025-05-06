@@ -50,7 +50,7 @@ type ListaCpu struct {
 type ListaIo struct {
 	Handshake             Handshake
 	PidProcesoActual      int64 // PID del proceso actual que esta en esta IO
-	ColaProcesosEsperando []int64
+	ColaProcesosEsperando []SyscallIO
 }
 
 // Listas
@@ -138,8 +138,20 @@ type Estados struct {
 
 var ESTADOS Estados
 
-// Solicitud a IO
+// Solicitud y finalizacion IO
 type SolicitudIO struct {
 	PID    int64 `json:"pid"`
 	Tiempo int64 `json:"tiempo"`
+}
+
+type FinalizacionIO struct {
+	PID      int64  `json:"pid"`
+	NombreIO string `json:"nombre"`
+}
+
+// Sycall IO - recibo desde CPU
+type SyscallIO struct {
+	Nombre string `json:"nombre"`
+	Tiempo int64  `json:"tiempo"`
+	PID    int64  `json:"pid"`
 }
