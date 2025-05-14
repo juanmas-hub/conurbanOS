@@ -27,6 +27,7 @@ var MapaProcesosMutex sync.Mutex
 var PIDCounterMutex sync.Mutex
 var ListaCPUsMutex sync.Mutex
 var ListaIOsMutex sync.Mutex
+var ProcesosAFinalizarMutex sync.Mutex
 
 // Estructura para comunicarle a Memoria y CPU
 type PidJSON struct {
@@ -89,6 +90,12 @@ var Sem_Cpus = CrearSemaforo(0)
 var Sem_ProcesosEnReady = CrearSemaforo(0)
 
 // Es un contador de los procesos que hay en Ready: sirve para que no loopee infinito en el planificador de corto plazo
+
+var Sem_ProcesoAFinalizar = CrearSemaforo(0)
+var ProcesosAFinalizar []int64
+
+// Con el semaforo le aviso al planificador de largo plazo que hay un proceso para finalizar
+// En el slice le pongo el PID
 
 type Metricas struct {
 	New          int64

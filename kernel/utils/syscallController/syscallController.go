@@ -7,7 +7,6 @@ import (
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	utils_general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
-	utils_lp "github.com/sisoputnfrba/tp-golang/kernel/utils/planifLargo"
 	utils_pm "github.com/sisoputnfrba/tp-golang/kernel/utils/planifMedio"
 )
 
@@ -34,7 +33,7 @@ func ManejarIO(w http.ResponseWriter, r *http.Request) {
 		posIo, existe := utils_general.ObtenerIO(syscallIO.Nombre)
 
 		if !existe {
-			utils_lp.FinalizarProceso(syscallIO.PID)
+			utils_general.ProcesoAExit(syscallIO.PID)
 		} else {
 
 			// Bloqueo el proceso

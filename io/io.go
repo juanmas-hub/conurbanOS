@@ -41,6 +41,9 @@ func main() {
 		globals.IoConfig.PortIO,
 	)
 
+	// Avisar desconexion de IO
+	defer utils_io.Desconectar(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel, globals.PidProcesoActual)
+
 	// Servidor
 	mux := http.NewServeMux()
 

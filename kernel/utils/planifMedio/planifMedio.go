@@ -4,6 +4,7 @@ import (
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
+	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
 	pl "github.com/sisoputnfrba/tp-golang/kernel/utils/planifLargo"
 )
 
@@ -83,7 +84,7 @@ func BlockedASuspBlocked(proceso globals.Proceso) {
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
 
-	pos := BuscarProcesoEnBlocked(proceso.Pcb.Pid)
+	pos := general.BuscarProcesoEnBlocked(proceso.Pcb.Pid)
 
 	globals.EstadosMutex.Lock()
 	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED[:pos], globals.ESTADOS.BLOCKED[pos+1:]...)
@@ -92,21 +93,4 @@ func BlockedASuspBlocked(proceso globals.Proceso) {
 
 	// Libere memoria => llamo a nuevos procesos
 	pl.PasarProcesosAReady()
-}
-
-func BuscarProcesoEnBlocked(pid int64) int64 {
-	globals.EstadosMutex.Lock()
-	colaBlocked := globals.ESTADOS.BLOCKED
-	globals.EstadosMutex.Unlock()
-
-	var posicion int64
-
-	for indice, valor := range colaBlocked {
-		if valor == pid {
-			posicion = int64(indice)
-			break
-		}
-	}
-
-	return posicion
 }

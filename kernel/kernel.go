@@ -77,6 +77,7 @@ func main() {
 	mux.HandleFunc("/handshakeCPU", utils_general.RecibirHandshakeCPU)
 
 	mux.HandleFunc("/finalizacionIO", utils_general.FinalizacionIO)
+	mux.HandleFunc("/desconexionIO", utils_general.DesconexionIO)
 
 	mux.HandleFunc("/syscallIO", utils_syscallController.ManejarIO)
 	mux.HandleFunc("/syscallDUMP_MEMORY", utils_syscallController.ManejarDUMP_MEMORY)

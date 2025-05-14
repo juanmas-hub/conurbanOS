@@ -23,7 +23,7 @@ func EjecutarPlanificadorCortoPlazo() {
 			if len(globals.ESTADOS.READY) > 0 {
 				procesoAEjecutar := globals.ESTADOS.READY[0]
 				ip, port := ElegirCPUlibre()
-				general.EnviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
+				enviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
 
 				globals.MapaProcesosMutex.Lock()
 
@@ -56,7 +56,7 @@ func EjecutarPlanificadorCortoPlazo() {
 
 			procesoAEjecutar := globals.ESTADOS.READY[0]
 			ip, port := ElegirCPUlibre()
-			general.EnviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
+			enviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
 			globals.MapaProcesosMutex.Lock()
 			ReadyAExecute(globals.MapaProcesos[procesoAEjecutar])
 			log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
@@ -98,7 +98,7 @@ func EjecutarPlanificadorCortoPlazo() {
 			// Si no hay ningun proceso en EXECUTE -> simplemente agregamos el primero de READY
 			procesoAEjecutar := globals.ESTADOS.READY[0]
 			ip, port := ElegirCPUlibre()
-			general.EnviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
+			enviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
 			globals.MapaProcesosMutex.Lock()
 			ReadyAExecute(globals.MapaProcesos[procesoAEjecutar])
 			log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
@@ -133,4 +133,21 @@ func ReadyAExecute(proceso globals.Proceso) {
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.ESTADOS.READY = globals.ESTADOS.READY[1:]
 	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE, proceso.Pcb.Pid)
+}
+
+func enviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64) {
+	/*mensaje := globals.PidJSON{PID: pid}
+	body, err := json.Marshal(mensaje)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
+
+	// Posible problema con el int64 del puerto
+	url := fmt.Sprintf("http://%s:%d/dispatchProceso", ip, puerto)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+	}
+
+	log.Printf("respuesta del servidor: %s", resp.Status)*/
 }

@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 )
@@ -67,23 +68,6 @@ func EnviarFinalizacionDeProceso_AMemoria(ip string, puerto int64, pid int64) {
 	}
 
 	log.Printf("respuesta del servidor: %s", resp.Status)
-}
-
-func EnviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64) {
-	/*mensaje := globals.PidJSON{PID: pid}
-	body, err := json.Marshal(mensaje)
-	if err != nil {
-		log.Printf("error codificando mensaje: %s", err.Error())
-	}
-
-	// Posible problema con el int64 del puerto
-	url := fmt.Sprintf("http://%s:%d/dispatchProceso", ip, puerto)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
-	if err != nil {
-		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
-	}
-
-	log.Printf("respuesta del servidor: %s", resp.Status)*/
 }
 
 func EnviarInterrupcionACPU(ip string, puerto int64, pid int64) {
@@ -227,8 +211,8 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 		// Elimino de la cola
 		posIo, _ := ObtenerIO(finalizacionIo.NombreIO)
 		globals.ListaIOs[posIo].PidProcesoActual = -1
-		log.Println("length cola procesos esperando: ", len(globals.ListaIOs[posIo].ColaProcesosEsperando))
 		globals.ListaIOs[posIo].ColaProcesosEsperando = globals.ListaIOs[posIo].ColaProcesosEsperando[1:]
+		log.Println("Length cola procesos esperando en: " + finalizacionIo.NombreIO + ": " + strconv.Itoa(len(globals.ListaIOs[posIo].ColaProcesosEsperando)))
 
 		// Si hay procesos esperando IO, envio solicitud
 		if len(globals.ListaIOs[posIo].ColaProcesosEsperando) > 0 {
@@ -248,6 +232,150 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}
+
+func BuscarProcesoEnBlocked(pid int64) int64 {
+	globals.EstadosMutex.Lock()
+	colaBlocked := globals.ESTADOS.BLOCKED
+	globals.EstadosMutex.Unlock()
+
+	var posicion int64
+
+	for indice, valor := range colaBlocked {
+		if valor == pid {
+			posicion = int64(indice)
+			break
+		}
+	}
+
+	return posicion
+}
+
+func BuscarProcesoEnExecute(pid int64) int64 {
+	globals.EstadosMutex.Lock()
+	colaExecute := globals.ESTADOS.EXECUTE
+	globals.EstadosMutex.Unlock()
+
+	var posicion int64
+
+	for indice, valor := range colaExecute {
+		if valor == pid {
+			posicion = int64(indice)
+			break
+		}
+	}
+
+	return posicion
+}
+
+func BuscarProcesoEnNew(pid int64) int64 {
+	globals.EstadosMutex.Lock()
+	colaNew := globals.ESTADOS.NEW
+	globals.EstadosMutex.Unlock()
+
+	var posicion int64
+
+	for indice, valor := range colaNew {
+		if valor.Proceso.Pcb.Pid == pid {
+			posicion = int64(indice)
+			break
+		}
+	}
+
+	return posicion
+}
+
+func BuscarProcesoEnSuspBlocked(pid int64) int64 {
+	globals.EstadosMutex.Lock()
+	colaSuspBlocked := globals.ESTADOS.SUSP_BLOCKED
+	globals.EstadosMutex.Unlock()
+
+	var posicion int64
+
+	for indice, valor := range colaSuspBlocked {
+		if valor == pid {
+			posicion = int64(indice)
+			break
+		}
+	}
+
+	return posicion
+}
+
+func BuscarProcesoEnSuspReady(pid int64) int64 {
+	globals.EstadosMutex.Lock()
+	colaSuspReady := globals.ESTADOS.SUSP_READY
+	globals.EstadosMutex.Unlock()
+
+	var posicion int64
+
+	for indice, valor := range colaSuspReady {
+		if valor == pid {
+			posicion = int64(indice)
+			break
+		}
+	}
+
+	return posicion
+}
+
+func BuscarProcesoEnReady(pid int64) int64 {
+	globals.EstadosMutex.Lock()
+	colaReady := globals.ESTADOS.READY
+	globals.EstadosMutex.Unlock()
+
+	var posicion int64
+
+	for indice, valor := range colaReady {
+		if valor == pid {
+			posicion = int64(indice)
+			break
+		}
+	}
+
+	return posicion
+}
+
+func DesconexionIO(w http.ResponseWriter, r *http.Request) {
+	// Cuando se desconecta un IO, se pasa a exit el proceso que estaba en el IO.
+
+	decoder := json.NewDecoder(r.Body)
+	var desconexionIO globals.FinalizacionIO
+	err := decoder.Decode(&desconexionIO)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	globals.ListaIOsMutex.Lock()
+	posIo, _ := ObtenerIO(desconexionIO.NombreIO)
+	io := globals.ListaIOs[posIo]
+
+	// Elimino de lista IOs
+	globals.ListaIOs = append(globals.ListaIOs[:posIo], globals.ListaIOs[posIo+1:]...)
+
+	globals.ListaIOsMutex.Unlock()
+
+	log.Printf("Se desconecto el IO: %s, que tenia el proceso de PID: %d", io.Handshake.Nombre, desconexionIO.PID)
+
+	if desconexionIO.PID != -1 {
+		// Finalizo proceso
+		ProcesoAExit(desconexionIO.PID)
+
+		// Nose que hay que hacer con los de la cola de esa IO (no dice el enunciado)
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+func ProcesoAExit(pid int64) {
+	globals.ProcesosAFinalizarMutex.Lock()
+	globals.ProcesosAFinalizar = append(globals.ProcesosAFinalizar, pid)
+	globals.ProcesosAFinalizarMutex.Unlock()
+	Signal(globals.Sem_ProcesoAFinalizar)
 }
 
 func ObtenerIO(nombre string) (int64, bool) {

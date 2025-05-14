@@ -28,6 +28,8 @@ func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 	// El planificador de corto plazo se ejecuta aca porque no tiene sentido ejecutarlo si no pueden entrar procesos
 	go cp.EjecutarPlanificadorCortoPlazo()
 
+	go escucharFinalizacionesDeProcesos()
+
 	CrearProcesoNuevo(archivo, tamanio) // Primer proceso
 }
 
@@ -92,7 +94,7 @@ func PasarProcesosAReady() {
 	var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
 	for lenghtSUSP_READY > 0 {
 		proceso := globals.MapaProcesos[globals.ESTADOS.SUSP_READY[0]]
-		if SolicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso) == false {
+		if solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso) == false {
 			break
 		}
 
@@ -105,7 +107,7 @@ func PasarProcesosAReady() {
 		for len(globals.ESTADOS.NEW) > 0 {
 			procesoNuevo := globals.ESTADOS.NEW[0]
 
-			if SolicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
+			if solicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
 				break
 			}
 
@@ -117,20 +119,34 @@ func PasarProcesosAReady() {
 	globals.MapaProcesosMutex.Unlock()
 }
 
-func SolicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo) bool {
+func solicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo) bool {
 	// Se pudo iniciarlizar => devuelve true
 	// No se pudo inicializar => devuelve false
 	return true
 }
 
-func SolicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso globals.Proceso) bool {
+func solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso globals.Proceso) bool {
 	// Se pudo iniciarlizar => devuelve true
 	// No se pudo inicializar => devuelve false
 	return true
 }
 
-func FinalizarProceso(pid int64) {
+func escucharFinalizacionesDeProcesos() {
+	for {
+		general.Wait(globals.Sem_ProcesoAFinalizar)
+		globals.ProcesosAFinalizarMutex.Lock()
+		pid := globals.ProcesosAFinalizar[0]
+		globals.ProcesosAFinalizarMutex.Unlock()
+		go finalizarProceso(pid)
+	}
+}
+
+func finalizarProceso(pid int64) {
+	// Funcion que puede llamarse con el proceso estando en cualquier estado
+
+	globals.MapaProcesosMutex.Lock()
 	proceso, ok := globals.MapaProcesos[pid]
+	globals.MapaProcesosMutex.Unlock()
 	if !ok {
 		log.Printf("No se encontró el proceso con PID %d", pid)
 		return
@@ -142,14 +158,16 @@ func FinalizarProceso(pid int64) {
 	// Confirmación de la memoria aca...
 	// Me parece que la confirmacion es por la misma funcion que por la que mandas el mensaje (memoria no tiene ip y port del kernel)
 	// Que pasa si no puede finalizarlo? O no puede pasar eso?
-	RecibirConfirmacionDeMemoria(proceso.Pcb.Pid)
+	recibirConfirmacionDeMemoria(proceso.Pcb.Pid)
 
+	// Elimino de la cola
+	eliminarDeSuCola(pid, proceso.Estado_Actual)
+
+	// Elimino del mapa procesos
+	globals.MapaProcesosMutex.Lock()
 	delete(globals.MapaProcesos, pid)
+	globals.MapaProcesosMutex.Unlock()
 	log.Printf("El PCB del proceso con PID %d fue liberado", pid)
-
-	// Me imagino que hay que eliminarlo de de las colas tambien, o no?
-	// Diria yo que ya esta eliminado de las colas, esta funcion se llamaria cuando un proceso pasa a exit, y en todos
-	// los cambios de estado los sacamos de la cola anterior
 
 	// Iniciar nuevos procesos
 	PasarProcesosAReady()
@@ -157,7 +175,35 @@ func FinalizarProceso(pid int64) {
 	// Loguear metricas de estado
 }
 
-func RecibirConfirmacionDeMemoria(pid int64) bool {
+func eliminarDeSuCola(pid int64, estadoActual string) {
+	// Busco la cola correspondiente y elimino el proceso
+	globals.EstadosMutex.Lock()
+	switch estadoActual {
+	case globals.BLOCKED:
+		pos := general.BuscarProcesoEnBlocked(pid)
+		globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED[:pos], globals.ESTADOS.BLOCKED[pos+1:]...)
+	case globals.EXECUTE:
+		pos := general.BuscarProcesoEnExecute(pid)
+		globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE[:pos], globals.ESTADOS.EXECUTE[pos+1:]...)
+	case globals.NEW:
+		pos := general.BuscarProcesoEnNew(pid)
+		globals.ESTADOS.NEW = append(globals.ESTADOS.NEW[:pos], globals.ESTADOS.NEW[pos+1:]...)
+	case globals.SUSP_BLOCKED:
+		pos := general.BuscarProcesoEnSuspBlocked(pid)
+		globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED[:pos], globals.ESTADOS.SUSP_BLOCKED[pos+1:]...)
+	case globals.SUSP_READY:
+		pos := general.BuscarProcesoEnSuspReady(pid)
+		globals.ESTADOS.SUSP_READY = append(globals.ESTADOS.SUSP_READY[:pos], globals.ESTADOS.SUSP_READY[pos+1:]...)
+	case globals.READY:
+		pos := general.BuscarProcesoEnReady(pid)
+		globals.ESTADOS.READY = append(globals.ESTADOS.READY[:pos], globals.ESTADOS.READY[pos+1:]...)
+	default:
+		log.Printf("Error eliminando proceso PID: %d de su cola en EliminarDeSuCola", pid)
+	}
+	globals.EstadosMutex.Unlock()
+}
+
+func recibirConfirmacionDeMemoria(pid int64) bool {
 
 	return true
 }
