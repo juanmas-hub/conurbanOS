@@ -8,8 +8,10 @@ import (
 	pl "github.com/sisoputnfrba/tp-golang/kernel/utils/planifLargo"
 )
 
+// ----- FUNCIONES EXPORTADAS -------
+
 func ExecuteABlocked(proceso globals.Proceso) {
-	// Esta funcion deberia llamarse cuando un proceso en ejecucion llama a IO con la syscall IO (desde corto plazo)
+	// Esta funcion deberia llamarse cuando un proceso en ejecucion llama a IO con la syscall IO (desde syscallController)
 
 	// -- Paso el proceso entre las colas
 	// Como la cola de Execute 'no tiene' orden (todos los que estan en execute tienen una cpu ya ejecutando)
@@ -20,7 +22,7 @@ func ExecuteABlocked(proceso globals.Proceso) {
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
 
-	pos := BuscarProcesoEnExecute(proceso.Pcb.Pid)
+	pos := general.BuscarProcesoEnExecute(proceso.Pcb.Pid)
 
 	globals.EstadosMutex.Lock()
 	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE[:pos], globals.ESTADOS.EXECUTE[pos+1:]...)
@@ -28,37 +30,19 @@ func ExecuteABlocked(proceso globals.Proceso) {
 	globals.EstadosMutex.Unlock()
 
 	// -- Timer hasta ser suspendido
-	// Lo ejecuto en una rutina pq el proceso deberia terminar el IO antes de que termine el Timer
-	go Timer(globals.KernelConfig.Suspension_time, proceso)
+	go timer(globals.KernelConfig.Suspension_time, proceso)
 
 }
 
-func BuscarProcesoEnExecute(pid int64) int64 {
-	globals.EstadosMutex.Lock()
-	colaExecute := globals.ESTADOS.EXECUTE
-	globals.EstadosMutex.Unlock()
+// ----- FUNCIONES LOCALES -------
 
-	var posicion int64
-
-	for indice, valor := range colaExecute {
-		if valor == pid {
-			posicion = int64(indice)
-			break
-		}
-	}
-
-	return posicion
-}
-
-func Timer(tiempo int64, proceso globals.Proceso) {
-	// Termina el Sleep y ejecuta SigueBloqueado
-
-	defer SigueBloqueado(proceso)
+func timer(tiempo int64, proceso globals.Proceso) {
+	defer sigueBloqueado(proceso)
 	duracion := time.Duration(tiempo) * time.Millisecond
 	time.Sleep(duracion)
 }
 
-func SigueBloqueado(proceso globals.Proceso) {
+func sigueBloqueado(proceso globals.Proceso) {
 	// Si sigue bloqueado (en IO) hay que suspenderlo
 	// Para que no siga bloqueado, el proceso tuvo que terminar su IO (lo recibimos como mensaje desde IO, siendo kernel servidor)
 	// Cuando kernel reciba de IO el mensaje, ahí le cambiamos el estado
@@ -68,13 +52,13 @@ func SigueBloqueado(proceso globals.Proceso) {
 	globals.MapaProcesosMutex.Unlock()
 
 	if procesoActualmente.Estado_Actual == globals.BLOCKED {
-		BlockedASuspBlocked(proceso)
+		blockedASuspBlocked(proceso)
 
 		// Aca hay q hacer un par de cosas mas pero me tengo q ir
 	}
 }
 
-func BlockedASuspBlocked(proceso globals.Proceso) {
+func blockedASuspBlocked(proceso globals.Proceso) {
 	// Aviso a memoria para swappear (hay q hacerlo)
 
 	// Muevo el proceso en la colas

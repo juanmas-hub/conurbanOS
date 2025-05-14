@@ -8,6 +8,8 @@ import (
 	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
 )
 
+// ----- FUNCIONES EXPORTADAS -------
+
 func EjecutarPlanificadorCortoPlazo() {
 	// Es un while infinito, pero se queda esperando al principio a que haya CPUs libres (wait es bloqueante)
 	// Cuando reciba que hay CPUs disponibles, va a Ready y se fija si hay procesos para pasar a execute
@@ -22,12 +24,12 @@ func EjecutarPlanificadorCortoPlazo() {
 			// Esto lo hago asi para probarlo,
 			if len(globals.ESTADOS.READY) > 0 {
 				procesoAEjecutar := globals.ESTADOS.READY[0]
-				ip, port := ElegirCPUlibre()
+				ip, port := elegirCPUlibre()
 				enviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
 
 				globals.MapaProcesosMutex.Lock()
 
-				ReadyAExecute(globals.MapaProcesos[procesoAEjecutar])
+				readyAExecute(globals.MapaProcesos[procesoAEjecutar])
 				log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
 
 				globals.EstadosMutex.Unlock()
@@ -55,10 +57,10 @@ func EjecutarPlanificadorCortoPlazo() {
 			})
 
 			procesoAEjecutar := globals.ESTADOS.READY[0]
-			ip, port := ElegirCPUlibre()
+			ip, port := elegirCPUlibre()
 			enviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
 			globals.MapaProcesosMutex.Lock()
-			ReadyAExecute(globals.MapaProcesos[procesoAEjecutar])
+			readyAExecute(globals.MapaProcesos[procesoAEjecutar])
 			log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
 			globals.EstadosMutex.Unlock()
 			globals.MapaProcesosMutex.Unlock()
@@ -97,10 +99,10 @@ func EjecutarPlanificadorCortoPlazo() {
 			}
 			// Si no hay ningun proceso en EXECUTE -> simplemente agregamos el primero de READY
 			procesoAEjecutar := globals.ESTADOS.READY[0]
-			ip, port := ElegirCPUlibre()
+			ip, port := elegirCPUlibre()
 			enviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
 			globals.MapaProcesosMutex.Lock()
-			ReadyAExecute(globals.MapaProcesos[procesoAEjecutar])
+			readyAExecute(globals.MapaProcesos[procesoAEjecutar])
 			log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
 			globals.EstadosMutex.Unlock()
 			globals.MapaProcesosMutex.Unlock()
@@ -108,8 +110,10 @@ func EjecutarPlanificadorCortoPlazo() {
 	}
 }
 
-// Me imagino que esto se usa cuando se termina de ejecutar un proceso
-func ActualizarEstimado(pid int64, rafagaReal int64) {
+// ----- FUNCIONES LOCALES -------
+
+func actualizarEstimado(pid int64, rafagaReal int64) {
+	// Me imagino que esto se usa cuando se termina de ejecutar un proceso
 
 	proceso := globals.MapaProcesos[pid]
 	alpha := globals.KernelConfig.Alpha
@@ -120,13 +124,13 @@ func ActualizarEstimado(pid int64, rafagaReal int64) {
 	globals.MapaProcesos[pid] = proceso
 }
 
-func ElegirCPUlibre() (string, int64) {
+func elegirCPUlibre() (string, int64) {
 	// Hay que hacerlo. Seguramente haya que cambiar HandshakesCPU para indicar cual esta libre
 
 	return globals.ListaCPUs[0].Handshake.IP, globals.ListaCPUs[0].Handshake.Puerto
 }
 
-func ReadyAExecute(proceso globals.Proceso) {
+func readyAExecute(proceso globals.Proceso) {
 	// Esto funcionaría para FIFO y SJF. Nose si SRT
 
 	proceso.Estado_Actual = globals.EXECUTE

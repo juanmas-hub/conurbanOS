@@ -11,6 +11,8 @@ import (
 	cp "github.com/sisoputnfrba/tp-golang/kernel/utils/planifCorto"
 )
 
+// ----- FUNCIONES EXPORTADAS -------
+
 func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 	// Espera el Enter en otra rutina asi se puede abrir el servidor
 
@@ -65,7 +67,7 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 	globals.ESTADOS.NEW = append(globals.ESTADOS.NEW, procesoNuevo)
 	log.Printf("Después de agregar, NEW tiene %d procesos", len(globals.ESTADOS.NEW))
 	if globals.KernelConfig.New_algorithm == "PMCP" {
-		OrdenarNewPorTamanio()
+		ordenarNewPorTamanio()
 	}
 	globals.EstadosMutex.Unlock()
 
@@ -73,14 +75,6 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 	if globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED == false {
 		PasarProcesosAReady()
 	}
-}
-
-func OrdenarNewPorTamanio() {
-
-	// Con ordenar por tamaño (mas chicho primero) ya el algoritmo PMCP estaria hecho (creo)
-	sort.Slice(globals.ESTADOS.NEW, func(i, j int) bool {
-		return globals.ESTADOS.NEW[i].Tamaño < globals.ESTADOS.NEW[j].Tamaño
-	})
 }
 
 func PasarProcesosAReady() {
@@ -98,7 +92,7 @@ func PasarProcesosAReady() {
 			break
 		}
 
-		SuspReadyAReady(proceso)
+		suspReadyAReady(proceso)
 		lenghtSUSP_READY--
 	}
 
@@ -111,12 +105,22 @@ func PasarProcesosAReady() {
 				break
 			}
 
-			NewAReady(procesoNuevo)
+			newAReady(procesoNuevo)
 		}
 	}
 
 	globals.EstadosMutex.Unlock()
 	globals.MapaProcesosMutex.Unlock()
+}
+
+// ------- FUNCIONES LOCALES ---------
+
+func ordenarNewPorTamanio() {
+
+	// Con ordenar por tamaño (mas chicho primero) ya el algoritmo PMCP estaria hecho (creo)
+	sort.Slice(globals.ESTADOS.NEW, func(i, j int) bool {
+		return globals.ESTADOS.NEW[i].Tamaño < globals.ESTADOS.NEW[j].Tamaño
+	})
 }
 
 func solicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo) bool {
@@ -132,6 +136,7 @@ func solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso globals.Proceso
 }
 
 func escucharFinalizacionesDeProcesos() {
+	// Queda escuchando en un hilo los procesos que terminan
 	for {
 		general.Wait(globals.Sem_ProcesoAFinalizar)
 		globals.ProcesosAFinalizarMutex.Lock()
@@ -208,9 +213,7 @@ func recibirConfirmacionDeMemoria(pid int64) bool {
 	return true
 }
 
-// Funciones para no hacer tanto quilombo en pasar procesos de un estado a otro
-
-func NewAReady(proceso globals.Proceso_Nuevo) {
+func newAReady(proceso globals.Proceso_Nuevo) {
 
 	procesoEnReady := globals.Proceso{
 		Pcb:           proceso.Proceso.Pcb,
@@ -226,7 +229,7 @@ func NewAReady(proceso globals.Proceso_Nuevo) {
 	general.Signal(globals.Sem_ProcesosEnReady) // Nuevo proceso en ready
 }
 
-func SuspReadyAReady(proceso globals.Proceso) {
+func suspReadyAReady(proceso globals.Proceso) {
 
 	proceso.Estado_Actual = globals.READY
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
