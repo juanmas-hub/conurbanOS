@@ -32,9 +32,9 @@ type Memoria_Metrica struct {
 
 // Entrada de una tabla de páginas
 type EntradaTablaPagina struct {
-	pagina int
-	marco  *int
-	siguienteNivel *TablaDePaginas // Ya se inicializa por defecto como null
+	Pagina int
+	Marco  int
+	SiguienteNivel *TablaDePaginas // Ya se inicializa por defecto como null
 }
 
 type TablaDePaginas struct {
@@ -47,4 +47,4 @@ var ProcessManager *Manager
 
 var Memoria []byte
 
-var MemoriaOcupada []bool
+var MemoriaMarcosOcupados []bool
