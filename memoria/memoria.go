@@ -21,11 +21,10 @@ func main() {
 	}
 
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.MemoriaConfig.Log_level))
-	
+
 	utils_memoria.InicializarMemoria()
 
-
-	var instruccionesPrueba []string = []string {"HOLAA", "RAMPLAA", "PANSANSON BANANINI", "QEUW xAASDADF", "ASADDASASASAAAAAAAAAAA", "444abcdsdfsfffQQUEUEUEUEUEUEEUEUEUUEEUEUEUEUEUUEUEUEUEUUUEUEUEUEU"}
+	var instruccionesPrueba []string = []string{"HOLAA", "RAMPLAA", "PANSANSON BANANINI", "QEUW xAASDADF", "ASADDASASASAAAAAAAAAAA", "444abcdsdfsfffQQUEUEUEUEUEUEEUEUEUUEEUEUEUEUEUUEUEUEUEUUUEUEUEUEU"}
 
 	utils_memoria.AlmacenarProceso(5, instruccionesPrueba)
 
@@ -51,7 +50,7 @@ func main() {
 
 	// KERNEL
 	// mux.HandleFunc("/iniciarProceso", utils_memoria.iniciarProceso)
-	// mux.HandleFunc("/suspenderProceso", utils_memoria.suspenderProceso)
+	// mux.HandleFunc("/suspenderProceso", utils_memoria.suspenderProceso) --- ya hice la funcion desde kernel en /kernel/utils/planifMedio (avisarSwappeo)
 	// mux.HandleFunc("/finalizarProceso", utils_memoria.finalizarProceso)
 
 	// CPU
@@ -60,7 +59,6 @@ func main() {
 	// mux.HandleFunc("/leerPagina", utils_memoria.leerPagina)
 	// mux.HandleFunc("/actualizarPagina", utils_memoria.actualizarPagina)
 	// mux.HandleFunc("/memoryDump", utils_memoria.memoryDump)
-
 
 	// Inicia un servidor que escuche en el puerto del config
 	puerto := globals.MemoriaConfig.Port_memory

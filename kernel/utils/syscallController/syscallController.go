@@ -41,7 +41,7 @@ func ManejarIO(w http.ResponseWriter, r *http.Request) {
 			proceso := globals.MapaProcesos[syscallIO.PID]
 			globals.MapaProcesosMutex.Unlock()
 
-			utils_pm.ExecuteABlocked(proceso)
+			utils_pm.BloquearProcesoDesdeExecute(proceso)
 
 			// Si esta libre, envio solicitud, sino agrego a la cola
 			io := globals.ListaIOs[posIo]

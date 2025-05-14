@@ -1,6 +1,11 @@
 package utils_planifMedio
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
@@ -10,7 +15,7 @@ import (
 
 // ----- FUNCIONES EXPORTADAS -------
 
-func ExecuteABlocked(proceso globals.Proceso) {
+func BloquearProcesoDesdeExecute(proceso globals.Proceso) {
 	// Esta funcion deberia llamarse cuando un proceso en ejecucion llama a IO con la syscall IO (desde syscallController)
 
 	// -- Paso el proceso entre las colas
@@ -52,15 +57,18 @@ func sigueBloqueado(proceso globals.Proceso) {
 	globals.MapaProcesosMutex.Unlock()
 
 	if procesoActualmente.Estado_Actual == globals.BLOCKED {
+		// Aviso a memoria que hay que swappear
+		avisarSwappeo(procesoActualmente.Pcb.Pid)
+
+		// Cambio de estado
 		blockedASuspBlocked(proceso)
 
-		// Aca hay q hacer un par de cosas mas pero me tengo q ir
+		// Libere espacio => llamo a nuevos procesos
+		pl.PasarProcesosAReady()
 	}
 }
 
 func blockedASuspBlocked(proceso globals.Proceso) {
-	// Aviso a memoria para swappear (hay q hacerlo)
-
 	// Muevo el proceso en la colas
 	proceso.Estado_Actual = globals.SUSP_BLOCKED
 
@@ -77,4 +85,21 @@ func blockedASuspBlocked(proceso globals.Proceso) {
 
 	// Libere memoria => llamo a nuevos procesos
 	pl.PasarProcesosAReady()
+}
+
+func avisarSwappeo(pid int64) {
+	mensaje := globals.PidJSON{PID: pid}
+	body, err := json.Marshal(mensaje)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
+
+	// Posible problema con el int64 del puerto
+	url := fmt.Sprintf("http://%s:%d/suspenderProceso", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
+	}
+
+	log.Printf("respuesta del servidor: %s", resp.Status)
 }

@@ -228,6 +228,40 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 		}
 
 		globals.ListaIOsMutex.Unlock()
+
+		globals.MapaProcesosMutex.Lock()
+		proceso := globals.MapaProcesos[finalizacionIo.PID]
+		globals.MapaProcesosMutex.Unlock()
+
+		// Si esta en Susp Blocked lo paso a Susp Ready
+		if proceso.Estado_Actual == globals.SUSP_BLOCKED {
+			globals.MapaProcesosMutex.Lock()
+			proceso.Estado_Actual = globals.SUSP_READY
+			globals.MapaProcesos[finalizacionIo.PID] = proceso
+			globals.MapaProcesosMutex.Unlock()
+
+			pos := BuscarProcesoEnSuspBlocked(proceso.Pcb.Pid)
+
+			globals.EstadosMutex.Lock()
+			globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED[:pos], globals.ESTADOS.SUSP_BLOCKED[pos+1:]...)
+			globals.ESTADOS.SUSP_READY = append(globals.ESTADOS.SUSP_READY, proceso.Pcb.Pid)
+			globals.EstadosMutex.Unlock()
+		}
+
+		// Si esta en Blocked lo paso Ready (no lo dice el enunciado!¡)
+		if proceso.Estado_Actual == globals.BLOCKED {
+			globals.MapaProcesosMutex.Lock()
+			proceso.Estado_Actual = globals.BLOCKED
+			globals.MapaProcesos[finalizacionIo.PID] = proceso
+			globals.MapaProcesosMutex.Unlock()
+
+			pos := BuscarProcesoEnBlocked(proceso.Pcb.Pid)
+
+			globals.EstadosMutex.Lock()
+			globals.ESTADOS.BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED[:pos], globals.ESTADOS.SUSP_BLOCKED[pos+1:]...)
+			globals.ESTADOS.READY = append(globals.ESTADOS.SUSP_READY, proceso.Pcb.Pid)
+			globals.EstadosMutex.Unlock()
+		}
 	}()
 
 	w.WriteHeader(http.StatusOK)
