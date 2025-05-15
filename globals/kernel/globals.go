@@ -12,6 +12,7 @@ type Kernel_Config struct {
 	Alpha               int64  `json:"alpha"`
 	Suspension_time     int64  `json:"suspension_time"`
 	Log_level           string `json:"log_level"`
+	Initial_estimate    int64  `json:"initial_estimate"`
 }
 
 var KernelConfig *Kernel_Config
@@ -26,6 +27,7 @@ var MapaProcesosMutex sync.Mutex
 var PIDCounterMutex sync.Mutex
 var ListaCPUsMutex sync.Mutex
 var ListaIOsMutex sync.Mutex
+var ProcesosAFinalizarMutex sync.Mutex
 
 // Estructura para comunicarle a Memoria y CPU
 type PidJSON struct {
@@ -49,7 +51,7 @@ type ListaCpu struct {
 type ListaIo struct {
 	Handshake             Handshake
 	PidProcesoActual      int64 // PID del proceso actual que esta en esta IO
-	ColaProcesosEsperando []int64
+	ColaProcesosEsperando []SyscallIO
 }
 
 // Listas
@@ -84,6 +86,16 @@ var Sem_Cpus = CrearSemaforo(0)
 //		- Disminuye cuando se elije un proceso a ejecutar
 
 // Estructuras para manejo de procesos
+
+var Sem_ProcesosEnReady = CrearSemaforo(0)
+
+// Es un contador de los procesos que hay en Ready: sirve para que no loopee infinito en el planificador de corto plazo
+
+var Sem_ProcesoAFinalizar = CrearSemaforo(0)
+var ProcesosAFinalizar []int64
+
+// Con el semaforo le aviso al planificador de largo plazo que hay un proceso para finalizar
+// En el slice le pongo el PID
 
 type Metricas struct {
 	New          int64
@@ -133,8 +145,20 @@ type Estados struct {
 
 var ESTADOS Estados
 
-// Solicitud a IO
+// Solicitud y finalizacion IO
 type SolicitudIO struct {
 	PID    int64 `json:"pid"`
 	Tiempo int64 `json:"tiempo"`
+}
+
+type FinalizacionIO struct {
+	PID      int64  `json:"pid"`
+	NombreIO string `json:"nombre"`
+}
+
+// Sycall IO - recibo desde CPU
+type SyscallIO struct {
+	Nombre string `json:"nombre"`
+	Tiempo int64  `json:"tiempo"`
+	PID    int64  `json:"pid"`
 }

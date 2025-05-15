@@ -11,6 +11,7 @@ import (
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	utils_general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
 	utils_lp "github.com/sisoputnfrba/tp-golang/kernel/utils/planifLargo"
+	utils_syscallController "github.com/sisoputnfrba/tp-golang/kernel/utils/syscallController"
 	utils_logger "github.com/sisoputnfrba/tp-golang/utils/loggers"
 )
 
@@ -44,26 +45,23 @@ func main() {
 	mensaje := "Mensaje desde Kernel"
 	utils_general.EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
 
-	/*Esto es para probar si funciona IO - espera 10 segundos (a que haga el handshake) y envia solicitud
-	Problema: estoy mandando solicitud y espero la respuesta, bloqueando todo el modulo kernel
-		- creo que el enunciado dice que:
-			1. envio solicitud a IO (una API)
-			2. recibo fin de IO (otra API)
-		- si se puede hacer todo en una sola API (enviar solicitud, y esperar la respuesta):
-			- Solucion (creo): que cada proceso sea un hilo, entonces en cada solicitud a IO
-							   podes bloquear ese hilo tranqui, que el kernel sigue funcionando
-
-	*/
-
+	// Prueba IO
 	go func() {
 		time.Sleep(10 * time.Second)
 		if len(globals.ListaIOs) > 0 {
-			io := globals.ListaCPUs[0].Handshake
+			io := globals.ListaIOs[0].Handshake
 			ipIO := io.IP
 			puertoIO := io.Puerto
 			pid := int64(1)
 			tiempo := int64(5000)
+			syscallIO := globals.SyscallIO{
+				Nombre: "TECLADO",
+				Tiempo: tiempo,
+				PID:    pid,
+			}
 
+			globals.ListaIOs[0].PidProcesoActual = pid
+			globals.ListaIOs[0].ColaProcesosEsperando = append(globals.ListaIOs[0].ColaProcesosEsperando, syscallIO)
 			utils_general.EnviarSolicitudIO(ipIO, puertoIO, pid, tiempo)
 		} else {
 			log.Println("No hay IOs registrados todavía")
@@ -77,6 +75,14 @@ func main() {
 	mux.HandleFunc("/mensajeDeIo", utils_general.RecibirMensajeDeIo)
 	mux.HandleFunc("/handshakeIO", utils_general.RecibirHandshakeIO)
 	mux.HandleFunc("/handshakeCPU", utils_general.RecibirHandshakeCPU)
+
+	mux.HandleFunc("/finalizacionIO", utils_general.FinalizacionIO)
+	mux.HandleFunc("/desconexionIO", utils_general.DesconexionIO)
+
+	mux.HandleFunc("/syscallIO", utils_syscallController.ManejarIO)
+	mux.HandleFunc("/syscallDUMP_MEMORY", utils_syscallController.ManejarDUMP_MEMORY)
+	mux.HandleFunc("/syscallEXIT", utils_syscallController.ManejarEXIT)
+	mux.HandleFunc("/syscallINIT_PROC", utils_syscallController.ManejarINIT_PROC)
 
 	puerto := globals.KernelConfig.Port_kernel
 	err = http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)

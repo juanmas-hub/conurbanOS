@@ -7,8 +7,8 @@ type Memoria_Config struct {
 	Entries_per_page int64  `json:"entries_per_page"`
 	Number_of_levels int64  `json:"number_of_levels"`
 	Memory_delay     int64  `json:"memory_delay"`
-	Swapfile_path    string `json:"swapfile_path"`
 	Swap_delay       int64  `json:"swap_delay"`
+	Swapfile_path    string `json:"swapfile_path"`
 	Log_level        string `json:"log_level"`
 	Dump_path        string `json:"dump_path"`
 }
@@ -28,20 +28,23 @@ type Memoria_Metrica struct {
     EscriturasMemoria     	 int `json:"escrituras_memoria"`
 }
 
+
+
 // Entrada de una tabla de páginas
 type EntradaTablaPagina struct {
-    Presente      bool  // ¿Está en RAM?
-	PaginaVirtual int	// No es necesario pues el indice de la entrada en la tabla de paginas ya lo indica
-    Marco         int   // Número de marco en RAM
-    DireccionSwap int   // Dirección en disco si fue swappeada
+	Pagina int
+	Marco  int
+	SiguienteNivel *TablaDePaginas // Ya se inicializa por defecto como null
 }
 
-// Nivel 2
-type TablaSecundaria []EntradaTablaPagina
+type TablaDePaginas struct {
+	Entradas []EntradaTablaPagina // 4*64=256
+}
 
-// Nivel 1
-type DirectorioPaginas []*TablaSecundaria
+type Manager map[int]*TablaDePaginas
 
+var ProcessManager *Manager
 
+var Memoria []byte
 
- 
+var MemoriaMarcosOcupados []bool

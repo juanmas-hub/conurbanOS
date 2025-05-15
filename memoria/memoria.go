@@ -22,6 +22,21 @@ func main() {
 
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.MemoriaConfig.Log_level))
 
+	utils_memoria.InicializarMemoria()
+
+	var instruccionesPrueba []string = []string{"HOLAA", "RAMPLAA", "PANSANSON BANANINI", "QEUW xAASDADF", "ASADDASASASAAAAAAAAAAA", "444abcdsdfsfffQQUEUEUEUEUEUEEUEUEUUEEUEUEUEUEUUEUEUEUEUUUEUEUEUEU"}
+
+	utils_memoria.AlmacenarProceso(5, instruccionesPrueba)
+
+	var primerInstruccion string = ""
+
+	for i := 0; i < 5; i++ {
+		primerInstruccion += string(globals.Memoria[i])
+	}
+
+	log.Printf("Primer instruccion: %s", primerInstruccion)
+
+	log.Printf("Mock despues de guardar un proceso: %d", utils_memoria.CalcularMock())
 
 	// Multiplexor de servidor HTTP
 	mux := http.NewServeMux()
@@ -30,15 +45,20 @@ func main() {
 	mux.HandleFunc("/mensajeDeKernel", utils_memoria.RecibirMensajeDeKernel)
 	mux.HandleFunc("/mensajeDeCpu", utils_memoria.RecibirMensajeDeCpu)
 
+	// General¿?
+	mux.HandleFunc("/consultarMock", utils_memoria.ConsultarMock)
+
+	// KERNEL
 	// mux.HandleFunc("/iniciarProceso", utils_memoria.iniciarProceso)
-	// mux.HandleFunc("/suspenderProceso", utils_memoria.suspenderProceso)
+	// mux.HandleFunc("/suspenderProceso", utils_memoria.suspenderProceso) --- ya hice la funcion desde kernel en /kernel/utils/planifMedio (avisarSwappeo)
 	// mux.HandleFunc("/finalizarProceso", utils_memoria.finalizarProceso)
+
+	// CPU
 	// mux.HandleFunc("/obtenerMarcoProceso", utils_memoria.obtenerMarcoProceso)
 	// mux.HandleFunc("/accederEspacioUsuario", utils_memoria.accederEspacioUsuario)
 	// mux.HandleFunc("/leerPagina", utils_memoria.leerPagina)
 	// mux.HandleFunc("/actualizarPagina", utils_memoria.actualizarPagina)
 	// mux.HandleFunc("/memoryDump", utils_memoria.memoryDump)
-
 
 	// Inicia un servidor que escuche en el puerto del config
 	puerto := globals.MemoriaConfig.Port_memory
