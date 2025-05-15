@@ -4,8 +4,8 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"os"
+	"strconv"
 
 	utils_cpu "github.com/sisoputnfrba/tp-golang/cpu/utils"
 	globals_cpu "github.com/sisoputnfrba/tp-golang/globals/cpu"
@@ -57,4 +57,35 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	mux.HandleFunc("/recibirPCB", utils_cpu.RecibirPCBDeKernel)
+
+	go func() {
+		for pcb := range utils_cpu.ColaDeEjecucion {
+			log.Printf("Ejecutando PID %d en PC %d", pcb.Pid, pcb.PC)
+			instruccion, err := utils_cpu.EnviarSolicitudInstruccion(pcb.Pid, pcb.PC) //solicitamos instruccion a memoria pasandole el pcb y pc
+			if err != nil {
+				log.Printf("Error al pedir instrucción: %s", err)
+				continue
+			}
+			log.Printf("Instrucción: %s", instruccion)
+
+			instruccionDeco, err := utils_cpu.Decode(instruccion) //decodificamos la instruccion
+			if err != nil {
+				log.Printf("Error al decodificar instrucción: %s", err)
+				continue
+			}
+			log.Printf("Instrucción decodificada correctamente: %+v", instruccionDeco)
+
+			err = utils_cpu.Execute(instruccionDeco, pcb) //ejecutamos instruccion
+
+			if err != nil {
+				log.Printf("Error al ejecutar instruccion: %s", err)
+				continue
+			}
+			log.Printf("Finalizado: nuevo PC = %d", pcb.PC)
+
+		}
+	}()
+
 }

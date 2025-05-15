@@ -25,3 +25,28 @@ type HandshakeCPU struct {
 	IP     string `json:"ip"`
 	Puerto int64  `json:"puerto"`
 }
+
+type Metricas struct {
+	New          int64
+	Ready        int64
+	Execute      int64
+	Blocked      int64
+	Susp_Ready   int64
+	Susp_Blocked int64
+}
+type PCB struct {
+	Pid int64
+	PC  int64
+	ME  Metricas
+	MT  Metricas
+}
+
+type SolicitudInstruccion struct {
+	Pid int64 `json:"pid"`
+	PC  int64 `json:"pc"`
+}
+
+type InstruccionDecodificada struct {
+	Nombre             string
+	Parametros         []string
+}
