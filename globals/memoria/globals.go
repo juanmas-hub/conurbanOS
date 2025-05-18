@@ -20,20 +20,18 @@ type Mensaje struct {
 }
 
 type Memoria_Metrica struct {
-    AccesosTablas         	 int `json:"accesos_tablas"`
-    InstruccionesSolicitadas int `json:"instrucciones_solicitadas"`
-    BajadasSwap           	 int `json:"bajadas_swap"`
-    SubidasMemoria        	 int `json:"subidas_memoria"`
-    LecturasMemoria       	 int `json:"lecturas_memoria"`
-    EscriturasMemoria     	 int `json:"escrituras_memoria"`
+	AccesosTablas            int `json:"accesos_tablas"`
+	InstruccionesSolicitadas int `json:"instrucciones_solicitadas"`
+	BajadasSwap              int `json:"bajadas_swap"`
+	SubidasMemoria           int `json:"subidas_memoria"`
+	LecturasMemoria          int `json:"lecturas_memoria"`
+	EscriturasMemoria        int `json:"escrituras_memoria"`
 }
-
-
 
 // Entrada de una tabla de páginas
 type EntradaTablaPagina struct {
-	Pagina int
-	Marco  int
+	Pagina         int
+	Marco          int
 	SiguienteNivel *TablaDePaginas // Ya se inicializa por defecto como null
 }
 
@@ -48,3 +46,10 @@ var ProcessManager *Manager
 var Memoria []byte
 
 var MemoriaMarcosOcupados []bool
+
+// Estructura donde recibo para inicializar proceso
+type SolicitudIniciarProceso struct {
+	Archivo_Pseudocodigo string
+	Tamanio              int64
+	Pid                  int64
+}

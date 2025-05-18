@@ -49,7 +49,7 @@ func main() {
 	mux.HandleFunc("/consultarMock", utils_memoria.ConsultarMock)
 
 	// KERNEL
-	// mux.HandleFunc("/iniciarProceso", utils_memoria.iniciarProceso)
+	mux.HandleFunc("/iniciarProceso", utils_memoria.IniciarProceso)
 	// mux.HandleFunc("/suspenderProceso", utils_memoria.suspenderProceso) --- ya hice la funcion desde kernel en /kernel/utils/planifMedio (avisarSwappeo)
 	// mux.HandleFunc("/finalizarProceso", utils_memoria.finalizarProceso)
 

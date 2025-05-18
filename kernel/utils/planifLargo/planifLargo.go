@@ -2,7 +2,11 @@ package utils_planifLargo
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"sort"
 
@@ -78,9 +82,8 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 }
 
 func PasarProcesosAReady() {
-	// Esta funcion deberia llamarse cuando llega un proceso a NEW, a EXIT, a SUSP_BLOCKED y (SUSP_READY ???)
+	// Esta funcion deberia llamarse cuando llega un proceso a NEW, a EXIT, a SUSP_BLOCKED y (SUSP_READY ??? - creo q no)
 	// Voy a intentar pasar la mayor cantidad de procesos que pueda mientras memoria tenga espacio
-	// Primero me fijo en SUSP READY y despues en NEW --- nose si esta bien hacerlo asi
 
 	globals.EstadosMutex.Lock()
 	globals.MapaProcesosMutex.Lock()
@@ -126,12 +129,39 @@ func ordenarNewPorTamanio() {
 func solicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo) bool {
 	// Se pudo iniciarlizar => devuelve true
 	// No se pudo inicializar => devuelve false
-	return true
+
+	mensaje := globals.SolicitudIniciarProceso{
+		Archivo_Pseudocodigo: proceso.Archivo_Pseudocodigo,
+		Tamanio:              proceso.Tamaño,
+		Pid:                  proceso.Proceso.Pcb.Pid,
+	}
+	body, err := json.Marshal(mensaje)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
+
+	// Posible problema con el int64 del puerto
+	url := fmt.Sprintf("http://%s:%d/iniciarProceso", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
+	}
+
+	log.Printf("respuesta del servidor: %s", resp.Status)
+
+	if resp.Status == "200 OK" {
+		return true
+	}
+
+	return false
 }
 
 func solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso globals.Proceso) bool {
 	// Se pudo iniciarlizar => devuelve true
 	// No se pudo inicializar => devuelve false
+
+	// Aca hay que mandar a memoria para que swappee de memoria secundaria a memoria principal
+
 	return true
 }
 

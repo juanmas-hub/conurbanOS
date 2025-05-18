@@ -162,3 +162,10 @@ type SyscallIO struct {
 	Tiempo int64  `json:"tiempo"`
 	PID    int64  `json:"pid"`
 }
+
+// Solicitud de iniciar proceso
+type SolicitudIniciarProceso struct {
+	Archivo_Pseudocodigo string
+	Tamanio              int64
+	Pid                  int64
+}
