@@ -23,8 +23,11 @@ func EjecutarPlanificadorCortoPlazo() {
 
 			// Esto lo hago asi para probarlo,
 			if len(globals.ESTADOS.READY) > 0 {
+
 				procesoAEjecutar := globals.ESTADOS.READY[0]
+
 				ip, port := elegirCPUlibre()
+
 				enviarProcesoAEjecutar_ACPU(ip, port, procesoAEjecutar)
 
 				globals.MapaProcesosMutex.Lock()
@@ -42,7 +45,11 @@ func EjecutarPlanificadorCortoPlazo() {
 
 	if globals.KernelConfig.Scheduler_algorithm == "SJF" {
 		for {
+			general.Wait(globals.Sem_Cpus)
+			general.Wait(globals.Sem_ProcesosEnReady)
+
 			globals.EstadosMutex.Lock()
+
 			// SJF SIN DESALOJO (Se elige al proceso que tenga la rafaga estimada mas corta)
 			// sort.SLice compara pares de elementos (i y j) si i < j -> true, si j < i -> false
 			sort.Slice(globals.ESTADOS.READY, func(i, j int) bool {
@@ -69,7 +76,11 @@ func EjecutarPlanificadorCortoPlazo() {
 
 	if globals.KernelConfig.Scheduler_algorithm == "SRT" {
 		for {
+			general.Wait(globals.Sem_Cpus)
+			general.Wait(globals.Sem_ProcesosEnReady)
+
 			globals.EstadosMutex.Lock()
+
 			// Con desalojo
 			// Primero ordenamos READY por rafaga
 			sort.Slice(globals.ESTADOS.READY, func(i, j int) bool {
@@ -90,11 +101,19 @@ func EjecutarPlanificadorCortoPlazo() {
 
 				if rafagaNuevo < rafagaExec {
 					// OjO !! Esto debe estar mal. Hay que saber cual es la CPU que queremos desalojar
+					// Hay
+					// esto seria una funcion
+					//for _, cpu := range globals.ListaCPUs {
+					//	if cpu.EstaLibre {
+					//		return false
+					//	}
+					//}
+					//return true
 					cpu := globals.ListaCPUs[0].Handshake
 					ipCPU := cpu.IP
 					puertoCPU := cpu.Puerto
 					general.EnviarInterrupcionACPU(ipCPU, puertoCPU, pidEnExec)
-					// Aca la logica para mandar el proceso con rafaga mas corta - despues lo hago me voy a tocar
+					// Aca la logica para mandar el proceso con rafaga mas corta - despues lo hago me voy a tocar (la guitarra)
 				}
 			}
 			// Si no hay ningun proceso en EXECUTE -> simplemente agregamos el primero de READY
@@ -126,8 +145,19 @@ func actualizarEstimado(pid int64, rafagaReal int64) {
 
 func elegirCPUlibre() (string, int64) {
 	// Hay que hacerlo. Seguramente haya que cambiar HandshakesCPU para indicar cual esta libre
-
-	return globals.ListaCPUs[0].Handshake.IP, globals.ListaCPUs[0].Handshake.Puerto
+	// Recorremos la lista
+	for i := range globals.ListaCPUs {
+		// Si la posicion i esta libre
+		if globals.ListaCPUs[i].EstaLibre {
+			// La marcamos como ocupada
+			globals.ListaCPUs[i].EstaLibre = false
+			// Devolvemos IP y PUERTO
+			return globals.ListaCPUs[i].Handshake.IP, globals.ListaCPUs[i].Handshake.Puerto
+		}
+	}
+	// Si devuelve esto hay un error, porque esta funcion se tiene que ejecutar cuando el semaforo lo permita
+	log.Println("No se encontro CPU libre")
+	return "", -1
 }
 
 func readyAExecute(proceso globals.Proceso) {
