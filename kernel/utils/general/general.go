@@ -478,3 +478,20 @@ func BuscarCpu(nombre string) int {
 		return -1
 	}
 }
+
+// Mandando el PID y nombre de CPU, se libera la CPU y finaliza el proceso.
+func FinalizarProceso(pid int64, nombreCPU string) {
+	// Finalizar proceso
+	globals.ProcesosAFinalizarMutex.Lock()
+	globals.ProcesosAFinalizar = append(globals.ProcesosAFinalizar, pid)
+	globals.ProcesosAFinalizarMutex.Unlock()
+	Signal(globals.Sem_ProcesoAFinalizar)
+
+	// Libero cpu
+	posCpu := BuscarCpu(nombreCPU)
+	globals.ListaCPUsMutex.Lock()
+	globals.ListaCPUs[posCpu].EstaLibre = true
+	globals.ListaCPUsMutex.Unlock()
+	Signal(globals.Sem_Cpus)
+
+}

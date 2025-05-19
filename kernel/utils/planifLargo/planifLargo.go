@@ -116,6 +116,9 @@ func PasarProcesosAReady() {
 	globals.MapaProcesosMutex.Unlock()
 }
 
+// Hay una funcion FinalizarProceso en utils general que no pude poner aca, pero tiene que
+// ver con el planificador de largo plazo
+
 // ------- FUNCIONES LOCALES ---------
 
 func ordenarNewPorTamanio() {

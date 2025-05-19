@@ -69,8 +69,14 @@ type DevolucionProceso struct { // endpoint: devolucionProceso
 }
 
 type SyscallIO struct { // endpoint: syscallIO
-	Nombre string `json:"nombre"`
-	Tiempo int64  `json:"tiempo"`
-	PID    int64  `json:"pid"`
-	PC     int64  `json:"pc"`
+	NombreIO  string `json:"nombre_io"`
+	NombreCPU string `json:"nombre_cpu"`
+	Tiempo    int64  `json:"tiempo"`
+	PID       int64  `json:"pid"`
+	PC        int64  `json:"pc"`
+}
+
+type SyscallExit struct { //endpoint: syscallEXIT
+	PID       int64  `json:"pid"`
+	NombreCPU string `json:"nombre_cpu"`
 }

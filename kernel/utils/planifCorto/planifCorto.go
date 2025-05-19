@@ -160,18 +160,6 @@ func DevolucionProceso(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if devolucion.Motivo == globals.FIN_PROCESO {
-			// Finalizar proceso
-			globals.ProcesosAFinalizarMutex.Lock()
-			globals.ProcesosAFinalizar = append(globals.ProcesosAFinalizar, devolucion.Pid)
-			globals.ProcesosAFinalizarMutex.Unlock()
-			general.Signal(globals.Sem_ProcesoAFinalizar)
-
-			// Libero cpu
-			posCpu := general.BuscarCpu(devolucion.Nombre_CPU)
-			globals.ListaCPUsMutex.Lock()
-			globals.ListaCPUs[posCpu].EstaLibre = true
-			globals.ListaCPUsMutex.Unlock()
-			general.Signal(globals.Sem_Cpus)
 
 		}
 

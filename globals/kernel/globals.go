@@ -161,12 +161,18 @@ type FinalizacionIO struct {
 	NombreIO string `json:"nombre"`
 }
 
-// Sycall IO - recibo desde CPU
+// Sycalls
 type SyscallIO struct {
-	Nombre string `json:"nombre"`
-	Tiempo int64  `json:"tiempo"`
-	PID    int64  `json:"pid"`
-	PC     int64  `json:"pc"`
+	NombreIO  string `json:"nombre_io"`
+	NombreCPU string `json:"nombre_cpu"`
+	Tiempo    int64  `json:"tiempo"`
+	PID       int64  `json:"pid"`
+	PC        int64  `json:"pc"`
+}
+
+type SyscallExit struct {
+	PID       int64  `json:"pid"`
+	NombreCPU string `json:"nombre_cpu"`
 }
 
 // Solicitud de iniciar proceso

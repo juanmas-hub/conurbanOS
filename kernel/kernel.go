@@ -56,9 +56,9 @@ func main() {
 			pid := int64(1)
 			tiempo := int64(5000)
 			syscallIO := globals.SyscallIO{
-				Nombre: "TECLADO",
-				Tiempo: tiempo,
-				PID:    pid,
+				NombreIO: "TECLADO",
+				Tiempo:   tiempo,
+				PID:      pid,
 			}
 
 			globals.ListaIOs[0].PidProcesoActual = pid

@@ -31,7 +31,7 @@ func ManejarIO(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		globals.ListaIOsMutex.Lock()
-		posIo, existe := general.ObtenerIO(syscallIO.Nombre)
+		posIo, existe := general.ObtenerIO(syscallIO.NombreIO)
 
 		if !existe {
 			general.ProcesoAExit(syscallIO.PID)
@@ -58,7 +58,7 @@ func ManejarIO(w http.ResponseWriter, r *http.Request) {
 		globals.ListaIOsMutex.Unlock()
 
 		// Libero CPU
-		posCpu := general.BuscarCpu(syscallIO.Nombre)
+		posCpu := general.BuscarCpu(syscallIO.NombreCPU)
 		globals.ListaCPUsMutex.Lock()
 		globals.ListaCPUs[posCpu].EstaLibre = true
 		globals.ListaCPUsMutex.Unlock()
@@ -78,5 +78,24 @@ func ManejarDUMP_MEMORY(w http.ResponseWriter, r *http.Request) {
 }
 
 func ManejarEXIT(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var syscallEXIT globals.SyscallExit
+	err := decoder.Decode(&syscallEXIT)
+	if err != nil {
+		log.Printf("Error al decodificar SyscallExit: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar SyscallExit"))
+		return
+	}
 
+	log.Println("Hubo una Syscall EXIT")
+	log.Printf("%+v\n", syscallEXIT)
+
+	go func() {
+		general.FinalizarProceso(syscallEXIT.PID, syscallEXIT.NombreCPU)
+
+	}()
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
 }
