@@ -10,6 +10,7 @@ import (
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	utils_general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
+	utils_cp "github.com/sisoputnfrba/tp-golang/kernel/utils/planifCorto"
 	utils_lp "github.com/sisoputnfrba/tp-golang/kernel/utils/planifLargo"
 	utils_syscallController "github.com/sisoputnfrba/tp-golang/kernel/utils/syscallController"
 	utils_logger "github.com/sisoputnfrba/tp-golang/utils/loggers"
@@ -78,6 +79,8 @@ func main() {
 
 	mux.HandleFunc("/finalizacionIO", utils_general.FinalizacionIO)
 	mux.HandleFunc("/desconexionIO", utils_general.DesconexionIO)
+
+	mux.HandleFunc("/devolucionProceso", utils_cp.DevolucionProceso)
 
 	mux.HandleFunc("/syscallIO", utils_syscallController.ManejarIO)
 	mux.HandleFunc("/syscallDUMP_MEMORY", utils_syscallController.ManejarDUMP_MEMORY)

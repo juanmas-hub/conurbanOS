@@ -456,3 +456,25 @@ func AgregarAListaCPUs(handshake globals.Handshake) {
 	globals.ListaCPUs = append(globals.ListaCPUs, elementoAAgregar)
 	Signal(globals.Sem_Cpus)
 }
+
+func BuscarCpu(nombre string) int {
+	var posCpu int
+	encontrado := false
+	globals.ListaCPUsMutex.Lock()
+	for i := range globals.ListaCPUs {
+		if globals.ListaCPUs[i].Handshake.Nombre == nombre {
+			posCpu = i
+			encontrado = true
+		}
+	}
+
+	globals.ListaCPUsMutex.Unlock()
+
+	if encontrado {
+		return posCpu
+	} else {
+		// Si devuelve esto es que se desconecto la CPU en el medio. Hay q ser mala persona
+		log.Println("No se encontro la CPU en la devolucion")
+		return -1
+	}
+}

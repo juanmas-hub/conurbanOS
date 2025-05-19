@@ -1,7 +1,9 @@
 package utils_planifCorto
 
 import (
+	"encoding/json"
 	"log"
+	"net/http"
 	"sort"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
@@ -132,6 +134,56 @@ func EjecutarPlanificadorCortoPlazo() {
 	}
 }
 
+func DevolucionProceso(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var devolucion globals.DevolucionProceso
+	err := decoder.Decode(&devolucion)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	go func() {
+
+		if devolucion.Motivo == globals.REPLANIFICAR_PROCESO {
+			// Actualizo el PC
+			globals.MapaProcesosMutex.Lock()
+			proceso := globals.MapaProcesos[devolucion.Pid]
+			proceso.Pcb.PC = devolucion.PC
+			globals.MapaProcesosMutex.Unlock()
+
+			// Se selecciona el proximo proceso a ejecutar
+			// La CPU queda esperando?? PAGINA 13
+
+		}
+
+		if devolucion.Motivo == globals.FIN_PROCESO {
+			// Finalizar proceso
+			globals.ProcesosAFinalizarMutex.Lock()
+			globals.ProcesosAFinalizar = append(globals.ProcesosAFinalizar, devolucion.Pid)
+			globals.ProcesosAFinalizarMutex.Unlock()
+			general.Signal(globals.Sem_ProcesoAFinalizar)
+
+			// Libero cpu
+			posCpu := general.BuscarCpu(devolucion.Nombre_CPU)
+			globals.ListaCPUsMutex.Lock()
+			globals.ListaCPUs[posCpu].EstaLibre = true
+			globals.ListaCPUsMutex.Unlock()
+			general.Signal(globals.Sem_Cpus)
+
+		}
+
+	}()
+
+	log.Println("Se devolvió un proceso")
+	log.Printf("%+v\n", devolucion)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
 // ----- FUNCIONES LOCALES -------
 
 func actualizarEstimado(pid int64, rafagaReal int64) {
@@ -147,20 +199,29 @@ func actualizarEstimado(pid int64, rafagaReal int64) {
 }
 
 func elegirCPUlibre() (string, int64) {
-	// Hay que hacerlo. Seguramente haya que cambiar HandshakesCPU para indicar cual esta libre
+	globals.ListaCPUsMutex.Lock()
+	encontrado := false
+	var cpu globals.ListaCpu
 	// Recorremos la lista
 	for i := range globals.ListaCPUs {
 		// Si la posicion i esta libre
 		if globals.ListaCPUs[i].EstaLibre {
 			// La marcamos como ocupada
 			globals.ListaCPUs[i].EstaLibre = false
-			// Devolvemos IP y PUERTO
-			return globals.ListaCPUs[i].Handshake.IP, globals.ListaCPUs[i].Handshake.Puerto
+			cpu = globals.ListaCPUs[i]
+			encontrado = true
 		}
 	}
-	// Si devuelve esto hay un error, porque esta funcion se tiene que ejecutar cuando el semaforo lo permita
-	log.Println("No se encontro CPU libre")
-	return "", -1
+
+	globals.ListaCPUsMutex.Unlock()
+	// Devolvemos IP y PUERTO
+	if encontrado {
+		return cpu.Handshake.IP, cpu.Handshake.Puerto
+	} else {
+		// Si devuelve esto hay un error, porque esta funcion se tiene que ejecutar cuando el semaforo lo permita
+		log.Println("No se encontro CPU libre")
+		return "", -1
+	}
 }
 
 func readyAExecute(proceso globals.Proceso) {

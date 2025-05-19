@@ -166,6 +166,7 @@ type SyscallIO struct {
 	Nombre string `json:"nombre"`
 	Tiempo int64  `json:"tiempo"`
 	PID    int64  `json:"pid"`
+	PC     int64  `json:"pc"`
 }
 
 // Solicitud de iniciar proceso
@@ -173,4 +174,16 @@ type SolicitudIniciarProceso struct {
 	Archivo_Pseudocodigo string
 	Tamanio              int64
 	Pid                  int64
+}
+
+// Devolucion de proceso -- esto no se usa en las syscalls, para esas se usan las structs especificas de cada syscall
+// Las constantes strings son para poner el motivo
+var FIN_PROCESO string
+var REPLANIFICAR_PROCESO string // la verdad nose cuando se usa
+
+type DevolucionProceso struct {
+	Motivo     string `json:"string"`
+	Pid        int64  `json:"pid"`
+	PC         int64  `json:"pc"`
+	Nombre_CPU string `json:"nombre_cpu"` // el mismo que se envio en el handshake
 }

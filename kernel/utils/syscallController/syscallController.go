@@ -6,11 +6,12 @@ import (
 	"net/http"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
-	utils_general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
+	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
 	utils_pm "github.com/sisoputnfrba/tp-golang/kernel/utils/planifMedio"
 )
 
 // Cuando la CPU detecta una syscall, nos envía a kernel y nosotros la manejamos:
+// En cada syscall hay que actualizarle el PC a los procesos!!
 
 func ManejarIO(w http.ResponseWriter, r *http.Request) {
 	// Recibo desde CPU la syscall IO y le envío solicitud a la IO correspondiente
@@ -30,15 +31,16 @@ func ManejarIO(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		globals.ListaIOsMutex.Lock()
-		posIo, existe := utils_general.ObtenerIO(syscallIO.Nombre)
+		posIo, existe := general.ObtenerIO(syscallIO.Nombre)
 
 		if !existe {
-			utils_general.ProcesoAExit(syscallIO.PID)
+			general.ProcesoAExit(syscallIO.PID)
 		} else {
 
-			// Bloqueo el proceso
+			// Bloqueo el proceso y le actualizo el PC
 			globals.MapaProcesosMutex.Lock()
 			proceso := globals.MapaProcesos[syscallIO.PID]
+			proceso.Pcb.PC = syscallIO.PC
 			globals.MapaProcesosMutex.Unlock()
 
 			utils_pm.BloquearProcesoDesdeExecute(proceso)
@@ -47,13 +49,20 @@ func ManejarIO(w http.ResponseWriter, r *http.Request) {
 			io := globals.ListaIOs[posIo]
 			if len(io.ColaProcesosEsperando) == 0 {
 				globals.ListaIOs[posIo].PidProcesoActual = syscallIO.PID
-				utils_general.EnviarSolicitudIO(io.Handshake.IP, io.Handshake.Puerto, syscallIO.PID, syscallIO.Tiempo)
+				general.EnviarSolicitudIO(io.Handshake.IP, io.Handshake.Puerto, syscallIO.PID, syscallIO.Tiempo)
 			}
 			io.ColaProcesosEsperando = append(io.ColaProcesosEsperando, syscallIO)
 			globals.ListaIOs[posIo] = io
 		}
 
 		globals.ListaIOsMutex.Unlock()
+
+		// Libero CPU
+		posCpu := general.BuscarCpu(syscallIO.Nombre)
+		globals.ListaCPUsMutex.Lock()
+		globals.ListaCPUs[posCpu].EstaLibre = true
+		globals.ListaCPUsMutex.Unlock()
+		general.Signal(globals.Sem_Cpus)
 	}()
 
 	w.WriteHeader(http.StatusOK)
