@@ -70,6 +70,27 @@ func EnviarFinalizacionDeProceso_AMemoria(ip string, puerto int64, pid int64) {
 	log.Printf("respuesta del servidor: %s", resp.Status)
 }
 
+func EnviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64, pc int64) {
+	proc := globals.ProcesoAExecutar{
+		PID: pid,
+		PC:  pc,
+	}
+
+	body, err := json.Marshal(proc)
+	if err != nil {
+		log.Printf("error codificando proceso a ejecutar: %s", err.Error())
+	}
+
+	// Posible problema con el int64 del puerto
+	url := fmt.Sprintf("http://%s:%d/dispatchProceso", ip, puerto)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+	}
+
+	log.Printf("respuesta del servidor: %s", resp.Status)
+}
+
 func EnviarInterrupcionACPU(ip string, puerto int64, pid int64) {
 	mensaje := globals.PidJSON{PID: pid}
 	body, err := json.Marshal(mensaje)

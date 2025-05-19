@@ -50,6 +50,7 @@ func main() {
 	// Cuando se ejecuta CPU, hay que mandar a kernel su puerto e IP para que kernel se pueda conectar (no esta hecho)
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("/dispatchProceso", utils_cpu.RecibirProcesoAEjecutar)
 	mux.HandleFunc("/mensajeDeKernel", utils_cpu.RecibirMensajeDeKernel)
 
 	puerto := globals_cpu.CpuConfig.Port_cpu

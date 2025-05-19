@@ -34,6 +34,11 @@ type PidJSON struct {
 	PID int64 `json:"pid"`
 }
 
+type ProcesoAExecutar struct {
+	PID int64 `json:"pid"`
+	PC  int64 `json:"pc"`
+}
+
 // Contador de PID para asignar a nuevos procesos
 var PIDCounter int64 = 0
 

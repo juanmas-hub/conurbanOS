@@ -47,6 +47,11 @@ type SolicitudInstruccion struct {
 }
 
 type InstruccionDecodificada struct {
-	Nombre             string
-	Parametros         []string
+	Nombre     string
+	Parametros []string
+}
+
+type ProcesoAExecutar struct {
+	PID int64 `json:"PID"`
+	PC  int64 `json:"PC"`
 }

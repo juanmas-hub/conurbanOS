@@ -223,3 +223,21 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb globals.PCB) error {
 	}
 	return nil
 }
+
+func RecibirProcesoAEjecutar(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var proc globals.ProcesoAExecutar
+	err := decoder.Decode(&proc)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	log.Println("Me llego un proceso paaaa")
+	log.Printf("%+v\n", proc)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
