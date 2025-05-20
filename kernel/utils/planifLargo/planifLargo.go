@@ -214,12 +214,12 @@ func finalizarProceso(pid int64) {
 	}
 
 	// Mando el PID
-	general.EnviarFinalizacionDeProceso_AMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, pid)
+	ok = general.EnviarFinalizacionDeProceso_AMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, pid)
 
-	// Confirmación de la memoria aca...
-	// Me parece que la confirmacion es por la misma funcion que por la que mandas el mensaje (memoria no tiene ip y port del kernel)
-	// Que pasa si no puede finalizarlo? O no puede pasar eso?
-	recibirConfirmacionDeMemoria(proceso.Pcb.Pid)
+	if !ok {
+		log.Printf("Memoria no pudo finalizar el proceso PID %d.", proceso.Pcb.Pid)
+		return
+	}
 
 	// Elimino de la cola
 	eliminarDeSuCola(pid, proceso.Estado_Actual)
@@ -262,11 +262,6 @@ func eliminarDeSuCola(pid int64, estadoActual string) {
 		log.Printf("Error eliminando proceso PID: %d de su cola en EliminarDeSuCola", pid)
 	}
 	globals.EstadosMutex.Unlock()
-}
-
-func recibirConfirmacionDeMemoria(pid int64) bool {
-
-	return true
 }
 
 func newAReady(proceso globals.Proceso_Nuevo) {

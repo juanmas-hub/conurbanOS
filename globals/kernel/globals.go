@@ -124,9 +124,11 @@ type Rafagas struct {
 }
 
 type Proceso struct {
-	Pcb           PCB
-	Estado_Actual string
-	Rafaga        *Rafagas
+	Pcb                  PCB
+	Estado_Actual        string
+	Rafaga               *Rafagas
+	Tamanio              int64  // cambie aca
+	Archivo_Pseudocodigo string // cambie aca
 }
 
 type Proceso_Nuevo struct {
@@ -177,9 +179,10 @@ type SyscallExit struct {
 
 // Solicitud de iniciar proceso
 type SolicitudIniciarProceso struct {
-	Archivo_Pseudocodigo string
-	Tamanio              int64
-	Pid                  int64
+	Archivo_Pseudocodigo string `json:"archivo_pseudocodigo"`
+	Tamanio              int64  `json:"tamanio"`
+	Pid                  int64  `json:"pid"`
+	Susp                 bool   `json:"susp"`
 }
 
 // Devolucion de proceso -- esto no se usa en las syscalls, para esas se usan las structs especificas de cada syscall

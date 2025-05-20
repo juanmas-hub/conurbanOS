@@ -53,7 +53,7 @@ func EnviarMensajeAMemoria(ip string, puerto int64, mensajeTxt string) {
 	log.Printf("respuesta del servidor: %s", resp.Status)
 }
 
-func EnviarFinalizacionDeProceso_AMemoria(ip string, puerto int64, pid int64) {
+func EnviarFinalizacionDeProceso_AMemoria(ip string, puerto int64, pid int64) bool {
 	mensaje := globals.PidJSON{PID: pid}
 	body, err := json.Marshal(mensaje)
 	if err != nil {
@@ -68,6 +68,10 @@ func EnviarFinalizacionDeProceso_AMemoria(ip string, puerto int64, pid int64) {
 	}
 
 	log.Printf("respuesta del servidor: %s", resp.Status)
+	if resp.StatusCode == http.StatusOK {
+		return true
+	}
+	return false
 }
 
 func EnviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64, pc int64) {

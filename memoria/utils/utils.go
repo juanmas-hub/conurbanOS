@@ -5,6 +5,7 @@ import (
 	//"fmt"
 	"log"
 	"net/http"
+
 	//"os"
 
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
@@ -46,6 +47,8 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Me llego para iniciar un proceso")
 	log.Printf("%+v\n", mensaje)
+	log.Printf("Solicitud: PID=%d, Tamaño=%d, Archivo=%s, Susp=%v\n",
+		mensaje.Pid, mensaje.Tamanio, mensaje.Archivo_Pseudocodigo, mensaje.Susp)
 
 	// Aca tenes que hacer lo que sea para iniciar
 	// Si pudiste iniciar el proceso => devolve http.StatusOK
