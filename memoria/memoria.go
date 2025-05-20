@@ -38,7 +38,6 @@ func main() {
 
 	log.Printf("Mock despues de guardar un proceso: %d", utils_memoria.CalcularMock())
 
-
 	// Multiplexor de servidor HTTP
 	mux := http.NewServeMux()
 
@@ -51,6 +50,7 @@ func main() {
 
 	// KERNEL
 	mux.HandleFunc("/iniciarProceso", utils_memoria.IniciarProceso)
+	// mux.HandleFunc("/iniciarProceso", utils_memoria.reanudarProceso) --- ya esta hecho en kernel
 	// mux.HandleFunc("/suspenderProceso", utils_memoria.suspenderProceso) --- ya hice la funcion desde kernel en /kernel/utils/planifMedio (avisarSwappeo)
 	// mux.HandleFunc("/finalizarProceso", utils_memoria.finalizarProceso)
 

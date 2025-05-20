@@ -52,5 +52,8 @@ type SolicitudIniciarProceso struct {
 	Archivo_Pseudocodigo string
 	Tamanio              int64
 	Pid                  int64
-	Susp                 bool
+}
+
+type PidJSON struct {
+	PID int64 `json:"pid"`
 }

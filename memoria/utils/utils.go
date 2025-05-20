@@ -47,13 +47,32 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Me llego para iniciar un proceso")
 	log.Printf("%+v\n", mensaje)
-	log.Printf("Solicitud: PID=%d, Tamaño=%d, Archivo=%s, Susp=%v\n",
-		mensaje.Pid, mensaje.Tamanio, mensaje.Archivo_Pseudocodigo, mensaje.Susp)
 
 	// Aca tenes que hacer lo que sea para iniciar
 	// Si pudiste iniciar el proceso => devolve http.StatusOK
 	// Sino devolve error
 
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.PidJSON
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	log.Println("Solicitud para reanudar proceso con swap")
+	log.Printf("%+v\n", mensaje.PID)
+
+	// Aca tu logica de SWAP, si no pudiste devolver avisar
+
+	log.Printf("Proceso %d reanudado correctamente", mensaje.PID)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }

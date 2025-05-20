@@ -124,11 +124,9 @@ type Rafagas struct {
 }
 
 type Proceso struct {
-	Pcb                  PCB
-	Estado_Actual        string
-	Rafaga               *Rafagas
-	Tamanio              int64  // cambie aca
-	Archivo_Pseudocodigo string // cambie aca
+	Pcb           PCB
+	Estado_Actual string
+	Rafaga        *Rafagas
 }
 
 type Proceso_Nuevo struct {

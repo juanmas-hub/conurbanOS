@@ -90,11 +90,11 @@ func PasarProcesosAReady() {
 
 	var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
 	for lenghtSUSP_READY > 0 {
-		proceso := globals.MapaProcesos[globals.ESTADOS.SUSP_READY[0]]
-		if solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso) == false {
+		pid := globals.ESTADOS.SUSP_READY[0]
+		if solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid) == false {
 			break
 		}
-
+		proceso := globals.MapaProcesos[pid]
 		suspReadyAReady(proceso)
 		lenghtSUSP_READY--
 	}
@@ -160,22 +160,17 @@ func solicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo)
 	return false
 }
 
-func solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso globals.Proceso) bool {
+func solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid int64) bool {
 	// Se pudo iniciarlizar => devuelve true
 	// No se pudo inicializar => devuelve false
-	mensaje := globals.SolicitudIniciarProceso{
-		Archivo_Pseudocodigo: proceso.Archivo_Pseudocodigo,
-		Tamanio:              proceso.Tamanio,
-		Pid:                  proceso.Pcb.Pid,
-		Susp:                 true,
-	}
+	mensaje := globals.PidJSON{PID: pid}
+
 	body, err := json.Marshal(mensaje)
 	if err != nil {
 		log.Printf("error codificando mensaje: %s", err.Error())
 	}
 
-	// Posible problema con el int64 del puerto
-	url := fmt.Sprintf("http://%s:%d/iniciarProceso", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
+	url := fmt.Sprintf("http://%s:%d/reanudarProceso", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		log.Printf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
@@ -188,7 +183,7 @@ func solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso globals.Proceso
 	}
 
 	return false
-	// Aca hay que mandar a memoria para que swappee de memoria secundaria a memoria principal
+	// Aca hay que mandar a memoria para que swappee de memoria secundaria a memoria principal - eso ya lo hago arriba? creo?
 }
 
 func escucharFinalizacionesDeProcesos() {
