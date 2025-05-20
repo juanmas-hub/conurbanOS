@@ -137,6 +137,7 @@ func solicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo)
 		Archivo_Pseudocodigo: proceso.Archivo_Pseudocodigo,
 		Tamanio:              proceso.Tamaño,
 		Pid:                  proceso.Proceso.Pcb.Pid,
+		Susp:                 false,
 	}
 	body, err := json.Marshal(mensaje)
 	if err != nil {
@@ -162,10 +163,32 @@ func solicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo)
 func solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso globals.Proceso) bool {
 	// Se pudo iniciarlizar => devuelve true
 	// No se pudo inicializar => devuelve false
+	mensaje := globals.SolicitudIniciarProceso{
+		Archivo_Pseudocodigo: proceso.Archivo_Pseudocodigo,
+		Tamanio:              proceso.Tamanio,
+		Pid:                  proceso.Pcb.Pid,
+		Susp:                 true,
+	}
+	body, err := json.Marshal(mensaje)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
 
+	// Posible problema con el int64 del puerto
+	url := fmt.Sprintf("http://%s:%d/iniciarProceso", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
+	}
+
+	log.Printf("respuesta del servidor: %s", resp.Status)
+
+	if resp.Status == "200 OK" {
+		return true
+	}
+
+	return false
 	// Aca hay que mandar a memoria para que swappee de memoria secundaria a memoria principal
-
-	return true
 }
 
 func escucharFinalizacionesDeProcesos() {
