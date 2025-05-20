@@ -54,3 +54,41 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
+
+func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.PidProceso
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	log.Printf("Me llego para suspender el proceso de pid: %d", mensaje.Pid)
+
+	// Aca tenes que hacer lo que sea para suspender
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.PidProceso
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	log.Printf("Me llego para finalizar el proceso de pid: %d", mensaje.Pid)
+
+	// Aca tenes que hacer lo que sea para finalizar
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}

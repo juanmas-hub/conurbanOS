@@ -53,3 +53,8 @@ type SolicitudIniciarProceso struct {
 	Tamanio              int64
 	Pid                  int64
 }
+
+// Estructura para recibir PID
+type PidProceso struct {
+	Pid int64 `json:"pid"`
+}
