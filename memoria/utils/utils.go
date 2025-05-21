@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	globals "github.com/sisoputnfrba/tp-golang/globals/memoria"
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
@@ -124,7 +125,7 @@ func MemoryDump(w http.ResponseWriter, r *http.Request) {
 }
 
 func abrirArchivo(filename string) *os.File {
-	file, err := os.Open(filename)
+	file, err := os.Open(globals.MemoriaConfig.Scripts_path + filename)
 	if err != nil {
 		log.Println("No se pudo abrir el archivo")
 		return nil

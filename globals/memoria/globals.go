@@ -3,6 +3,7 @@ package globals
 type Memoria_Config struct {
 	Port_memory      int64  `json:"port_memory"`
 	Memory_size      int64  `json:"memory_size"`
+	Ip_memory        string `json:"ip_memory"`
 	Page_size        int64  `json:"page_size"`
 	Entries_per_page int64  `json:"entries_per_page"`
 	Number_of_levels int64  `json:"number_of_levels"`
@@ -11,6 +12,7 @@ type Memoria_Config struct {
 	Swapfile_path    string `json:"swapfile_path"`
 	Log_level        string `json:"log_level"`
 	Dump_path        string `json:"dump_path"`
+	Scripts_path     string `json:"scripts_path"`
 }
 
 var MemoriaConfig *Memoria_Config
