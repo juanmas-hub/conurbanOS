@@ -143,7 +143,7 @@ func AlmacenarProceso(pid int, instrucciones []string) int {
 				actualizarTablaPaginas(pid, paginaActual, marcoFisico)
 			}
 
-			posicionFisica := marcoFisico*PAGE_SIZE + offset
+			posicionFisica := (marcoFisico * PAGE_SIZE) + offset
 
 			globals_memoria.Memoria[posicionFisica] = bytesInstruccion[i]
 

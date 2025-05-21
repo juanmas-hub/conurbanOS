@@ -58,3 +58,7 @@ type SolicitudIniciarProceso struct {
 type PidProceso struct {
 	Pid int64 `json:"pid"`
 }
+
+type Pseudocodigo map[int][]string
+
+var Instrucciones Pseudocodigo
