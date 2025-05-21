@@ -3,10 +3,10 @@ package utils
 import (
 	"encoding/json"
 	//"fmt"
+	"bufio"
 	"log"
 	"net/http"
 	"os"
-	"bufio"
 	"strings"
 
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
@@ -49,10 +49,10 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 	log.Println("Me llego para iniciar un proceso")
 	log.Printf("%+v\n", mensaje)
 
-	if (CargarProcesoDesdeArchivo(int(mensaje.Pid), mensaje.Archivo_Pseudocodigo) != 0){
+	if CargarProcesoDesdeArchivo(int(mensaje.Pid), mensaje.Archivo_Pseudocodigo) != 0 {
 		w.WriteHeader(http.StatusNotImplemented)
 		w.Write([]byte("notImplemented"))
-	}else{
+	} else {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	}
@@ -104,7 +104,6 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-
 func MemoryDump(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.PidProceso
@@ -124,7 +123,7 @@ func MemoryDump(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-func abrirArchivo(filename string) *os.File{
+func abrirArchivo(filename string) *os.File {
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Println("No se pudo abrir el archivo")
@@ -134,7 +133,7 @@ func abrirArchivo(filename string) *os.File{
 	return file
 }
 
-func extraerInstrucciones(archivo *os.File) []string{
+func extraerInstrucciones(archivo *os.File) []string {
 	var instrucciones []string
 	scanner := bufio.NewScanner(archivo)
 	for scanner.Scan() {
@@ -153,13 +152,13 @@ func extraerInstrucciones(archivo *os.File) []string{
 
 func CargarProcesoDesdeArchivo(pid int, filename string) int {
 
-	if (globals_memoria.Instrucciones[pid] != nil){
+	if globals_memoria.Instrucciones[pid] != nil {
 		log.Printf("El archivo de pid %d ya tenia sus instrucciones guardadas", pid)
 		return 1
 	}
 
 	var archivo *os.File = abrirArchivo(filename)
-	if (archivo == nil){
+	if archivo == nil {
 		return 1
 	}
 
@@ -170,21 +169,21 @@ func CargarProcesoDesdeArchivo(pid int, filename string) int {
 
 func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	var mensaje globals_memoria.PidJSON
-  err := decoder.Decode(&mensaje)
+	var mensaje globals_memoria.PidProceso
+	err := decoder.Decode(&mensaje)
 	if err != nil {
 		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
 	}
-  
-  log.Println("Solicitud para reanudar proceso con swap")
-	log.Printf("%+v\n", mensaje.PID)
+
+	log.Println("Solicitud para reanudar proceso con swap")
+	log.Printf("%+v\n", mensaje.Pid)
 
 	// Aca tu logica de SWAP, si no pudiste devolver avisar
 
-	log.Printf("Proceso %d reanudado correctamente", mensaje.PID)
+	log.Printf("Proceso %d reanudado correctamente", mensaje.Pid)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
