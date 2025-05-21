@@ -95,7 +95,7 @@ func actualizarTablaPaginas(pid int, pagina int, marco int) {
 
 }
 
-func AlmacenarProceso(pid int, instrucciones []string) error {
+func AlmacenarProceso(pid int, instrucciones []string) int {
 
 	verificarPIDUnico(pid)
 
@@ -114,7 +114,7 @@ func AlmacenarProceso(pid int, instrucciones []string) error {
 	if marcosDisponibles == nil {
 		// swap()
 		log.Println("Proceso guardado en swap")
-		return nil
+		return 0
 	}
 
 	log.Println("Crear la tabla de páginas para el proceso")
@@ -143,7 +143,7 @@ func AlmacenarProceso(pid int, instrucciones []string) error {
 				actualizarTablaPaginas(pid, paginaActual, marcoFisico)
 			}
 
-			posicionFisica := marcoFisico*PAGE_SIZE + offset
+			posicionFisica := (marcoFisico * PAGE_SIZE) + offset
 
 			globals_memoria.Memoria[posicionFisica] = bytesInstruccion[i]
 
@@ -155,7 +155,7 @@ func AlmacenarProceso(pid int, instrucciones []string) error {
 	log.Println("Proceso almacenado en memoria fisica")
 
 	fmt.Printf("Proceso %d almacenado correctamente utilizando %d páginas\n", pid, paginasNecesarias)
-	return nil
+	return 0
 }
 
 func obtenerMarcoDesdeTabla(pid int, pagina int) int {

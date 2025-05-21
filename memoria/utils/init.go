@@ -38,6 +38,8 @@ func InicializarMemoria() {
 
 	manager := make(globals_memoria.Manager)
 	globals_memoria.ProcessManager = &manager
+
+	globals_memoria.Instrucciones = make(globals_memoria.Pseudocodigo)
 }
 
 func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {
