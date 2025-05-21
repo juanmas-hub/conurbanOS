@@ -104,6 +104,7 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
+
 func MemoryDump(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.PidProceso
@@ -165,4 +166,25 @@ func CargarProcesoDesdeArchivo(pid int, filename string) int {
 	globals_memoria.Instrucciones[pid] = extraerInstrucciones(archivo)
 
 	return 0
+}
+
+func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.PidJSON
+  err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+  
+  log.Println("Solicitud para reanudar proceso con swap")
+	log.Printf("%+v\n", mensaje.PID)
+
+	// Aca tu logica de SWAP, si no pudiste devolver avisar
+
+	log.Printf("Proceso %d reanudado correctamente", mensaje.PID)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
 }

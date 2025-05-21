@@ -90,11 +90,11 @@ func PasarProcesosAReady() {
 
 	var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
 	for lenghtSUSP_READY > 0 {
-		proceso := globals.MapaProcesos[globals.ESTADOS.SUSP_READY[0]]
-		if solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso) == false {
+		pid := globals.ESTADOS.SUSP_READY[0]
+		if solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid) == false {
 			break
 		}
-
+		proceso := globals.MapaProcesos[pid]
 		suspReadyAReady(proceso)
 		lenghtSUSP_READY--
 	}
@@ -137,6 +137,7 @@ func solicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo)
 		Archivo_Pseudocodigo: proceso.Archivo_Pseudocodigo,
 		Tamanio:              proceso.Tamaño,
 		Pid:                  proceso.Proceso.Pcb.Pid,
+		Susp:                 false,
 	}
 	body, err := json.Marshal(mensaje)
 	if err != nil {
@@ -159,13 +160,30 @@ func solicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo)
 	return false
 }
 
-func solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(proceso globals.Proceso) bool {
+func solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid int64) bool {
 	// Se pudo iniciarlizar => devuelve true
 	// No se pudo inicializar => devuelve false
+	mensaje := globals.PidJSON{PID: pid}
 
-	// Aca hay que mandar a memoria para que swappee de memoria secundaria a memoria principal
+	body, err := json.Marshal(mensaje)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
 
-	return true
+	url := fmt.Sprintf("http://%s:%d/reanudarProceso", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
+	}
+
+	log.Printf("respuesta del servidor: %s", resp.Status)
+
+	if resp.Status == "200 OK" {
+		return true
+	}
+
+	return false
+	// Aca hay que mandar a memoria para que swappee de memoria secundaria a memoria principal - eso ya lo hago arriba? creo?
 }
 
 func escucharFinalizacionesDeProcesos() {
@@ -191,12 +209,12 @@ func finalizarProceso(pid int64) {
 	}
 
 	// Mando el PID
-	general.EnviarFinalizacionDeProceso_AMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, pid)
+	ok = general.EnviarFinalizacionDeProceso_AMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, pid)
 
-	// Confirmación de la memoria aca...
-	// Me parece que la confirmacion es por la misma funcion que por la que mandas el mensaje (memoria no tiene ip y port del kernel)
-	// Que pasa si no puede finalizarlo? O no puede pasar eso?
-	recibirConfirmacionDeMemoria(proceso.Pcb.Pid)
+	if !ok {
+		log.Printf("Memoria no pudo finalizar el proceso PID %d.", proceso.Pcb.Pid)
+		return
+	}
 
 	// Elimino de la cola
 	eliminarDeSuCola(pid, proceso.Estado_Actual)
@@ -239,11 +257,6 @@ func eliminarDeSuCola(pid int64, estadoActual string) {
 		log.Printf("Error eliminando proceso PID: %d de su cola en EliminarDeSuCola", pid)
 	}
 	globals.EstadosMutex.Unlock()
-}
-
-func recibirConfirmacionDeMemoria(pid int64) bool {
-
-	return true
 }
 
 func newAReady(proceso globals.Proceso_Nuevo) {
