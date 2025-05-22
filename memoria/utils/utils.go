@@ -54,7 +54,7 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotImplemented)
 		w.Write([]byte("notImplemented"))
 	} else {
-		log.Printf("Proceso iniciado con exito: ", globals_memoria.Instrucciones[int(mensaje.Pid)])
+		log.Println("Proceso iniciado con exito: ", globals_memoria.Instrucciones[int(mensaje.Pid)])
 
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
@@ -127,7 +127,7 @@ func MemoryDump(w http.ResponseWriter, r *http.Request) {
 
 func abrirArchivo(filename string) *os.File {
 
-	var rutaArchivo string = "/home/utnso/tp-2025-1c-conurbanOS/scripts/" + filename + ".txt"
+	var rutaArchivo string = globals_memoria.MemoriaConfig.Scripts_path + filename + ".txt"
 
 	log.Println("Intentando acceder a la direccion: ", rutaArchivo)
 
