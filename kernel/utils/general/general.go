@@ -415,22 +415,26 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	// Elimino de lista IOs
 	globals.ListaIOs = append(globals.ListaIOs[:posIo], globals.ListaIOs[posIo+1:]...)
 
+	// POR AHORA: Finalizo todos los procesos de la cola esperando esa IO (preguntar en un issue)
+	for i := range io.ColaProcesosEsperando {
+		FinalizarProceso(io.ColaProcesosEsperando[i].PID)
+	}
+
 	globals.ListaIOsMutex.Unlock()
 
 	log.Printf("Se desconecto el IO: %s, que tenia el proceso de PID: %d", io.Handshake.Nombre, desconexionIO.PID)
 
 	if desconexionIO.PID != -1 {
-		// Finalizo proceso
-		ProcesoAExit(desconexionIO.PID)
-
-		// Nose que hay que hacer con los de la cola de esa IO (no dice el enunciado)
+		// Finalizo proceso que esta ejecuando en esa IO
+		FinalizarProceso(desconexionIO.PID)
 	}
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
 
-func ProcesoAExit(pid int64) {
+// Mandando PID, se finaliza ese proceso. NO SE USA para cuando se libera la CPU, pasa eso existe otra funcion.
+func FinalizarProceso(pid int64) {
 	globals.ProcesosAFinalizarMutex.Lock()
 	globals.ProcesosAFinalizar = append(globals.ProcesosAFinalizar, pid)
 	globals.ProcesosAFinalizarMutex.Unlock()
@@ -438,9 +442,25 @@ func ProcesoAExit(pid int64) {
 }
 
 func ObtenerIO(nombre string) (int64, bool) {
-	// Hay que buscar por nombre en la ListaIOs
+	var posIo int
+	encontrado := false
+	globals.ListaIOsMutex.Lock()
+	for i := range globals.ListaIOs {
+		if globals.ListaIOs[i].Handshake.Nombre == nombre {
+			posIo = i
+			encontrado = true
+		}
+	}
 
-	return 0, true
+	globals.ListaIOsMutex.Unlock()
+
+	if encontrado {
+		return int64(posIo), true
+	} else {
+		// Si devuelve esto es que se desconecto la CPU en el medio. Hay q ser mala persona
+		log.Println("No se encontro la CPU en la devolucion")
+		return -1, false
+	}
 }
 
 func AgregarAListaIOs(handshake globals.Handshake) {
@@ -484,7 +504,7 @@ func BuscarCpu(nombre string) int {
 }
 
 // Mandando el PID y nombre de CPU, se libera la CPU y finaliza el proceso.
-func FinalizarProceso(pid int64, nombreCPU string) {
+func FinalizarProcesoYLiberarCPU(pid int64, nombreCPU string) {
 	// Finalizar proceso
 	globals.ProcesosAFinalizarMutex.Lock()
 	globals.ProcesosAFinalizar = append(globals.ProcesosAFinalizar, pid)
@@ -498,4 +518,25 @@ func FinalizarProceso(pid int64, nombreCPU string) {
 	globals.ListaCPUsMutex.Unlock()
 	Signal(globals.Sem_Cpus)
 
+}
+
+func EnviarDumpMemory(pid int64) bool {
+	mensaje := globals.PidJSON{PID: pid}
+	body, err := json.Marshal(mensaje)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
+
+	// Posible problema con el int64 del puerto
+	url := fmt.Sprintf("http://%s:%d/memoryDump", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		log.Printf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
+	}
+
+	log.Printf("respuesta del servidor: %s", resp.Status)
+	if resp.StatusCode == http.StatusOK {
+		return true
+	}
+	return false
 }

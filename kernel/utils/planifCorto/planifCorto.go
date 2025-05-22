@@ -145,6 +145,8 @@ func DevolucionProceso(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Si se bloquea, lo hace por Syscall IO, aca no tenemos en cuenta eso
+
 	go func() {
 
 		if devolucion.Motivo == globals.REPLANIFICAR_PROCESO {
@@ -160,7 +162,7 @@ func DevolucionProceso(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if devolucion.Motivo == globals.FIN_PROCESO {
-
+			general.FinalizarProcesoYLiberarCPU(devolucion.Pid, devolucion.Nombre_CPU)
 		}
 
 	}()

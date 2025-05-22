@@ -184,6 +184,7 @@ func solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid int64) bool {
 
 	return false
 	// Aca hay que mandar a memoria para que swappee de memoria secundaria a memoria principal - eso ya lo hago arriba? creo?
+	// Literalmente eso hace esta funcion compañero
 }
 
 func escucharFinalizacionesDeProcesos() {

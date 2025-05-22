@@ -7,6 +7,7 @@ import (
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
+	utils_pl "github.com/sisoputnfrba/tp-golang/kernel/utils/planifLargo"
 	utils_pm "github.com/sisoputnfrba/tp-golang/kernel/utils/planifMedio"
 )
 
@@ -34,7 +35,7 @@ func ManejarIO(w http.ResponseWriter, r *http.Request) {
 		posIo, existe := general.ObtenerIO(syscallIO.NombreIO)
 
 		if !existe {
-			general.ProcesoAExit(syscallIO.PID)
+			general.FinalizarProceso(syscallIO.PID)
 		} else {
 
 			// Bloqueo el proceso y le actualizo el PC
@@ -70,11 +71,56 @@ func ManejarIO(w http.ResponseWriter, r *http.Request) {
 }
 
 func ManejarINIT_PROC(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var syscallINIT globals.SyscallInit
+	err := decoder.Decode(&syscallINIT)
+	if err != nil {
+		log.Printf("Error al decodificar SyscallInit: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar syscallINIT"))
+		return
+	}
 
+	log.Println("Hubo una syscallINIT")
+	log.Printf("%+v\n", syscallINIT)
+
+	go func() {
+
+		utils_pl.CrearProcesoNuevo(syscallINIT.Archivo, syscallINIT.Tamanio)
+		// El proceso vuelve a ejecutar
+	}()
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
 }
 
 func ManejarDUMP_MEMORY(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var syscallDUMP globals.SyscallDump
+	err := decoder.Decode(&syscallDUMP)
+	if err != nil {
+		log.Printf("Error al decodificar SyscallDump: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar SyscallDump"))
+		return
+	}
 
+	log.Println("Hubo una SyscallDump")
+	log.Printf("%+v\n", syscallDUMP)
+
+	go func() {
+
+		// Le pido a memoria que haga un Dump del proceso mandandole el PID.
+		if general.EnviarDumpMemory(syscallDUMP.PID) {
+			// No entiendo: issue
+		} else {
+			general.FinalizarProcesoYLiberarCPU(syscallDUMP.PID, syscallDUMP.NombreCPU)
+		}
+
+	}()
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
 }
 
 func ManejarEXIT(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +138,7 @@ func ManejarEXIT(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%+v\n", syscallEXIT)
 
 	go func() {
-		general.FinalizarProceso(syscallEXIT.PID, syscallEXIT.NombreCPU)
+		general.FinalizarProcesoYLiberarCPU(syscallEXIT.PID, syscallEXIT.NombreCPU)
 
 	}()
 

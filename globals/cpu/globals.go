@@ -80,3 +80,10 @@ type SyscallExit struct { //endpoint: syscallEXIT
 	PID       int64  `json:"pid"`
 	NombreCPU string `json:"nombre_cpu"`
 }
+
+type SyscallDump = SyscallExit
+
+type SyscallInit struct {
+	Tamanio int64  `json:"tamanio"`
+	Archivo string `json:"archivo"`
+}

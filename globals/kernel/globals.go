@@ -175,6 +175,13 @@ type SyscallExit struct {
 	NombreCPU string `json:"nombre_cpu"`
 }
 
+type SyscallDump = SyscallExit
+
+type SyscallInit struct {
+	Tamanio int64  `json:"tamanio"`
+	Archivo string `json:"archivo"`
+}
+
 // Solicitud de iniciar proceso
 type SolicitudIniciarProceso struct {
 	Archivo_Pseudocodigo string `json:"archivo_pseudocodigo"`
