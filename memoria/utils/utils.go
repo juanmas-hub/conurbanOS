@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	globals "github.com/sisoputnfrba/tp-golang/globals/memoria"
+	//globals "github.com/sisoputnfrba/tp-golang/globals/memoria"
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
@@ -54,6 +54,8 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotImplemented)
 		w.Write([]byte("notImplemented"))
 	} else {
+		log.Printf("Proceso iniciado con exito: ", globals_memoria.Instrucciones[int(mensaje.Pid)])
+
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	}
@@ -118,19 +120,22 @@ func MemoryDump(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Me llego para memory dump el proceso de pid: %d", mensaje.Pid)
 
-	// Aca tenes que hacer lo que sea para finalizar
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
 
 func abrirArchivo(filename string) *os.File {
-	file, err := os.Open(globals.MemoriaConfig.Scripts_path + filename)
+
+	var rutaArchivo string = "/home/utnso/tp-2025-1c-conurbanOS/scripts/" + filename + ".txt"
+
+	log.Println("Intentando acceder a la direccion: ", rutaArchivo)
+
+	file, err := os.Open(rutaArchivo)
 	if err != nil {
-		log.Println("No se pudo abrir el archivo")
+		log.Println("No se pudo abrir el archivo: ", err)
 		return nil
 	}
-	defer file.Close()
 	return file
 }
 
