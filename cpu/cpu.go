@@ -78,7 +78,7 @@ func main() {
 			}
 			log.Printf("Instrucción decodificada correctamente: %+v", instruccionDeco)
 
-			err = utils_cpu.Execute(instruccionDeco, pcb) //ejecutamos instruccion
+			resultadoEjecucion, err := utils_cpu.Execute(instruccionDeco, pcb) //ejecutamos instruccion
 
 			if err != nil {
 				log.Printf("Error al ejecutar instruccion: %s", err)
@@ -86,6 +86,22 @@ func main() {
 			}
 			log.Printf("Finalizado: nuevo PC = %d", pcb.PC)
 
+			switch resultadoEjecucion {
+			case utils_cpu.CONTINUAR_EJECUCION:
+
+				continue // Volver al inicio del bucle para FETCH la siguiente instrucción del mismo PCB
+
+			case utils_cpu.PONERSE_ESPERA:
+				log.Printf("Proceso PID %d cede la CPU por Syscall: %s. PC actual: %d", pcb.Pid, instruccionDeco.Nombre, pcb.PC)
+
+				//pcb a kernel
+
+				break // Salir del switch, para que espere un nuevo PCB
+
+			case utils_cpu.ERROR_EJECUCION:
+
+				break
+			}
 		}
 	}()
 

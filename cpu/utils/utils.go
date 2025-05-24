@@ -7,7 +7,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/cpu"
 	globals_cpu "github.com/sisoputnfrba/tp-golang/globals/cpu"
@@ -201,27 +203,50 @@ func Decode(instruccion string) (globals.InstruccionDecodificada, error) {
 	return instDeco, nil
 }
 
-func Execute(instDeco globals.InstruccionDecodificada, pcb globals.PCB) error {
+type ResultadoEjecucion int
+
+const (
+	CONTINUAR_EJECUCION ResultadoEjecucion = iota
+	PONERSE_ESPERA
+	ERROR_EJECUCION
+)
+
+func Execute(instDeco globals.InstruccionDecodificada, pcb globals.PCB) (ResultadoEjecucion, error) {
 	switch instDeco.Nombre { //En cada caso habria que extraer los parametros del string y pasarlos a una variable de su tipo de dato, luego ejecutar la logica correspondiente
 	// Tambien hay que actualizar el PC, hacerle ++ o actualizarlo al valor del GOTO
 	case "NOOP":
-		//aca va la Logica
+		time.Sleep(1 * time.Second)
+		pcb.PC++
+		return CONTINUAR_EJECUCION, nil
 	case "WRITE":
-		//aca va la Logica
+		//pasar direccion logica por mmu y mandarle la fisica a memoria junto el dato a escribir
+		pcb.PC++
+		return CONTINUAR_EJECUCION, nil
 	case "READ":
-		//aca va la Logica
+		//pasar direccion logica por mmu y mandarle la fisica a memoria y que nos mande lo que lee
+		pcb.PC++
+		return CONTINUAR_EJECUCION, nil
 	case "GOTO":
-		//aca va la Logica
+		nuevoPC, err := strconv.ParseInt(instDeco.Parametros[0], 10, 64)
+		if err != nil {
+			fmt.Printf("Error al convertir '%s' a int64: %s\n", instDeco.Parametros[0], err)
+		}
+		pcb.PC = nuevoPC
+		return CONTINUAR_EJECUCION, nil
 	case "IO":
 		//aca va la Logica
+		return PONERSE_ESPERA, nil
 	case "INIT_PROC":
 		//aca va la Logica
+		return PONERSE_ESPERA, nil
 	case "DUMP_MEMORY":
 		//aca va la Logica
+		return PONERSE_ESPERA, nil
 	case "EXIT":
 		//aca va la Logica
+		return PONERSE_ESPERA, nil
 	}
-	return nil
+	return PONERSE_ESPERA, fmt.Errorf("instruccion desconocida: %s", instDeco.Nombre)
 }
 
 func RecibirProcesoAEjecutar(w http.ResponseWriter, r *http.Request) {
