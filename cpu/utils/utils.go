@@ -146,17 +146,27 @@ func EnviarSolicitudInstruccion(pid int64, pc int64) (string, error) {
 
 func Decode(instruccion string) (globals.InstruccionDecodificada, error) {
 	partes := strings.SplitN(instruccion, " ", 2) //divide la instruccion de los parametros
+
+	
+
 	nombre := partes[0]
 	parametrosStr := ""
 	if len(partes) > 1 {
 		parametrosStr = partes[1]
 		parametrosStr = strings.Trim(parametrosStr, "()") //borra los parentesis que deja la funcion anterior
+		log.Println("Parametros antes de dividir: ", parametrosStr)
 	}
-	parametros := strings.Split(parametrosStr, ", ") //divide los argumentos y los deja separados en un array de strings
+
+	parametros := strings.Split(parametrosStr, " ") //divide los argumentos y los deja separados en un array de strings
+	log.Println("Parametros despues de dividir: ", parametros)
+	if parametrosStr == "" {
+		parametros = []string{}
+	}
+
 
 	// Nose por que el len de parametros esta mal
-	// En caso de NOOP deberia ser 0, pero da 1:
-	log.Println(len(parametros))
+	// En caso de WRITE deberia ser 2, pero da 1:
+	log.Println("longitud: ",len(parametros))
 
 	instDeco := globals.InstruccionDecodificada{
 		Nombre:     nombre,
@@ -199,7 +209,7 @@ func Decode(instruccion string) (globals.InstruccionDecodificada, error) {
 		}
 	case "NOOP":
 		// Deberia ser != 0, pero lo cambie porque el len parametros anda mal.
-		if len(parametros) != 1 {
+		if len(parametros) != 0 {
 			return globals.InstruccionDecodificada{}, fmt.Errorf("formato incorrecto para NOOP: no se esperan parámetros")
 		}
 	default:
