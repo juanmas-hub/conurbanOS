@@ -2,6 +2,7 @@ package globals
 
 type Cpu_Config struct {
 	Port_cpu          int64  `json:"port_cpu"`
+	Ip_cpu            string `json:"ip_cpu"`
 	Ip_memory         string `json:"ip_memory"`
 	Port_memory       int64  `json:"port_memory"`
 	Ip_kernel         string `json:"ip_kernel"`
@@ -84,6 +85,9 @@ type SyscallExit struct { //endpoint: syscallEXIT
 type SyscallDump = SyscallExit
 
 type SyscallInit struct {
-	Tamanio int64  `json:"tamanio"`
-	Archivo string `json:"archivo"`
+	Tamanio     int64  `json:"tamanio"`
+	Archivo     string `json:"archivo"`
+	Nombre_CPU  string `json:"nombre_cpu"`
+	Pid_proceso int64  `json:"pid_proceso"` // pid del proceso que ejecuta la syscall
+	Pc          int64  `json:"pc"`          // pc actualizado
 }
