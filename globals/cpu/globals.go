@@ -91,3 +91,15 @@ type SyscallInit struct {
 	Pid_proceso int64  `json:"pid_proceso"` // pid del proceso que ejecuta la syscall
 	Pc          int64  `json:"pc"`          // pc actualizado
 }
+
+// TEMPORAL -- para probar
+type Semaforo chan struct{} // es un tipo que ocupa 0 bytes, entonces puedo hacer los semaforos mas eficientes
+func CrearSemaforo(maxTareas int) Semaforo {
+	semaforo := make(Semaforo, maxTareas)
+	for i := 0; i < maxTareas; i++ {
+		semaforo <- struct{}{}
+	}
+	return semaforo
+}
+
+var Sem = CrearSemaforo(0)

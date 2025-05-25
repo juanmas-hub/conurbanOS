@@ -154,6 +154,10 @@ func Decode(instruccion string) (globals.InstruccionDecodificada, error) {
 	}
 	parametros := strings.Split(parametrosStr, ", ") //divide los argumentos y los deja separados en un array de strings
 
+	// Nose por que el len de parametros esta mal
+	// En caso de NOOP deberia ser 0, pero da 1:
+	log.Println(len(parametros))
+
 	instDeco := globals.InstruccionDecodificada{
 		Nombre:     nombre,
 		Parametros: parametros,
@@ -194,7 +198,8 @@ func Decode(instruccion string) (globals.InstruccionDecodificada, error) {
 			return globals.InstruccionDecodificada{}, fmt.Errorf("formato incorrecto para EXIT: no se esperan parámetros")
 		}
 	case "NOOP":
-		if len(parametros) != 0 {
+		// Deberia ser != 0, pero lo cambie porque el len parametros anda mal.
+		if len(parametros) != 1 {
 			return globals.InstruccionDecodificada{}, fmt.Errorf("formato incorrecto para NOOP: no se esperan parámetros")
 		}
 	default:
@@ -266,7 +271,7 @@ const (
 	ERROR_EJECUCION
 )
 
-func Execute(instDeco globals.InstruccionDecodificada, pcb globals.PCB) (ResultadoEjecucion, error) {
+func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (ResultadoEjecucion, error) {
 	switch instDeco.Nombre { //En cada caso habria que extraer los parametros del string y pasarlos a una variable de su tipo de dato, luego ejecutar la logica correspondiente
 	// Tambien hay que actualizar el PC, hacerle ++ o actualizarlo al valor del GOTO
 	case "NOOP":
@@ -318,6 +323,25 @@ func RecibirProcesoAEjecutar(w http.ResponseWriter, r *http.Request) {
 	log.Println("Me llego un proceso paaaa")
 	log.Printf("%+v\n", proc)
 
+	// TEMPORAL
+	go func() {
+		pcb := globals.PCB{
+			Pid: proc.PID,
+			PC:  proc.PC,
+		}
+		ColaDeEjecucion <- pcb
+		Signal(globals.Sem)
+	}()
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}
+
+// TEMPORAL -- para probar
+func Wait(semaforo globals.Semaforo) {
+	<-semaforo
+}
+
+func Signal(semaforo globals.Semaforo) {
+	semaforo <- struct{}{}
 }

@@ -64,3 +64,9 @@ type PidProceso struct {
 type Pseudocodigo map[int][]string
 
 var Instrucciones Pseudocodigo
+
+// Solicitud Instruccion
+type SolicitudInstruccion struct {
+	Pid int64 `json:"pid"`
+	Pc  int64 `json:"pc"`
+}

@@ -120,7 +120,6 @@ func MemoryDump(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Me llego para memory dump el proceso de pid: %d", mensaje.Pid)
 
-
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
@@ -192,4 +191,38 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Proceso %d reanudado correctamente", mensaje.Pid)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}
+
+// FUNCION TEMPORAL PERDON JUANMA QUERIA PROBARLO
+func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.SolicitudInstruccion
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	log.Printf("Solicitud de instruccion de PID: %d y PC: %d", mensaje.Pid, mensaje.Pc)
+	log.Printf("%+v\n", mensaje.Pid)
+
+	// Aca tu logica de SWAP, si no pudiste devolver avisar
+	instruccion := globals_memoria.Instrucciones[int(mensaje.Pid)][mensaje.Pc]
+	var enviado struct {
+		Instruccion string `json:"instruccion"`
+	}
+	enviado.Instruccion = instruccion
+	jsonData, err := json.Marshal(enviado)
+	if err != nil {
+		log.Printf("Error al codificar la instruccion a JSON: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error interno del servidor"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
 }
