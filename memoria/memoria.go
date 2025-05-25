@@ -24,19 +24,6 @@ func main() {
 
 	utils_memoria.InicializarMemoria()
 
-	var instruccionesPrueba []string = []string{"HOLAA", "RAMPLAA", "PANSANSON BANANINI", "QEUW xAASDADF", "ASADDASASASAAAAAAAAAAA", "444abcdsdfsfffQQUEUEUEUEUEUEEUEUEUUEEUEUEUEUEUUEUEUEUEUUUEUEUEUEU"}
-
-	utils_memoria.AlmacenarProceso(5, instruccionesPrueba)
-
-	var primerInstruccion string = ""
-
-	for i := 0; i < 5; i++ {
-		primerInstruccion += string(globals.Memoria[i])
-	}
-
-	log.Printf("Primer instruccion: %s", primerInstruccion)
-
-	log.Printf("Mock despues de guardar un proceso: %d", utils_memoria.CalcularMock())
 
 	// Multiplexor de servidor HTTP
 	mux := http.NewServeMux()

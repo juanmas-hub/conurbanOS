@@ -13,6 +13,7 @@ import (
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
+/*
 func CalcularMock() int {
 	PAGE_SIZE := int(globals_memoria.MemoriaConfig.Page_size)
 	libres := 0
@@ -24,16 +25,29 @@ func CalcularMock() int {
 	}
 	return libres * PAGE_SIZE
 }
-
+*/
 func ConsultarMock(w http.ResponseWriter, r *http.Request) {
-	mock := CalcularMock()
+	mock := 1000 // valor fijo, segundo checpoint
+
+	var enviado struct {
+		Mock int `json:"mock"`
+	}
+
+	enviado.Mock = mock
+
+	jsonData, err := json.Marshal(enviado)
+
+	if (err != nil){
+		log.Printf("Error al codificar el mock a JSON: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error interno del servidor"))
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
 
-	json.NewEncoder(w).Encode(map[string]int{
-		"espacio_libre": mock,
-	})
 }
 
 func IniciarProceso(w http.ResponseWriter, r *http.Request) {
