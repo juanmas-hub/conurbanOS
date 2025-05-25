@@ -263,6 +263,13 @@ func RecibirProcesoAEjecutar(w http.ResponseWriter, r *http.Request) {
 	log.Println("Me llego un proceso paaaa")
 	log.Printf("%+v\n", proc)
 
+	// Esto si quieren borrenlo -- es para probar si funciona algo
+	pcb := globals_cpu.PCB{
+		Pid: proc.PID,
+		PC:  proc.PC,
+	}
+	ColaDeEjecucion <- pcb
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
