@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io" //NUEVO Necesario para io.ReadAll
 	"log"
 	"net/http"
 	"os"
@@ -202,6 +203,60 @@ func Decode(instruccion string) (globals.InstruccionDecodificada, error) {
 
 	return instDeco, nil
 }
+
+//Test para enviar a memoria ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+
+// EnviarDireccionAMemoria simula el envío de una dirección física (como string por ahora) a la Memoria.
+// FUTURO: Esta función se adaptará para recibir un int64 como dirección física real.
+func EnviarDireccionAMemoria(pid int64, physicalAddressStr string) error { // FUTURO: physicalAddressStr será physicalAddress int64
+	// Construir el payload JSON
+	// FUTURO: El payload podría contener más campos relevantes para la operación de escritura/lectura (ej. datos a escribir, tamaño a leer).
+	payload := map[string]interface{}{
+		"pid":              pid,
+		"direccion_fisica": physicalAddressStr, // FUTURO: Aquí se usaría physicalAddress (int64)
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		log.Printf("Error codificando payload JSON para Memoria: %s", err.Error())
+		return fmt.Errorf("error codificando payload JSON para Memoria: %w", err)
+	}
+
+	// Construir la URL del endpoint de Memoria
+	// Asumiendo que el endpoint para recibir una dirección física es "/recibirDireccionFisica"
+	// FUTURO: Los endpoints para WRITE y READ serán específicos, como "/escribirMemoria" o "/leerMemoria". [2]
+	url := fmt.Sprintf("http://%s:%d/recibirDireccionFisica", globals_cpu.CpuConfig.Ip_memory, globals_cpu.CpuConfig.Port_memory)
+
+	// Crear un cliente HTTP con un timeout.
+	// En el código actual del usuario, no hay un http.Client pre-inicializado y reutilizable.
+	// Por lo tanto, se crea uno nuevo aquí.
+	// FUTURO: Cuando se refactorice la CPU para tener un http.Client persistente (ej. en globals_cpu.GlobalCPU.MemoryClient),
+	// se debería usar ese cliente en lugar de crear uno nuevo aquí.
+	client := &http.Client{Timeout: 5 * time.Second} // Añadir un timeout para evitar bloqueos
+
+	// Enviar la solicitud HTTP POST
+	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		log.Printf("Error enviando solicitud a Memoria (%s): %s", url, err.Error())
+		return fmt.Errorf("error enviando solicitud a Memoria (%s): %w", url, err)
+	}
+	defer resp.Body.Close() // Asegurarse de cerrar el cuerpo de la respuesta
+
+	// Verificar la respuesta de Memoria
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body) // Leer el cuerpo para el log de error
+		log.Printf("Memoria respondió con error %d: %s", resp.StatusCode, string(bodyBytes))
+		return fmt.Errorf("memoria respondió con error %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	// Log obligatorio (adaptado para este ejemplo) [2]
+	// FUTURO: El log se adaptará al formato específico de "Lectura/Escritura Memoria" del enunciado. [2]
+	log.Printf("PID: %d - Dirección enviada a Memoria: %s", pid, physicalAddressStr) // FUTURO: Aquí se usaría physicalAddress (int64)
+
+	return nil
+}
+
+//Test para enviar a memoria ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
 
 type ResultadoEjecucion int
 
