@@ -40,7 +40,7 @@ func main() {
 		globals_cpu.CpuConfig.Ip_kernel,
 		globals_cpu.CpuConfig.Port_kernel,
 		nombreCPU,
-		"127.0.0.1", // Esta es la IP que hay que mandarle a kernel? No se - tomytsa (yo juanma tampoco)
+		globals_cpu.CpuConfig.Ip_cpu,
 		globals_cpu.CpuConfig.Port_cpu,
 	)
 
@@ -102,6 +102,7 @@ func main() {
 
 				break
 			}
+
 		}
 	}()
 

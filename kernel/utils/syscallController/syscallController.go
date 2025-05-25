@@ -87,7 +87,13 @@ func ManejarINIT_PROC(w http.ResponseWriter, r *http.Request) {
 	go func() {
 
 		utils_pl.CrearProcesoNuevo(syscallINIT.Archivo, syscallINIT.Tamanio)
+
 		// El proceso vuelve a ejecutar
+		posCpu := general.BuscarCpu(syscallINIT.Nombre_CPU)
+		globals.ListaCPUsMutex.Lock()
+		cpu := globals.ListaCPUs[posCpu]
+		globals.ListaCPUsMutex.Unlock()
+		general.EnviarProcesoAEjecutar_ACPU(cpu.Handshake.IP, cpu.Handshake.Puerto, syscallINIT.Pc, syscallINIT.Pc)
 	}()
 
 	w.WriteHeader(http.StatusOK)
