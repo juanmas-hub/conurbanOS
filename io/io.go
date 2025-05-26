@@ -31,22 +31,25 @@ func main() {
 	if len(os.Args) != 2 {
 		log.Fatal("No se paso como argumento el nombre de IO") //por ej:  go run . nombreIO
 	}
-	nombreIO := os.Args[1]
+	globals.NombreIO = os.Args[1]
 
 	utils_io.HandshakeAKernel(
 		globals.IoConfig.IpKernel,
 		globals.IoConfig.PortKernel,
-		nombreIO,
-		"127.0.0.1", // Esta es la IP que hay que mandarle a kernel? No se - tomytsa
+		globals.NombreIO,
+		globals.IoConfig.IpIO,
 		globals.IoConfig.PortIO,
 	)
 
-	// Ahora hay que recibir la petición del Kernel para que el modulo hago un usleep (no esta hecho)
+	// Avisar desconexion de IO
+	defer utils_io.Desconectar(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel, globals.PidProcesoActual)
 
 	// Servidor
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/mensajeDeKernel", utils_io.RecibirMensajeDeKernel)
+	// Todavia no se usa
+	mux.HandleFunc("/solicitudDeIo", utils_io.RecibirSolicitudDeKernel)
 
 	puerto := globals.IoConfig.PortIO
 	err := http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)

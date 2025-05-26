@@ -22,16 +22,32 @@ func main() {
 
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.MemoriaConfig.Log_level))
 
-	// PONETE A LABURAR JUANMAAA
+	utils_memoria.InicializarMemoria()
 
-	// Servidor
+
 	// Multiplexor de servidor HTTP
-	// Examina la URL de cada solicitud HTTP y la dirige al controlador correspondiente
 	mux := http.NewServeMux()
 
 	// Maneja funciones segun URL de la solicitud
 	mux.HandleFunc("/mensajeDeKernel", utils_memoria.RecibirMensajeDeKernel)
 	mux.HandleFunc("/mensajeDeCpu", utils_memoria.RecibirMensajeDeCpu)
+
+	// General¿?
+	mux.HandleFunc("/consultarMock", utils_memoria.ConsultarMock)
+
+	// KERNEL
+	mux.HandleFunc("/iniciarProceso", utils_memoria.IniciarProceso)
+	// mux.HandleFunc("/reanudarproceso", utils_memoria.reanudarProceso) --- ya esta hecho en kernel. Es para mover el proceso desde memoria secundaria a principal
+	mux.HandleFunc("/suspenderProceso", utils_memoria.SuspenderProceso) // ya hice la funcion desde kernel en /kernel/utils/planifMedio (avisarSwappeo)
+	mux.HandleFunc("/finalizarProceso", utils_memoria.FinalizarProceso)
+	mux.HandleFunc("/memoryDump", utils_memoria.MemoryDump)
+
+	// CPU
+	// mux.HandleFunc("/obtenerMarcoProceso", utils_memoria.obtenerMarcoProceso)
+	// mux.HandleFunc("/accederEspacioUsuario", utils_memoria.accederEspacioUsuario)
+	// mux.HandleFunc("/leerPagina", utils_memoria.leerPagina)
+	// mux.HandleFunc("/actualizarPagina", utils_memoria.actualizarPagina)
+	mux.HandleFunc("/obtenerInstruccion", utils_memoria.EnviarInstruccion)
 
 	// Inicia un servidor que escuche en el puerto del config
 	puerto := globals.MemoriaConfig.Port_memory

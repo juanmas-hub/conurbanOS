@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/io"
 )
@@ -87,4 +88,83 @@ func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}
+
+// Todavia esta funcion no se usa
+func RecibirSolicitudDeKernel(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var solicitud globals.SolicitudIO
+	err := decoder.Decode(&solicitud)
+	if err != nil {
+		log.Printf("Error al decodificar solicitud de IO: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar solicitud de IO"))
+		return
+	}
+
+	log.Println("Me llego solicitud de IO")
+	log.Printf("%+v\n", solicitud)
+
+	globals.PidProcesoActual = solicitud.PID
+
+	go USleep(solicitud.Tiempo, solicitud.PID)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+func USleep(tiempo int64, pid int64) {
+	defer EnviarFinalizacionIOAKernel(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel, pid)
+	duracion := time.Duration(tiempo) * time.Millisecond
+	time.Sleep(duracion)
+}
+
+func EnviarFinalizacionIOAKernel(ip string, puerto int64, pid int64) {
+
+	mensaje := globals.FinalizacionIO{
+		PID:      pid,
+		NombreIO: globals.NombreIO,
+	}
+	body, err := json.Marshal(mensaje)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
+
+	globals.PidProcesoActual = -1
+
+	// Posible problema con el int64 del puerto
+	url := fmt.Sprintf("http://%s:%d/finalizacionIO", ip, puerto)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+
+	if err != nil {
+		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+	}
+
+	log.Printf("respuesta del servidor: %s", resp.Status)
+
+}
+
+func Desconectar(ip string, puerto int64, pidProcesoActual int64) {
+
+	mensaje := globals.FinalizacionIO{
+		PID:      pidProcesoActual,
+		NombreIO: globals.NombreIO,
+	}
+	body, err := json.Marshal(mensaje)
+	if err != nil {
+		log.Printf("error codificando mensaje: %s", err.Error())
+	}
+
+	// Posible problema con el int64 del puerto
+	url := fmt.Sprintf("http://%s:%d/desconexionIO", ip, puerto)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+
+	if err != nil {
+		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+	}
+
+	log.Printf("respuesta del servidor: %s", resp.Status)
+
 }
