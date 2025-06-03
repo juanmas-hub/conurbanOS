@@ -218,6 +218,7 @@ func elegirCPUlibre() (string, int64) {
 func readyAExecute(proceso globals.Proceso) {
 	// Esto funcionaría para FIFO y SJF. Nose si SRT
 
+	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.EXECUTE
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.ESTADOS.READY = globals.ESTADOS.READY[1:]

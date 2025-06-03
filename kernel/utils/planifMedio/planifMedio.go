@@ -21,6 +21,8 @@ func BloquearProcesoDesdeExecute(proceso globals.Proceso) {
 	// -- Paso el proceso entre las colas
 	// Como la cola de Execute 'no tiene' orden (todos los que estan en execute tienen una cpu ya ejecutando)
 	// no se saca el primero de la cola como en las otras funciones
+
+	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.BLOCKED
 
 	globals.MapaProcesosMutex.Lock()
@@ -70,6 +72,7 @@ func sigueBloqueado(proceso globals.Proceso) {
 
 func blockedASuspBlocked(proceso globals.Proceso) {
 	// Muevo el proceso en la colas
+	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.SUSP_BLOCKED
 
 	globals.MapaProcesosMutex.Lock()

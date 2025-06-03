@@ -68,6 +68,7 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 	globals.EstadosMutex.Lock()
 	log.Printf("Agregando proceso a NEW. Cantidad actual: %d", len(globals.ESTADOS.NEW))
 
+	// Aca no hay metricas que actualizar
 	globals.ESTADOS.NEW = append(globals.ESTADOS.NEW, procesoNuevo)
 	log.Printf("Después de agregar, NEW tiene %d procesos", len(globals.ESTADOS.NEW))
 	if globals.KernelConfig.New_algorithm == "PMCP" {
@@ -262,7 +263,8 @@ func eliminarDeSuCola(pid int64, estadoActual string) {
 
 func procesoAExit(proceso globals.Proceso) {
 	// No hay una cola de exit porque no hace falta, solo sirve para loguear metricas
-
+	// Actualizamos metricas
+	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 }
 
 func newAReady(proceso globals.Proceso_Nuevo) {
@@ -272,6 +274,7 @@ func newAReady(proceso globals.Proceso_Nuevo) {
 		Estado_Actual: globals.READY,
 		Rafaga:        nil,
 	}
+	procesoEnReady = general.ActualizarMetricas(procesoEnReady, globals.NEW)
 	globals.MapaProcesos[procesoEnReady.Pcb.Pid] = procesoEnReady
 	globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, procesoEnReady.Pcb.Pid)
@@ -283,6 +286,7 @@ func newAReady(proceso globals.Proceso_Nuevo) {
 
 func suspReadyAReady(proceso globals.Proceso) {
 
+	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.READY
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.ESTADOS.SUSP_READY = globals.ESTADOS.SUSP_READY[1:]

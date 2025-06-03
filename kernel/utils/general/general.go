@@ -261,6 +261,7 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 		// Si esta en Susp Blocked lo paso a Susp Ready
 		if proceso.Estado_Actual == globals.SUSP_BLOCKED {
 			globals.MapaProcesosMutex.Lock()
+			proceso = ActualizarMetricas(proceso, proceso.Estado_Actual)
 			proceso.Estado_Actual = globals.SUSP_READY
 			globals.MapaProcesos[finalizacionIo.PID] = proceso
 			globals.MapaProcesosMutex.Unlock()
@@ -276,7 +277,8 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 		// Si esta en Blocked lo paso Ready (no lo dice el enunciado!¡)
 		if proceso.Estado_Actual == globals.BLOCKED {
 			globals.MapaProcesosMutex.Lock()
-			proceso.Estado_Actual = globals.BLOCKED
+			proceso = ActualizarMetricas(proceso, proceso.Estado_Actual)
+			proceso.Estado_Actual = globals.READY
 			globals.MapaProcesos[finalizacionIo.PID] = proceso
 			globals.MapaProcesosMutex.Unlock()
 
@@ -291,6 +293,47 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}
+
+// Se tiene que llamar con el mutex del mapa proceso LOCKEADO, y antes de cambiar el estado al nuevo. Devuelve el proceso con las metricas cambiadas.
+func ActualizarMetricas(proceso globals.Proceso, estadoAnterior string) globals.Proceso {
+	// Falta hacer MT
+
+	switch estadoAnterior {
+	case globals.NEW:
+		ME := proceso.Pcb.ME
+		ME.New++
+		proceso.Pcb.ME = ME
+		return proceso
+	case globals.READY:
+		ME := proceso.Pcb.ME
+		ME.Ready++
+		proceso.Pcb.ME = ME
+		return proceso
+	case globals.EXECUTE:
+		ME := proceso.Pcb.ME
+		ME.Execute++
+		proceso.Pcb.ME = ME
+		return proceso
+	case globals.BLOCKED:
+		ME := proceso.Pcb.ME
+		ME.Blocked++
+		proceso.Pcb.ME = ME
+		return proceso
+	case globals.SUSP_BLOCKED:
+		ME := proceso.Pcb.ME
+		ME.Susp_Blocked++
+		proceso.Pcb.ME = ME
+		return proceso
+	case globals.SUSP_READY:
+		ME := proceso.Pcb.ME
+		ME.Susp_Blocked++
+		proceso.Pcb.ME = ME
+		return proceso
+	default:
+		// No deberia entrar nunca aca
+		return proceso
+	}
 }
 
 func BuscarProcesoEnBlocked(pid int64) int64 {
