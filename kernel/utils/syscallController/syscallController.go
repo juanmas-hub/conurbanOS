@@ -14,6 +14,10 @@ import (
 // Cuando la CPU detecta una syscall, nos envía a kernel y nosotros la manejamos:
 // En cada syscall hay que actualizarle el PC a los procesos!!
 
+// En todas las syscalls la CPU "se libera" y queda esperando para simular el tiempo que ejecuta el SO
+// - En IO el proceso se bloquea, entonces directamente el planificador de corto plazo replanifica.
+// - En INIT PROC la CPU no la indicamos como "libre" porque tiene que volver a ejecutar el mismo proceso
+
 func ManejarIO(w http.ResponseWriter, r *http.Request) {
 	// Recibo desde CPU la syscall IO y le envío solicitud a la IO correspondiente
 
@@ -39,9 +43,9 @@ func ManejarIO(w http.ResponseWriter, r *http.Request) {
 		} else {
 
 			// Bloqueo el proceso y le actualizo el PC
+			general.ActualizarPC(syscallIO.PID, syscallIO.PC)
 			globals.MapaProcesosMutex.Lock()
 			proceso := globals.MapaProcesos[syscallIO.PID]
-			proceso.Pcb.PC = syscallIO.PC
 			globals.MapaProcesosMutex.Unlock()
 
 			utils_pm.BloquearProcesoDesdeExecute(proceso)
@@ -58,12 +62,7 @@ func ManejarIO(w http.ResponseWriter, r *http.Request) {
 
 		globals.ListaIOsMutex.Unlock()
 
-		// Libero CPU
-		posCpu := general.BuscarCpu(syscallIO.NombreCPU)
-		globals.ListaCPUsMutex.Lock()
-		globals.ListaCPUs[posCpu].EstaLibre = true
-		globals.ListaCPUsMutex.Unlock()
-		general.Signal(globals.Sem_Cpus)
+		general.LiberarCPU(syscallIO.NombreCPU)
 	}()
 
 	w.WriteHeader(http.StatusOK)
@@ -120,7 +119,8 @@ func ManejarDUMP_MEMORY(w http.ResponseWriter, r *http.Request) {
 		if general.EnviarDumpMemory(syscallDUMP.PID) {
 			// No entiendo: issue
 		} else {
-			general.FinalizarProcesoYLiberarCPU(syscallDUMP.PID, syscallDUMP.NombreCPU)
+			general.FinalizarProceso(syscallDUMP.PID)
+			general.LiberarCPU(syscallDUMP.NombreCPU)
 		}
 
 	}()
@@ -144,8 +144,8 @@ func ManejarEXIT(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%+v\n", syscallEXIT)
 
 	go func() {
-		general.FinalizarProcesoYLiberarCPU(syscallEXIT.PID, syscallEXIT.NombreCPU)
-
+		general.FinalizarProceso(syscallEXIT.PID)
+		general.LiberarCPU(syscallEXIT.NombreCPU)
 	}()
 
 	w.WriteHeader(http.StatusOK)

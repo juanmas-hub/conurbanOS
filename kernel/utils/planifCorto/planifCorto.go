@@ -23,7 +23,6 @@ func EjecutarPlanificadorCortoPlazo() {
 			general.Wait(globals.Sem_ProcesosEnReady) // Espero a que haya procesos en Ready
 			globals.EstadosMutex.Lock()
 
-			// Esto lo hago asi para probarlo,
 			if len(globals.ESTADOS.READY) > 0 {
 
 				procesoAEjecutar := globals.ESTADOS.READY[0]
@@ -38,9 +37,9 @@ func EjecutarPlanificadorCortoPlazo() {
 				readyAExecute(globals.MapaProcesos[procesoAEjecutar])
 				log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
 
-				globals.EstadosMutex.Unlock()
 				globals.MapaProcesosMutex.Unlock()
 			}
+			globals.EstadosMutex.Unlock()
 		}
 	}
 
@@ -134,6 +133,9 @@ func EjecutarPlanificadorCortoPlazo() {
 	}
 }
 
+// Capaz esta funcion no hace falta - hay que ver si las devoluciones de CPU son unicamente syscalls
+// o hay mas casos.
+// Si son solo syscalls, esta funcion es al pedo
 func DevolucionProceso(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var devolucion globals.DevolucionProceso
@@ -150,11 +152,9 @@ func DevolucionProceso(w http.ResponseWriter, r *http.Request) {
 	go func() {
 
 		if devolucion.Motivo == globals.REPLANIFICAR_PROCESO {
-			// Actualizo el PC
-			globals.MapaProcesosMutex.Lock()
-			proceso := globals.MapaProcesos[devolucion.Pid]
-			proceso.Pcb.PC = devolucion.PC
-			globals.MapaProcesosMutex.Unlock()
+			// Replanificaciones:
+
+			general.ActualizarPC(devolucion.Pid, devolucion.PC)
 
 			// Se selecciona el proximo proceso a ejecutar
 			// La CPU queda esperando?? PAGINA 13
@@ -162,7 +162,8 @@ func DevolucionProceso(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if devolucion.Motivo == globals.FIN_PROCESO {
-			general.FinalizarProcesoYLiberarCPU(devolucion.Pid, devolucion.Nombre_CPU)
+			general.FinalizarProceso(devolucion.Pid)
+			general.LiberarCPU(devolucion.Nombre_CPU)
 		}
 
 	}()

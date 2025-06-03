@@ -199,7 +199,6 @@ func escucharFinalizacionesDeProcesos() {
 }
 
 func finalizarProceso(pid int64) {
-	// Funcion que puede llamarse con el proceso estando en cualquier estado
 
 	globals.MapaProcesosMutex.Lock()
 	proceso, ok := globals.MapaProcesos[pid]
@@ -217,8 +216,9 @@ func finalizarProceso(pid int64) {
 		return
 	}
 
-	// Elimino de la cola
+	// Elimino de la cola y mando a exit
 	eliminarDeSuCola(pid, proceso.Estado_Actual)
+	procesoAExit(proceso)
 
 	// Elimino del mapa procesos
 	globals.MapaProcesosMutex.Lock()
@@ -258,6 +258,11 @@ func eliminarDeSuCola(pid int64, estadoActual string) {
 		log.Printf("Error eliminando proceso PID: %d de su cola en EliminarDeSuCola", pid)
 	}
 	globals.EstadosMutex.Unlock()
+}
+
+func procesoAExit(proceso globals.Proceso) {
+	// No hay una cola de exit porque no hace falta, solo sirve para loguear metricas
+
 }
 
 func newAReady(proceso globals.Proceso_Nuevo) {

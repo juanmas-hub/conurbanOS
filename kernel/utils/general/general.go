@@ -433,14 +433,6 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-// Mandando PID, se finaliza ese proceso. NO SE USA para cuando se libera la CPU, pasa eso existe otra funcion.
-func FinalizarProceso(pid int64) {
-	globals.ProcesosAFinalizarMutex.Lock()
-	globals.ProcesosAFinalizar = append(globals.ProcesosAFinalizar, pid)
-	globals.ProcesosAFinalizarMutex.Unlock()
-	Signal(globals.Sem_ProcesoAFinalizar)
-}
-
 func ObtenerIO(nombre string) (int64, bool) {
 	var posIo int
 	encontrado := false
@@ -503,21 +495,28 @@ func BuscarCpu(nombre string) int {
 	}
 }
 
-// Mandando el PID y nombre de CPU, se libera la CPU y finaliza el proceso.
-func FinalizarProcesoYLiberarCPU(pid int64, nombreCPU string) {
-	// Finalizar proceso
+// Mandando PID, se finaliza ese proceso.
+func FinalizarProceso(pid int64) {
 	globals.ProcesosAFinalizarMutex.Lock()
 	globals.ProcesosAFinalizar = append(globals.ProcesosAFinalizar, pid)
 	globals.ProcesosAFinalizarMutex.Unlock()
 	Signal(globals.Sem_ProcesoAFinalizar)
+}
 
-	// Libero cpu
+// Mandando nombre del CPU, se libera. Aumenta el semaforo de Semaforos de CPU, entonces el planificador corto replanifica.
+func LiberarCPU(nombreCPU string) {
 	posCpu := BuscarCpu(nombreCPU)
 	globals.ListaCPUsMutex.Lock()
 	globals.ListaCPUs[posCpu].EstaLibre = true
 	globals.ListaCPUsMutex.Unlock()
 	Signal(globals.Sem_Cpus)
+}
 
+func ActualizarPC(pid int64, pc int64) {
+	globals.MapaProcesosMutex.Lock()
+	proceso := globals.MapaProcesos[pid]
+	proceso.Pcb.PC = pc
+	globals.MapaProcesosMutex.Unlock()
 }
 
 func EnviarDumpMemory(pid int64) bool {
