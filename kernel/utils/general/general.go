@@ -484,6 +484,7 @@ func ObtenerIO(nombre string) (int64, bool) {
 		if globals.ListaIOs[i].Handshake.Nombre == nombre {
 			posIo = i
 			encontrado = true
+			break
 		}
 	}
 
@@ -524,6 +525,7 @@ func BuscarCpu(nombre string) int {
 		if globals.ListaCPUs[i].Handshake.Nombre == nombre {
 			posCpu = i
 			encontrado = true
+			break
 		}
 	}
 

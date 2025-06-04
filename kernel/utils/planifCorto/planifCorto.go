@@ -201,6 +201,7 @@ func elegirCPUlibre() (string, int64) {
 			globals.ListaCPUs[i].EstaLibre = false
 			cpu = globals.ListaCPUs[i]
 			encontrado = true
+			break
 		}
 	}
 
