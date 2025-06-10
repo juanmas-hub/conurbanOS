@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
@@ -55,8 +56,9 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 			PC:  0,
 			// Las metricas las inicializa en 0
 		},
-		Estado_Actual: globals.NEW,
-		Rafaga:        nil,
+		Estado_Actual:        globals.NEW,
+		Rafaga:               nil,
+		UltimoCambioDeEstado: time.Now(),
 	}
 
 	procesoNuevo := globals.Proceso_Nuevo{

@@ -1,6 +1,9 @@
 package globals
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 type Kernel_Config struct {
 	Ip_memory           string `json:"ip_memory"`
@@ -105,7 +108,7 @@ var ProcesosAFinalizar []int64
 
 var NotificadorDesalojo = make(chan struct{}, 1)
 
-type Metricas struct {
+type MetricasEstado struct {
 	New          int64
 	Ready        int64
 	Execute      int64
@@ -113,11 +116,20 @@ type Metricas struct {
 	Susp_Ready   int64
 	Susp_Blocked int64
 }
+
+type MetricasTiempo struct {
+	New          time.Duration
+	Ready        time.Duration
+	Execute      time.Duration
+	Blocked      time.Duration
+	Susp_Ready   time.Duration
+	Susp_Blocked time.Duration
+}
 type PCB struct {
 	Pid int64
 	PC  int64
-	ME  Metricas
-	MT  Metricas
+	ME  MetricasEstado
+	MT  MetricasTiempo
 }
 
 type Rafagas struct {
@@ -127,9 +139,10 @@ type Rafagas struct {
 }
 
 type Proceso struct {
-	Pcb           PCB
-	Estado_Actual string
-	Rafaga        *Rafagas
+	Pcb                  PCB
+	Estado_Actual        string
+	Rafaga               *Rafagas
+	UltimoCambioDeEstado time.Time
 }
 
 type Proceso_Nuevo struct {

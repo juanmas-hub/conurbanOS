@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 )
@@ -305,40 +306,59 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-// Se tiene que llamar con el mutex del mapa proceso LOCKEADO, y antes de cambiar el estado al nuevo. Devuelve el proceso con las metricas cambiadas.
+// Cuando se cambia de estado. Se tiene que llamar con el mutex del mapa proceso LOCKEADO, y antes de cambiar el estado al nuevo. Devuelve el proceso con las metricas cambiadas.
 func ActualizarMetricas(proceso globals.Proceso, estadoAnterior string) globals.Proceso {
 	// Falta hacer MT
+	ahora := time.Now()
 
 	switch estadoAnterior {
 	case globals.NEW:
 		ME := proceso.Pcb.ME
 		ME.New++
 		proceso.Pcb.ME = ME
+		MT := proceso.Pcb.MT
+		MT.New = MT.New + ahora.Sub(proceso.UltimoCambioDeEstado)
+		proceso.UltimoCambioDeEstado = ahora
 		return proceso
 	case globals.READY:
 		ME := proceso.Pcb.ME
 		ME.Ready++
 		proceso.Pcb.ME = ME
+		MT := proceso.Pcb.MT
+		MT.Ready = MT.Ready + ahora.Sub(proceso.UltimoCambioDeEstado)
+		proceso.UltimoCambioDeEstado = ahora
 		return proceso
 	case globals.EXECUTE:
 		ME := proceso.Pcb.ME
 		ME.Execute++
 		proceso.Pcb.ME = ME
+		MT := proceso.Pcb.MT
+		MT.Execute = MT.Execute + ahora.Sub(proceso.UltimoCambioDeEstado)
+		proceso.UltimoCambioDeEstado = ahora
 		return proceso
 	case globals.BLOCKED:
 		ME := proceso.Pcb.ME
 		ME.Blocked++
 		proceso.Pcb.ME = ME
+		MT := proceso.Pcb.MT
+		MT.Blocked = MT.Blocked + ahora.Sub(proceso.UltimoCambioDeEstado)
+		proceso.UltimoCambioDeEstado = ahora
 		return proceso
 	case globals.SUSP_BLOCKED:
 		ME := proceso.Pcb.ME
 		ME.Susp_Blocked++
 		proceso.Pcb.ME = ME
+		MT := proceso.Pcb.MT
+		MT.Susp_Blocked = MT.Susp_Blocked + ahora.Sub(proceso.UltimoCambioDeEstado)
+		proceso.UltimoCambioDeEstado = ahora
 		return proceso
 	case globals.SUSP_READY:
 		ME := proceso.Pcb.ME
 		ME.Susp_Blocked++
 		proceso.Pcb.ME = ME
+		MT := proceso.Pcb.MT
+		MT.Susp_Ready = MT.Susp_Ready + ahora.Sub(proceso.UltimoCambioDeEstado)
+		proceso.UltimoCambioDeEstado = ahora
 		return proceso
 	default:
 		// No deberia entrar nunca aca
