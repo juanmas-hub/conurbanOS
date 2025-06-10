@@ -20,7 +20,6 @@ import (
 
 func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 	// Espera el Enter en otra rutina asi se puede abrir el servidor
-
 	reader := bufio.NewReader(os.Stdin)
 	log.Println("Planificador de largo plazo en STOP, presionar ENTER: ")
 	for {
@@ -61,8 +60,14 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		UltimoCambioDeEstado: time.Now(),
 	}
 
-	if pid == 0 {
-		proceso.Rafaga.Est_Sgte = globals.KernelConfig.Initial_estimate
+	if globals.KernelConfig.Scheduler_algorithm != "FIFO" {
+		rafaga := globals.Rafagas{
+			Raf_Ant:  0,
+			Est_Ant:  globals.KernelConfig.Initial_estimate,
+			Est_Sgte: 0,
+		}
+
+		proceso.Rafaga = &rafaga
 	}
 
 	procesoNuevo := globals.Proceso_Nuevo{
@@ -89,7 +94,7 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 }
 
 func PasarProcesosAReady() {
-	// Esta funcion deberia llamarse cuando llega un proceso a NEW, a EXIT, a SUSP_BLOCKED y (SUSP_READY ??? - creo q no)
+	// Esta funcion deberia llamarse cuando llega un proceso a NEW, a EXIT, y a SUSP_BLOCKED
 	// Voy a intentar pasar la mayor cantidad de procesos que pueda mientras memoria tenga espacio
 
 	globals.EstadosMutex.Lock()

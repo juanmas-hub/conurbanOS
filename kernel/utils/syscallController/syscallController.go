@@ -50,7 +50,7 @@ func ManejarIO(w http.ResponseWriter, r *http.Request) {
 
 			utils_pm.BloquearProcesoDesdeExecute(proceso)
 
-			// Si esta libre, envio solicitud, sino agrego a la cola
+			// Si esta libre, envio solicitud, sino soloagrego a la cola
 			io := globals.ListaIOs[posIo]
 			if len(io.ColaProcesosEsperando) == 0 {
 				globals.ListaIOs[posIo].PidProcesoActual = syscallIO.PID

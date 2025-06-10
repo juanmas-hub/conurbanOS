@@ -32,3 +32,7 @@ type FinalizacionIO struct {
 	PID      int64  `json:"pid"`
 	NombreIO string `json:"nombre"`
 }
+
+type DesconexionIO struct {
+	NombreIO string `json:"nombre"`
+}

@@ -177,6 +177,10 @@ type FinalizacionIO struct {
 	NombreIO string `json:"nombre"`
 }
 
+type DesconexionIO struct {
+	NombreIO string `json:"nombre"`
+}
+
 // Sycalls
 type SyscallIO struct {
 	NombreIO  string `json:"nombre_io"`

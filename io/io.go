@@ -1,11 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/io"
 	utils_io "github.com/sisoputnfrba/tp-golang/io/utils"
@@ -41,8 +44,20 @@ func main() {
 		globals.IoConfig.PortIO,
 	)
 
-	// Avisar desconexion de IO
-	defer utils_io.Desconectar(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel, globals.PidProcesoActual)
+	// Canal para recibir señales del sistema
+	sigs := make(chan os.Signal, 1)
+
+	// Notificar al canal si se recibe SIGINT o SIGTERM
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	// Goroutine que espera la señal
+	go func() {
+		sig := <-sigs
+		fmt.Println()
+		fmt.Println("Señal recibida:", sig)
+
+		utils_io.Desconectar(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel)
+	}()
 
 	// Servidor
 	mux := http.NewServeMux()

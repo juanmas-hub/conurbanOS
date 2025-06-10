@@ -189,19 +189,23 @@ func DevolucionProceso(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-// ----- FUNCIONES LOCALES -------
-
-func actualizarEstimado(pid int64, rafagaReal int64) {
+func ActualizarEstimado(pid int64, rafagaReal int64) {
 	// Me imagino que esto se usa cuando se termina de ejecutar un proceso
 
 	proceso := globals.MapaProcesos[pid]
 	alpha := globals.KernelConfig.Alpha
 	ant := proceso.Rafaga.Est_Sgte
+	est_ant := proceso.Rafaga.Est_Sgte
+
+	proceso.Rafaga.Raf_Ant = ant
+	proceso.Rafaga.Est_Ant = est_ant
 	proceso.Rafaga.Est_Sgte = rafagaReal*alpha + ant*(1-alpha)
 	// Est(n+1) =  R(n) + (1-) Est(n) ;    [0,1]
 
 	globals.MapaProcesos[pid] = proceso
 }
+
+// ----- FUNCIONES LOCALES -------
 
 func elegirCPUlibre() (string, int64) {
 	globals.ListaCPUsMutex.Lock()

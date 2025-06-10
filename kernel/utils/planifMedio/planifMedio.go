@@ -86,8 +86,6 @@ func blockedASuspBlocked(proceso globals.Proceso) {
 	globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED, proceso.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
 
-	// Libere memoria => llamo a nuevos procesos
-	pl.PasarProcesosAReady()
 }
 
 func avisarSwappeo(pid int64) {

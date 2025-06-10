@@ -260,7 +260,8 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 				procesoAIO.PID,
 				procesoAIO.Tiempo,
 			)
-
+		} else {
+			globals.ListaIOs[posIo].PidProcesoActual = -1
 		}
 
 		globals.ListaIOsMutex.Unlock()
@@ -472,7 +473,7 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	// Cuando se desconecta un IO, se pasa a exit el proceso que estaba en el IO.
 
 	decoder := json.NewDecoder(r.Body)
-	var desconexionIO globals.FinalizacionIO
+	var desconexionIO globals.DesconexionIO
 	err := decoder.Decode(&desconexionIO)
 	if err != nil {
 		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
@@ -484,9 +485,15 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	globals.ListaIOsMutex.Lock()
 	posIo, _ := ObtenerIO(desconexionIO.NombreIO)
 	io := globals.ListaIOs[posIo]
+	pidProceso := io.PidProcesoActual
 
 	// Elimino de lista IOs
 	globals.ListaIOs = append(globals.ListaIOs[:posIo], globals.ListaIOs[posIo+1:]...)
+
+	if pidProceso != -1 {
+		// Finalizo proceso que esta ejecuando en esa IO
+		FinalizarProceso(pidProceso)
+	}
 
 	// POR AHORA: Finalizo todos los procesos de la cola esperando esa IO (preguntar en un issue)
 	for i := range io.ColaProcesosEsperando {
@@ -495,12 +502,7 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 
 	globals.ListaIOsMutex.Unlock()
 
-	log.Printf("Se desconecto el IO: %s, que tenia el proceso de PID: %d", io.Handshake.Nombre, desconexionIO.PID)
-
-	if desconexionIO.PID != -1 {
-		// Finalizo proceso que esta ejecuando en esa IO
-		FinalizarProceso(desconexionIO.PID)
-	}
+	log.Printf("Se desconecto el IO: %s, que tenia el proceso de PID: %d", io.Handshake.Nombre, pidProceso)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
