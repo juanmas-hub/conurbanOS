@@ -64,7 +64,7 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 	log.Println("Me llego para iniciar un proceso")
 	log.Printf("%+v\n", mensaje)
 
-	if CargarProcesoDesdeArchivo(int(mensaje.Pid), mensaje.Archivo_Pseudocodigo) != 0 {
+	if AlmacenarProceso(int(mensaje.Pid), mensaje.Archivo_Pseudocodigo) != nil {
 		w.WriteHeader(http.StatusNotImplemented)
 		w.Write([]byte("notImplemented"))
 	} else {
@@ -169,22 +169,19 @@ func extraerInstrucciones(archivo *os.File) []string {
 	return instrucciones
 }
 
-func CargarProcesoDesdeArchivo(pid int, filename string) int {
-
-	if globals_memoria.Instrucciones[pid] != nil {
-		log.Printf("El archivo de pid %d ya tenia sus instrucciones guardadas", pid)
-		return 1
-	}
+func ObtenerInstruccionesDesdeArchivo(filename string) []string {
 
 	var archivo *os.File = abrirArchivo(filename)
 	if archivo == nil {
-		return 1
+		return nil
 	}
 
-	globals_memoria.Instrucciones[pid] = extraerInstrucciones(archivo)
+	var instrucciones []string = extraerInstrucciones(archivo)
 
-	return 0
+	return instrucciones
 }
+
+
 
 func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
@@ -207,7 +204,6 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-// FUNCION TEMPORAL PERDON JUANMA QUERIA PROBARLO
 func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.SolicitudInstruccion

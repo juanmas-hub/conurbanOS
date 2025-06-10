@@ -38,7 +38,7 @@ type EntradaTablaPagina struct {
 }
 
 type TablaDePaginas struct {
-	Entradas []EntradaTablaPagina // 4*64=256
+	Entradas []EntradaTablaPagina
 }
 
 type Manager map[int]*TablaDePaginas
@@ -70,3 +70,12 @@ type SolicitudInstruccion struct {
 	Pid int64 `json:"pid"`
 	Pc  int64 `json:"pc"`
 }
+
+type EntradaSwap struct {
+    Pagina    int
+    Offset    int64
+    Tamaño    int
+}
+type TablaDeSWAP map[int]EntradaSwap
+
+var TablaSWAP TablaDeSWAP

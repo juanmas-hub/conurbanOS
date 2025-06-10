@@ -164,8 +164,6 @@ func Decode(instruccion string) (globals.InstruccionDecodificada, error) {
 	}
 
 
-	// Nose por que el len de parametros esta mal
-	// En caso de WRITE deberia ser 2, pero da 1:
 	log.Println("longitud: ",len(parametros))
 
 	instDeco := globals.InstruccionDecodificada{
