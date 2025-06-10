@@ -570,6 +570,14 @@ func FinalizarProceso(pid int64) {
 	Signal(globals.Sem_ProcesoAFinalizar)
 }
 
+func NotificarProcesoEnReady(notificador chan struct{}) {
+	select {
+	case notificador <- struct{}{}: // intento mandar la señal
+	default:
+		// si el canal ya tiene una señal, no hago nada para no bloquear ni saturar
+	}
+}
+
 // Mandando nombre del CPU, se libera. Aumenta el semaforo de Semaforos de CPU, entonces el planificador corto replanifica.
 func LiberarCPU(nombreCPU string) {
 	posCpu := BuscarCpu(nombreCPU)

@@ -279,6 +279,7 @@ func newAReady(proceso globals.Proceso_Nuevo) {
 
 	log.Printf("cantidad de procesos en READY: %+v", len(globals.ESTADOS.READY))
 
+	general.NotificarProcesoEnReady(globals.NotificadorDesalojo)
 	general.Signal(globals.Sem_ProcesosEnReady) // Nuevo proceso en ready
 }
 
@@ -290,6 +291,7 @@ func suspReadyAReady(proceso globals.Proceso) {
 	globals.ESTADOS.SUSP_READY = globals.ESTADOS.SUSP_READY[1:]
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
 
+	general.NotificarProcesoEnReady(globals.NotificadorDesalojo)
 	general.Signal(globals.Sem_ProcesosEnReady) // Nuevo proceso en ready
 
 }

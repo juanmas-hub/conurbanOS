@@ -103,6 +103,8 @@ var ProcesosAFinalizar []int64
 // Con el semaforo le aviso al planificador de largo plazo que hay un proceso para finalizar
 // En el slice le pongo el PID
 
+var NotificadorDesalojo = make(chan struct{}, 1)
+
 type Metricas struct {
 	New          int64
 	Ready        int64

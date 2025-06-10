@@ -45,43 +45,65 @@ func EjecutarPlanificadorCortoPlazo() {
 	}
 
 	if globals.KernelConfig.Scheduler_algorithm == "SRT" {
-		for {
-			// Aca no se espera a que haya CPUs libres porque puede desalojar
-			general.Wait(globals.Sem_ProcesosEnReady)
 
-			globals.EstadosMutex.Lock()
+		/*
+			Nuevo proceso en Ready && no hay CPUs libres =>
+					- rafaga mas corta que los que estan en ejecucion => desalojar el de tiempo restante mas alto
+					- no es mas corta => lo dejamos en la cola de ready
 
-			/*
-				Nuevo proceso en Ready && no hay CPUs libres =>
-						- rafaga mas corta que los que estan en ejecucion => desalojar el de tiempo restante mas alto
-						- no es mas corta => lo dejamos en la cola de ready
-			*/
+			Ejecutamos en dos hilos distintos:
+				- caso no desalojo: como el resto de algoritmos, cuando haya cpus libres y procesos en ready, ejecuta
+				- caso desalojo: cuando llegue un proceso en ready, se fija si tiene prioridad. En el caso que el proceso se debe
+								 quedar en ready,
+		*/
 
-			// Primero ordenamos READY por rafaga
-			ordenarReadyPorRafaga()
+		go casoSRTnodesalojo()
+		go casoSRTdesalojo()
 
-			// Si procesos en EXECUTE -> comparamos rafagas
-			if len(globals.ESTADOS.EXECUTE) > 0 {
-				pidEnExec := globals.ESTADOS.EXECUTE[0]
-				rafagaExec := globals.MapaProcesos[pidEnExec].Rafaga.Est_Sgte
-				rafagaNuevo := globals.MapaProcesos[globals.ESTADOS.READY[0]].Rafaga.Est_Sgte
-
-				if rafagaNuevo < rafagaExec {
-					ipCPU, puertoCPU, ok := general.BuscarCpuPorPID(pidEnExec)
-					if ok {
-						general.EnviarInterrupcionACPU(ipCPU, puertoCPU, pidEnExec)
-					} else {
-						log.Printf("No se encontró la CPU que ejecuta el PID %d", pidEnExec)
-					}
-
-				}
-			}
-			// Si no hay ningun proceso en EXECUTE -> simplemente agregamos el primero de READY
-			ejecutarUnProceso()
-
-			globals.EstadosMutex.Unlock()
-		}
 	}
+}
+
+func casoSRTnodesalojo() {
+	for {
+		general.Wait(globals.Sem_Cpus)
+		general.Wait(globals.Sem_ProcesosEnReady)
+
+		globals.EstadosMutex.Lock()
+
+		ordenarReadyPorRafaga()
+		ejecutarUnProceso()
+
+		globals.EstadosMutex.Unlock()
+	}
+}
+
+func casoSRTdesalojo() {
+	<-globals.NotificadorDesalojo // espero a que llegue una señal (bloquea hasta que llegue)
+
+	globals.EstadosMutex.Lock()
+	ordenarReadyPorRafaga()
+
+	// Si procesos en EXECUTE -> comparamos rafagas
+	contador := len(globals.ESTADOS.EXECUTE)
+	for contador > 0 {
+		pidEnExec := globals.ESTADOS.EXECUTE[contador-1]
+		rafagaExec := globals.MapaProcesos[pidEnExec].Rafaga.Est_Sgte
+		rafagaNuevo := globals.MapaProcesos[globals.ESTADOS.READY[0]].Rafaga.Est_Sgte
+
+		if rafagaNuevo < rafagaExec {
+			ipCPU, puertoCPU, ok := general.BuscarCpuPorPID(pidEnExec)
+			if ok {
+				general.EnviarInterrupcionACPU(ipCPU, puertoCPU, pidEnExec)
+				break
+			} else {
+				log.Printf("No se encontró la CPU que ejecuta el PID %d", pidEnExec)
+			}
+		}
+		contador--
+	}
+
+	ejecutarUnProceso()
+	globals.EstadosMutex.Unlock()
 }
 
 func ordenarReadyPorRafaga() {
