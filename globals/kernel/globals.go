@@ -51,6 +51,7 @@ type Handshake struct {
 type ListaCpu struct {
 	Handshake Handshake
 	EstaLibre bool
+	PIDActual int64
 }
 
 type ListaIo struct {

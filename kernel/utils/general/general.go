@@ -93,6 +93,16 @@ func EnviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64, pc int64) {
 	}
 
 	log.Printf("respuesta del servidor: %s", resp.Status)
+
+	// Guardar PID en la CPU correspondiente
+	globals.ListaCPUsMutex.Lock()
+	for i := range globals.ListaCPUs {
+		if globals.ListaCPUs[i].Handshake.IP == ip && globals.ListaCPUs[i].Handshake.Puerto == puerto {
+			globals.ListaCPUs[i].PIDActual = pid
+			break
+		}
+	}
+	globals.ListaCPUsMutex.Unlock()
 }
 
 func EnviarInterrupcionACPU(ip string, puerto int64, pid int64) {
@@ -538,6 +548,18 @@ func BuscarCpu(nombre string) int {
 		log.Println("No se encontro la CPU en la devolucion")
 		return -1
 	}
+}
+
+func BuscarCpuPorPID(pid int64) (string, int64, bool) {
+	globals.ListaCPUsMutex.Lock()
+	defer globals.ListaCPUsMutex.Unlock()
+
+	for _, cpu := range globals.ListaCPUs {
+		if !cpu.EstaLibre && cpu.PIDActual == pid {
+			return cpu.Handshake.IP, cpu.Handshake.Puerto, true
+		}
+	}
+	return "", 0, false
 }
 
 // Mandando PID, se finaliza ese proceso.

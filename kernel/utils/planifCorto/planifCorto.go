@@ -57,7 +57,6 @@ func EjecutarPlanificadorCortoPlazo() {
 						- no es mas corta => lo dejamos en la cola de ready
 			*/
 
-			// Con desalojo
 			// Primero ordenamos READY por rafaga
 			ordenarReadyPorRafaga()
 
@@ -68,24 +67,18 @@ func EjecutarPlanificadorCortoPlazo() {
 				rafagaNuevo := globals.MapaProcesos[globals.ESTADOS.READY[0]].Rafaga.Est_Sgte
 
 				if rafagaNuevo < rafagaExec {
-					// OjO !! Esto debe estar mal. Hay que saber cual es la CPU que queremos desalojar
-					// Hay
-					// esto seria una funcion
-					//for _, cpu := range globals.ListaCPUs {
-					//	if cpu.EstaLibre {
-					//		return false
-					//	}
-					//}
-					//return true
-					cpu := globals.ListaCPUs[0].Handshake
-					ipCPU := cpu.IP
-					puertoCPU := cpu.Puerto
-					general.EnviarInterrupcionACPU(ipCPU, puertoCPU, pidEnExec)
-					// Aca la logica para mandar el proceso con rafaga mas corta - despues lo hago me voy a tocar (la guitarra)
+					ipCPU, puertoCPU, ok := general.BuscarCpuPorPID(pidEnExec)
+					if ok {
+						general.EnviarInterrupcionACPU(ipCPU, puertoCPU, pidEnExec)
+					} else {
+						log.Printf("No se encontró la CPU que ejecuta el PID %d", pidEnExec)
+					}
+
 				}
 			}
 			// Si no hay ningun proceso en EXECUTE -> simplemente agregamos el primero de READY
 			ejecutarUnProceso()
+
 			globals.EstadosMutex.Unlock()
 		}
 	}
