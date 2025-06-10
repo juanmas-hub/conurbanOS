@@ -61,6 +61,10 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		UltimoCambioDeEstado: time.Now(),
 	}
 
+	if pid == 0 {
+		proceso.Rafaga.Est_Sgte = globals.KernelConfig.Initial_estimate
+	}
+
 	procesoNuevo := globals.Proceso_Nuevo{
 		Archivo_Pseudocodigo: archivo,
 		Tamaño:               tamanio,

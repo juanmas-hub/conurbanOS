@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
@@ -78,19 +79,17 @@ func casoSRTnodesalojo() {
 }
 
 func casoSRTdesalojo() {
-	<-globals.NotificadorDesalojo // espero a que llegue una señal (bloquea hasta que llegue)
+	for {
+		<-globals.NotificadorDesalojo // espero a que llegue una señal (bloquea hasta que llegue)
 
-	globals.EstadosMutex.Lock()
-	ordenarReadyPorRafaga()
-
-	// Si procesos en EXECUTE -> comparamos rafagas
-	contador := len(globals.ESTADOS.EXECUTE)
-	for contador > 0 {
-		pidEnExec := globals.ESTADOS.EXECUTE[contador-1]
-		rafagaExec := globals.MapaProcesos[pidEnExec].Rafaga.Est_Sgte
+		globals.EstadosMutex.Lock()
+		ordenarReadyPorRafaga()
+		globals.MapaProcesosMutex.Lock()
+		pidEnExec, restanteExec := buscarProcesoEnExecuteDeMenorRafagaRestante()
 		rafagaNuevo := globals.MapaProcesos[globals.ESTADOS.READY[0]].Rafaga.Est_Sgte
 
-		if rafagaNuevo < rafagaExec {
+		globals.MapaProcesosMutex.Unlock()
+		if rafagaNuevo < restanteExec {
 			ipCPU, puertoCPU, ok := general.BuscarCpuPorPID(pidEnExec)
 			if ok {
 				general.EnviarInterrupcionACPU(ipCPU, puertoCPU, pidEnExec)
@@ -99,11 +98,28 @@ func casoSRTdesalojo() {
 				log.Printf("No se encontró la CPU que ejecuta el PID %d", pidEnExec)
 			}
 		}
-		contador--
+
+		ejecutarUnProceso()
+		globals.EstadosMutex.Unlock()
+	}
+}
+
+func buscarProcesoEnExecuteDeMenorRafagaRestante() (int64, int64) {
+	var pidMenorRafaga int64
+	pidMenorRafaga = globals.ESTADOS.EXECUTE[0]
+	for i := range globals.ESTADOS.EXECUTE {
+		// Si la posicion i esta libre
+		pidActual := globals.MapaProcesos[int64(i)].Pcb.Pid
+		if rafagaRestante(pidActual) < rafagaRestante(pidMenorRafaga) {
+			pidMenorRafaga = pidActual
+		}
 	}
 
-	ejecutarUnProceso()
-	globals.EstadosMutex.Unlock()
+	return pidMenorRafaga, rafagaRestante(pidMenorRafaga)
+}
+
+func rafagaRestante(pid int64) int64 {
+	return globals.MapaProcesos[pid].Rafaga.Est_Sgte - int64(time.Now().Sub(globals.MapaProcesos[pid].UltimoCambioDeEstado))
 }
 
 func ordenarReadyPorRafaga() {
