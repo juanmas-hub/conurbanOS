@@ -46,28 +46,19 @@ func main() {
 	mensaje := "Mensaje desde Kernel"
 	utils_general.EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
 
-	// Prueba IO
+	// Prueba IO -- simulo llamada a IO teclado
 	go func() {
 		time.Sleep(10 * time.Second)
-		if len(globals.ListaIOs) > 0 {
-			io := globals.ListaIOs[0].Handshake
-			ipIO := io.IP
-			puertoIO := io.Puerto
-			pid := int64(1)
-			tiempo := int64(5000)
-			syscallIO := globals.SyscallIO{
-				NombreIO: "TECLADO",
-				Tiempo:   tiempo,
-				PID:      pid,
-			}
+		pid := int64(1)
+		tiempo := int64(5000)
+		io := globals.MapaIOs["teclado"]
+		io.Instancias[0].PidProcesoActual = pid
+		globals.MapaIOs["teclado"] = io
+		utils_general.EnviarSolicitudIO(io.Instancias[0].Handshake.IP, io.Instancias[0].Handshake.Puerto, pid, tiempo)
 
-			globals.ListaIOs[0].PidProcesoActual = pid
-			globals.ListaIOs[0].ColaProcesosEsperando = append(globals.ListaIOs[0].ColaProcesosEsperando, syscallIO)
-			utils_general.EnviarSolicitudIO(ipIO, puertoIO, pid, tiempo)
-		} else {
-			log.Println("No hay IOs registrados todavía")
-		}
 	}()
+
+	//log.Print("IO llamada teclado: ", globals.MapaIOs["teclado"])
 
 	// Servidor (recibir mensaje de CPU y IO)
 	mux := http.NewServeMux()
@@ -82,7 +73,7 @@ func main() {
 
 	mux.HandleFunc("/devolucionProceso", utils_cp.DevolucionProceso)
 
-	mux.HandleFunc("/syscallIO", utils_syscallController.ManejarIO)
+	mux.HandleFunc("/syscallIO", utils_syscallController.RecibirIO)
 	mux.HandleFunc("/syscallDUMP_MEMORY", utils_syscallController.ManejarDUMP_MEMORY)
 	mux.HandleFunc("/syscallEXIT", utils_syscallController.ManejarEXIT)
 	mux.HandleFunc("/syscallINIT_PROC", utils_syscallController.ManejarINIT_PROC)

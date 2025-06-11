@@ -57,15 +57,20 @@ type ListaCpu struct {
 	PIDActual int64
 }
 
-type ListaIo struct {
-	Handshake             Handshake
-	PidProcesoActual      int64 // PID del proceso actual que esta en esta IO
+type EntradaMapaIO struct {
+	Instancias            []InstanciaIO
 	ColaProcesosEsperando []SyscallIO
 }
 
+type InstanciaIO struct {
+	Handshake        Handshake
+	PidProcesoActual int64 // PID del proceso actual que esta en esta IO
+}
+
 // Listas
-var ListaIOs []ListaIo
 var ListaCPUs []ListaCpu
+
+var MapaIOs map[string]EntradaMapaIO = make(map[string]EntradaMapaIO) // mapa de las IOs conectadas, con clave nombre
 
 // Constantes
 const NEW string = "NEW"
@@ -179,6 +184,7 @@ type FinalizacionIO struct {
 
 type DesconexionIO struct {
 	NombreIO string `json:"nombre"`
+	PID      int64  `json:"pid"`
 }
 
 // Sycalls

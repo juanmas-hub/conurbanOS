@@ -18,7 +18,7 @@ import (
 // - En IO el proceso se bloquea, entonces directamente el planificador de corto plazo replanifica.
 // - En INIT PROC la CPU no la indicamos como "libre" porque tiene que volver a ejecutar el mismo proceso
 
-func ManejarIO(w http.ResponseWriter, r *http.Request) {
+func RecibirIO(w http.ResponseWriter, r *http.Request) {
 	// Recibo desde CPU la syscall IO y le envío solicitud a la IO correspondiente
 
 	decoder := json.NewDecoder(r.Body)
@@ -34,39 +34,47 @@ func ManejarIO(w http.ResponseWriter, r *http.Request) {
 	log.Println("Hubo una Syscall IO")
 	log.Printf("%+v\n", syscallIO)
 
-	go func() {
-		globals.ListaIOsMutex.Lock()
-		posIo, existe := general.ObtenerIO(syscallIO.NombreIO)
-
-		if !existe {
-			general.FinalizarProceso(syscallIO.PID)
-		} else {
-
-			// Bloqueo el proceso y le actualizo el PC
-			general.ActualizarPC(syscallIO.PID, syscallIO.PC)
-			globals.MapaProcesosMutex.Lock()
-			proceso := globals.MapaProcesos[syscallIO.PID]
-			globals.MapaProcesosMutex.Unlock()
-
-			utils_pm.BloquearProcesoDesdeExecute(proceso)
-
-			// Si esta libre, envio solicitud, sino soloagrego a la cola
-			io := globals.ListaIOs[posIo]
-			if len(io.ColaProcesosEsperando) == 0 {
-				globals.ListaIOs[posIo].PidProcesoActual = syscallIO.PID
-				general.EnviarSolicitudIO(io.Handshake.IP, io.Handshake.Puerto, syscallIO.PID, syscallIO.Tiempo)
-			}
-			io.ColaProcesosEsperando = append(io.ColaProcesosEsperando, syscallIO)
-			globals.ListaIOs[posIo] = io
-		}
-
-		globals.ListaIOsMutex.Unlock()
-
-		general.LiberarCPU(syscallIO.NombreCPU)
-	}()
+	go ManejarIO(syscallIO)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}
+
+func ManejarIO(syscallIO globals.SyscallIO) {
+	globals.ListaIOsMutex.Lock()
+	//posIo, existe := general.ObtenerIO(syscallIO.NombreIO)
+	existe := verificarExistenciaIO(syscallIO.NombreIO)
+	nombreIO := syscallIO.NombreIO
+
+	if !existe {
+		general.FinalizarProceso(syscallIO.PID)
+	} else {
+
+		// Bloqueo el proceso y le actualizo el PC
+		general.ActualizarPC(syscallIO.PID, syscallIO.PC)
+		globals.MapaProcesosMutex.Lock()
+		proceso := globals.MapaProcesos[syscallIO.PID]
+		globals.MapaProcesosMutex.Unlock()
+
+		utils_pm.BloquearProcesoDesdeExecute(proceso)
+
+		// Si hay instancias libres, envio solicitud, sino agrego a la cola
+		io := globals.MapaIOs[nombreIO]
+		instanciaIo, pos, hayLibre := buscarInstanciaIOLibre(syscallIO.NombreIO)
+		if hayLibre {
+			instanciaIo.PidProcesoActual = syscallIO.PID
+			general.EnviarSolicitudIO(instanciaIo.Handshake.IP, instanciaIo.Handshake.Puerto, syscallIO.PID, syscallIO.Tiempo)
+		} else {
+			io.ColaProcesosEsperando = append(io.ColaProcesosEsperando, syscallIO)
+		}
+		io.Instancias[pos] = instanciaIo
+		globals.MapaIOs[nombreIO] = io
+
+	}
+
+	globals.ListaIOsMutex.Unlock()
+
+	general.LiberarCPU(syscallIO.NombreCPU)
 }
 
 func ManejarINIT_PROC(w http.ResponseWriter, r *http.Request) {
@@ -150,4 +158,28 @@ func ManejarEXIT(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}
+
+// ------ FUNCIONES LOCALES --------
+
+// Dada un nombre de IO, busca una instancia libre. Devuelve la instancia, la posicion en la cola de instancias y si hay instancia libre
+func buscarInstanciaIOLibre(nombreIO string) (globals.InstanciaIO, int, bool) {
+	handshake := globals.Handshake{
+		Nombre: "nombre",
+		IP:     "ip",
+		Puerto: 2007,
+	}
+	instancia := globals.InstanciaIO{
+		Handshake:        handshake,
+		PidProcesoActual: -1,
+	}
+	return instancia, 0, true
+}
+
+func verificarExistenciaIO(nombreIO string) bool {
+	return true
+}
+
+func BuscarPosInstanciaIO(id int64) int {
+	return 0
 }

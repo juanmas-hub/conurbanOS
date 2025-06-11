@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
@@ -174,7 +173,7 @@ func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%+v\n", handshake)
 
 	globals.ListaIOsMutex.Lock()
-	AgregarAListaIOs(handshake)
+	AgregarAInstanciasIOs(handshake)
 	globals.ListaIOsMutex.Unlock()
 
 	w.WriteHeader(http.StatusOK)
@@ -244,25 +243,33 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		globals.ListaIOsMutex.Lock()
 
-		// Elimino de la cola
-		posIo, _ := ObtenerIO(finalizacionIo.NombreIO)
-		globals.ListaIOs[posIo].PidProcesoActual = -1
-		globals.ListaIOs[posIo].ColaProcesosEsperando = globals.ListaIOs[posIo].ColaProcesosEsperando[1:]
-		log.Println("Length cola procesos esperando en: " + finalizacionIo.NombreIO + ": " + strconv.Itoa(len(globals.ListaIOs[posIo].ColaProcesosEsperando)))
+		io := globals.MapaIOs[finalizacionIo.NombreIO]
+		posInstanciaIo := BuscarInstanciaIO(io, finalizacionIo.PID)
+		instanciaIo := io.Instancias[posInstanciaIo]
+
+		// Cambio el PID del proceso actual
+		instanciaIo.PidProcesoActual = -1
+		io.Instancias[posInstanciaIo] = instanciaIo
+
+		globals.MapaIOs[finalizacionIo.NombreIO] = io
 
 		// Si hay procesos esperando IO, envio solicitud
-		if len(globals.ListaIOs[posIo].ColaProcesosEsperando) > 0 {
-			procesoAIO := globals.ListaIOs[posIo].ColaProcesosEsperando[0]
-			globals.ListaIOs[posIo].PidProcesoActual = procesoAIO.PID
+		if len(globals.MapaIOs[finalizacionIo.NombreIO].ColaProcesosEsperando) > 0 {
+			procesoAIO := globals.MapaIOs[finalizacionIo.NombreIO].ColaProcesosEsperando[0]
+			instanciaIo.PidProcesoActual = procesoAIO.PID
 			EnviarSolicitudIO(
-				globals.ListaIOs[posIo].Handshake.IP,
-				globals.ListaIOs[posIo].Handshake.Puerto,
+				instanciaIo.Handshake.IP,
+				instanciaIo.Handshake.Puerto,
 				procesoAIO.PID,
 				procesoAIO.Tiempo,
 			)
-		} else {
-			globals.ListaIOs[posIo].PidProcesoActual = -1
+
+			// Saco al nuevo proceso de la cola de procesos esperando
+			io.ColaProcesosEsperando = io.ColaProcesosEsperando[1:]
 		}
+
+		io.Instancias[posInstanciaIo] = instanciaIo
+		globals.MapaIOs[finalizacionIo.NombreIO] = io
 
 		globals.ListaIOsMutex.Unlock()
 
@@ -305,6 +312,11 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}
+
+// Dada una cola y un PID, busca el proceso en la cola y devuelve la posicion.
+func buscarProcesoEnColaIO(cola []globals.SyscallIO, pid int64) int {
+	return 0
 }
 
 // Cuando se cambia de estado. Se tiene que llamar con el mutex del mapa proceso LOCKEADO, y antes de cambiar el estado al nuevo. Devuelve el proceso con las metricas cambiadas.
@@ -483,61 +495,49 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	}
 
 	globals.ListaIOsMutex.Lock()
-	posIo, _ := ObtenerIO(desconexionIO.NombreIO)
-	io := globals.ListaIOs[posIo]
-	pidProceso := io.PidProcesoActual
+	io := globals.MapaIOs[desconexionIO.NombreIO]
 
-	// Elimino de lista IOs
-	globals.ListaIOs = append(globals.ListaIOs[:posIo], globals.ListaIOs[posIo+1:]...)
+	pidProceso := desconexionIO.PID
 
+	// Saco la instancia de la cola de instancias
+	posInstancia := BuscarPosInstanciaIO(pidProceso)
+	io.Instancias = append(io.Instancias[:posInstancia], io.Instancias[posInstancia+1:]...)
+
+	// Si habia proceso ejecutando
 	if pidProceso != -1 {
+
 		// Finalizo proceso que esta ejecuando en esa IO
 		FinalizarProceso(pidProceso)
 	}
 
-	// POR AHORA: Finalizo todos los procesos de la cola esperando esa IO (preguntar en un issue)
-	for i := range io.ColaProcesosEsperando {
-		FinalizarProceso(io.ColaProcesosEsperando[i].PID)
+	// Si no quedan mas instancias
+	if len(io.Instancias) == 0 {
+		// Finalizo todos los procesos de la cola esperando esa IO
+		for i := range io.ColaProcesosEsperando {
+			FinalizarProceso(io.ColaProcesosEsperando[i].PID)
+		}
 	}
 
+	globals.MapaIOs[desconexionIO.NombreIO] = io
 	globals.ListaIOsMutex.Unlock()
 
-	log.Printf("Se desconecto el IO: %s, que tenia el proceso de PID: %d", io.Handshake.Nombre, pidProceso)
+	log.Printf("Se desconecto el IO: %s, que tenia el proceso de PID: %d", desconexionIO.NombreIO, pidProceso)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
 
-func ObtenerIO(nombre string) (int64, bool) {
-	var posIo int
-	encontrado := false
-	globals.ListaIOsMutex.Lock()
-	for i := range globals.ListaIOs {
-		if globals.ListaIOs[i].Handshake.Nombre == nombre {
-			posIo = i
-			encontrado = true
-			break
-		}
+func AgregarAInstanciasIOs(handshake globals.Handshake) {
+	elementoAAgregar := globals.InstanciaIO{
+		Handshake:        handshake,
+		PidProcesoActual: -1,
 	}
-
-	globals.ListaIOsMutex.Unlock()
-
-	if encontrado {
-		return int64(posIo), true
-	} else {
-		// Si devuelve esto es que se desconecto la CPU en el medio. Hay q ser mala persona
-		log.Println("No se encontro la CPU en la devolucion")
-		return -1, false
+	io, existe := globals.MapaIOs[handshake.Nombre]
+	if !existe {
+		io = globals.EntradaMapaIO{}
 	}
-}
-
-func AgregarAListaIOs(handshake globals.Handshake) {
-	elementoAAgregar := globals.ListaIo{
-		Handshake:             handshake,
-		PidProcesoActual:      -1,
-		ColaProcesosEsperando: nil,
-	}
-	globals.ListaIOs = append(globals.ListaIOs, elementoAAgregar)
+	io.Instancias = append(io.Instancias, elementoAAgregar)
+	globals.MapaIOs[handshake.Nombre] = io
 }
 
 func AgregarAListaCPUs(handshake globals.Handshake) {
@@ -635,4 +635,14 @@ func EnviarDumpMemory(pid int64) bool {
 		return true
 	}
 	return false
+}
+
+// Dado un PID, busca la instancia de IO que tiene ese proceso, y devuelve su posicion en la cola.
+func BuscarPosInstanciaIO(pid int64) int {
+	return 0
+}
+
+// Dado una entrada de mapa de IO, y un PID, busca la instancia donde esta ejecutando ese proceso. Retorna posicion en cola de instancias.
+func BuscarInstanciaIO(entrada globals.EntradaMapaIO, pid int64) int64 {
+	return 0
 }

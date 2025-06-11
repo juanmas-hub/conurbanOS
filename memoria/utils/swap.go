@@ -1,6 +1,6 @@
 package utils
 
-import (
+/*import (
 	//"encoding/json"
 	//"fmt"
 	//"log"
@@ -12,4 +12,4 @@ import (
 
 func escribirEnSWAP(datos []byte) globals_memoria.EntradaSwap{
 
-}
+}*/
