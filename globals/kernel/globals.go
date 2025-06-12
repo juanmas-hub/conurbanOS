@@ -64,7 +64,7 @@ type EntradaMapaIO struct {
 
 type InstanciaIO struct {
 	Handshake        Handshake
-	PidProcesoActual int64 // PID del proceso actual que esta en esta IO
+	PidProcesoActual int64 // PID del proceso actual que esta en esta IO | Si es -1 no hay procesos
 }
 
 // Listas
@@ -185,6 +185,8 @@ type FinalizacionIO struct {
 type DesconexionIO struct {
 	NombreIO string `json:"nombre"`
 	PID      int64  `json:"pid"`
+	Ip       string `json:"ip"`
+	Puerto   int64  `json:"port"`
 }
 
 // Sycalls

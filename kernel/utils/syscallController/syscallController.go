@@ -42,7 +42,6 @@ func RecibirIO(w http.ResponseWriter, r *http.Request) {
 
 func ManejarIO(syscallIO globals.SyscallIO) {
 	globals.ListaIOsMutex.Lock()
-	//posIo, existe := general.ObtenerIO(syscallIO.NombreIO)
 	existe := verificarExistenciaIO(syscallIO.NombreIO)
 	nombreIO := syscallIO.NombreIO
 
@@ -164,24 +163,24 @@ func ManejarEXIT(w http.ResponseWriter, r *http.Request) {
 
 // ------ FUNCIONES LOCALES --------
 
-// Dada un nombre de IO, busca una instancia libre. Devuelve la instancia, la posicion en la cola de instancias y si hay instancia libre
+// Dada un nombre de IO, busca una instancia libre. Devuelve la instancia, la posicion en la cola de instancias y si hay instancia libre. Se llama con Lista IO muteada
 func buscarInstanciaIOLibre(nombreIO string) (globals.InstanciaIO, int, bool) {
-	handshake := globals.Handshake{
-		Nombre: "nombre",
-		IP:     "ip",
-		Puerto: 2007,
+	var instancia globals.InstanciaIO
+
+	io := globals.MapaIOs[nombreIO]
+
+	for i := range io.Instancias {
+		if io.Instancias[i].PidProcesoActual == -1 {
+			// Esta libre
+			return io.Instancias[i], i, true
+		}
 	}
-	instancia := globals.InstanciaIO{
-		Handshake:        handshake,
-		PidProcesoActual: -1,
-	}
-	return instancia, 0, true
+
+	return instancia, -1, false
 }
 
+// Dado un nombre de IO, devuelve si existe. Se llama con Lista IO muteada.
 func verificarExistenciaIO(nombreIO string) bool {
-	return true
-}
-
-func BuscarPosInstanciaIO(id int64) int {
-	return 0
+	_, existe := globals.MapaIOs[nombreIO]
+	return existe
 }

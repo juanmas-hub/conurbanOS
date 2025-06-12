@@ -244,7 +244,10 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 		globals.ListaIOsMutex.Lock()
 
 		io := globals.MapaIOs[finalizacionIo.NombreIO]
-		posInstanciaIo := BuscarInstanciaIO(io, finalizacionIo.PID)
+		posInstanciaIo := BuscarInstanciaIO(finalizacionIo.NombreIO, finalizacionIo.PID)
+		if posInstanciaIo == -1 {
+			log.Printf("Error buscando instancia de IO de nombre: %s, con el proceso: %d", finalizacionIo.NombreIO, finalizacionIo.PID)
+		}
 		instanciaIo := io.Instancias[posInstanciaIo]
 
 		// Cambio el PID del proceso actual
@@ -498,7 +501,10 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	pidProceso := desconexionIO.PID
 
 	// Saco la instancia de la cola de instancias
-	posInstancia := BuscarPosInstanciaIO(pidProceso)
+	posInstancia := BuscarPosInstanciaIO(desconexionIO.NombreIO, desconexionIO.Ip, desconexionIO.Puerto)
+	if posInstancia == -2 {
+		log.Printf("Error buscando la instancia de IO de IP: %s, puerto: %d, que tendría el proceso: %d", desconexionIO.Ip, desconexionIO.Puerto, pidProceso)
+	}
 	io.Instancias = append(io.Instancias[:posInstancia], io.Instancias[posInstancia+1:]...)
 
 	// Si habia proceso ejecutando
@@ -632,12 +638,31 @@ func EnviarDumpMemory(pid int64) bool {
 	return false
 }
 
-// Dado un PID, busca la instancia de IO que tiene ese proceso, y devuelve su posicion en la cola.
-func BuscarPosInstanciaIO(pid int64) int {
-	return 0
+// Dado el nombre del IO y una IP y Puerto, busca la instancia de IO que tiene ese IP, y devuelve su posicion en la cola. Se llama con Lista IOs muteada.
+func BuscarPosInstanciaIO(nombreIO string, ip string, puerto int64) int {
+
+	io := globals.MapaIOs[nombreIO]
+
+	for i := range io.Instancias {
+		if io.Instancias[i].Handshake.Puerto == puerto && io.Instancias[i].Handshake.IP == ip {
+			return i
+		}
+	}
+
+	return -2
+
 }
 
-// Dado una entrada de mapa de IO, y un PID, busca la instancia donde esta ejecutando ese proceso. Retorna posicion en cola de instancias.
-func BuscarInstanciaIO(entrada globals.EntradaMapaIO, pid int64) int64 {
-	return 0
+// Dado un nombre IO, y un PID, busca la instancia donde esta ejecutando ese proceso. Retorna posicion en cola de instancias. Se llama con Lista IO muteada
+func BuscarInstanciaIO(nombreIO string, pid int64) int {
+
+	io := globals.MapaIOs[nombreIO]
+
+	for i := range io.Instancias {
+		if io.Instancias[i].PidProcesoActual == pid {
+			return i
+		}
+	}
+
+	return -1
 }
