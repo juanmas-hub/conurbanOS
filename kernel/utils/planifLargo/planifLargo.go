@@ -238,8 +238,6 @@ func finalizarProceso(pid int64) {
 
 	// Iniciar nuevos procesos
 	PasarProcesosAReady()
-
-	// Loguear metricas de estado
 }
 
 func eliminarDeSuCola(pid int64, estadoActual string) {
@@ -271,12 +269,14 @@ func eliminarDeSuCola(pid int64, estadoActual string) {
 }
 
 func procesoAExit(proceso globals.Proceso) {
-	// No hay una cola de exit porque no hace falta, solo sirve para loguear metricas
 	// Actualizamos metricas
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
+
+	// Logueamos metricas
 }
 
 func newAReady(proceso globals.Proceso_Nuevo) {
+	// Mutex de estados y mapa procesos estan lockeados (pasarProcesosAReady)
 
 	procesoEnReady := globals.Proceso{
 		Pcb:           proceso.Proceso.Pcb,

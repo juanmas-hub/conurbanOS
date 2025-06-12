@@ -379,10 +379,9 @@ func ActualizarMetricas(proceso globals.Proceso, estadoAnterior string) globals.
 	}
 }
 
+// Se llama con estados mutex lockeado
 func BuscarProcesoEnBlocked(pid int64) int64 {
-	globals.EstadosMutex.Lock()
 	colaBlocked := globals.ESTADOS.BLOCKED
-	globals.EstadosMutex.Unlock()
 
 	var posicion int64
 
@@ -396,10 +395,9 @@ func BuscarProcesoEnBlocked(pid int64) int64 {
 	return posicion
 }
 
+// Se llama con estados mutex lockeado
 func BuscarProcesoEnExecute(pid int64) int64 {
-	globals.EstadosMutex.Lock()
 	colaExecute := globals.ESTADOS.EXECUTE
-	globals.EstadosMutex.Unlock()
 
 	var posicion int64
 
@@ -552,7 +550,6 @@ func AgregarAListaCPUs(handshake globals.Handshake) {
 func BuscarCpu(nombre string) int {
 	var posCpu int
 	encontrado := false
-	globals.ListaCPUsMutex.Lock()
 	for i := range globals.ListaCPUs {
 		if globals.ListaCPUs[i].Handshake.Nombre == nombre {
 			posCpu = i
@@ -560,8 +557,6 @@ func BuscarCpu(nombre string) int {
 			break
 		}
 	}
-
-	globals.ListaCPUsMutex.Unlock()
 
 	if encontrado {
 		return posCpu
@@ -602,8 +597,8 @@ func NotificarProcesoEnReady(notificador chan struct{}) {
 
 // Mandando nombre del CPU, se libera. Aumenta el semaforo de Semaforos de CPU, entonces el planificador corto replanifica.
 func LiberarCPU(nombreCPU string) {
-	posCpu := BuscarCpu(nombreCPU)
 	globals.ListaCPUsMutex.Lock()
+	posCpu := BuscarCpu(nombreCPU)
 	globals.ListaCPUs[posCpu].EstaLibre = true
 	globals.ListaCPUsMutex.Unlock()
 	Signal(globals.Sem_Cpus)

@@ -59,6 +59,7 @@ func ManejarIO(syscallIO globals.SyscallIO) {
 		utils_pm.BloquearProcesoDesdeExecute(proceso)
 
 		// Si hay instancias libres, envio solicitud, sino agrego a la cola
+		globals.ListaIOsMutex.Lock()
 		io := globals.MapaIOs[nombreIO]
 		instanciaIo, pos, hayLibre := buscarInstanciaIOLibre(syscallIO.NombreIO)
 		if hayLibre {
@@ -69,6 +70,7 @@ func ManejarIO(syscallIO globals.SyscallIO) {
 		}
 		io.Instancias[pos] = instanciaIo
 		globals.MapaIOs[nombreIO] = io
+		globals.ListaIOsMutex.Unlock()
 
 	}
 
@@ -96,8 +98,8 @@ func ManejarINIT_PROC(w http.ResponseWriter, r *http.Request) {
 		utils_pl.CrearProcesoNuevo(syscallINIT.Archivo, syscallINIT.Tamanio)
 
 		// El proceso vuelve a ejecutar
-		posCpu := general.BuscarCpu(syscallINIT.Nombre_CPU)
 		globals.ListaCPUsMutex.Lock()
+		posCpu := general.BuscarCpu(syscallINIT.Nombre_CPU)
 		cpu := globals.ListaCPUs[posCpu]
 		globals.ListaCPUsMutex.Unlock()
 		general.EnviarProcesoAEjecutar_ACPU(cpu.Handshake.IP, cpu.Handshake.Puerto, syscallINIT.Pc, syscallINIT.Pc)

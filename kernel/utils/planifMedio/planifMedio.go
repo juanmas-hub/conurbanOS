@@ -22,16 +22,15 @@ func BloquearProcesoDesdeExecute(proceso globals.Proceso) {
 	// Como la cola de Execute 'no tiene' orden (todos los que estan en execute tienen una cpu ya ejecutando)
 	// no se saca el primero de la cola como en las otras funciones
 
+	globals.MapaProcesosMutex.Lock()
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.BLOCKED
 
-	globals.MapaProcesosMutex.Lock()
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
 
-	pos := general.BuscarProcesoEnExecute(proceso.Pcb.Pid)
-
 	globals.EstadosMutex.Lock()
+	pos := general.BuscarProcesoEnExecute(proceso.Pcb.Pid)
 	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE[:pos], globals.ESTADOS.EXECUTE[pos+1:]...)
 	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED, proceso.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
@@ -72,16 +71,14 @@ func sigueBloqueado(proceso globals.Proceso) {
 
 func blockedASuspBlocked(proceso globals.Proceso) {
 	// Muevo el proceso en la colas
+	globals.MapaProcesosMutex.Lock()
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.SUSP_BLOCKED
-
-	globals.MapaProcesosMutex.Lock()
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
 
-	pos := general.BuscarProcesoEnBlocked(proceso.Pcb.Pid)
-
 	globals.EstadosMutex.Lock()
+	pos := general.BuscarProcesoEnBlocked(proceso.Pcb.Pid)
 	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED[:pos], globals.ESTADOS.BLOCKED[pos+1:]...)
 	globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED, proceso.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
