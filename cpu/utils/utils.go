@@ -147,8 +147,6 @@ func EnviarSolicitudInstruccion(pid int64, pc int64) (string, error) {
 func Decode(instruccion string) (globals.InstruccionDecodificada, error) {
 	partes := strings.SplitN(instruccion, " ", 2) //divide la instruccion de los parametros
 
-	
-
 	nombre := partes[0]
 	parametrosStr := ""
 	if len(partes) > 1 {
@@ -163,8 +161,7 @@ func Decode(instruccion string) (globals.InstruccionDecodificada, error) {
 		parametros = []string{}
 	}
 
-
-	log.Println("longitud: ",len(parametros))
+	log.Println("longitud: ", len(parametros))
 
 	instDeco := globals.InstruccionDecodificada{
 		Nombre:     nombre,
@@ -301,17 +298,60 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 		}
 		pcb.PC = nuevoPC
 		return CONTINUAR_EJECUCION, nil
+
 	case "IO":
-		//aca va la Logica
+		TiempoINT, err := strconv.ParseInt(instDeco.Parametros[1], 10, 64)
+		if err != nil {
+			fmt.Printf("Error al convertir '%s' a int64: %s\n", instDeco.Parametros[1], err)
+		}
+		IO := globals.SyscallIO{
+			NombreIO:  instDeco.Parametros[0],
+			NombreCPU: os.Args[1],
+			Tiempo:    TiempoINT,
+			PID:       pcb.Pid,
+			PC:        pcb.PC}
+		err = EnviarIOAKernel(IO)
+		if err != nil {
+			log.Printf("ERROR: No se pudo enviar SYSCALL IO del PID %d al Kernel: %s", pcb.Pid, err)
+			return ERROR_EJECUCION, fmt.Errorf("fallo al enviar SYSCALL IO: %w", err)
+		}
 		return PONERSE_ESPERA, nil
 	case "INIT_PROC":
-		//aca va la Logica
+		TamanioINT, err := strconv.ParseInt(instDeco.Parametros[1], 10, 64)
+		if err != nil {
+			fmt.Printf("Error al convertir '%s' a int64: %s\n", instDeco.Parametros[1], err)
+		}
+		INIT := globals.SyscallInit{
+			Tamanio:   TamanioINT,
+			Archivo:   instDeco.Parametros[0],
+			NombreCPU: os.Args[1],
+			PID:       pcb.Pid,
+			PC:        pcb.PC}
+		err = EnviarINITAKernel(INIT)
+		if err != nil {
+			log.Printf("ERROR: No se pudo enviar SYSCALL INIT del PID %d al Kernel: %s", pcb.Pid, err)
+			return ERROR_EJECUCION, fmt.Errorf("fallo al enviar SYSCALL INIT: %w", err)
+		}
 		return PONERSE_ESPERA, nil
 	case "DUMP_MEMORY":
-		//aca va la Logica
+		EXIT := globals.SyscallExit{
+			PID:       pcb.Pid,
+			NombreCPU: os.Args[1]}
+		err := EnviarEXITAKernel(EXIT)
+		if err != nil {
+			log.Printf("ERROR: No se pudo enviar SYSCALL DUMP MEMORY del PID %d al Kernel: %s", pcb.Pid, err)
+			return ERROR_EJECUCION, fmt.Errorf("fallo al enviar SYSCALL DUMP MEMORY: %w", err)
+		}
 		return PONERSE_ESPERA, nil
 	case "EXIT":
-		//aca va la Logica
+		EXIT := globals.SyscallExit{
+			PID:       pcb.Pid,
+			NombreCPU: os.Args[1]}
+		err := EnviarEXITAKernel(EXIT)
+		if err != nil {
+			log.Printf("ERROR: No se pudo enviar SYSCALL EXIT del PID %d al Kernel: %s", pcb.Pid, err)
+			return ERROR_EJECUCION, fmt.Errorf("fallo al enviar SYSCALL EXIT: %w", err)
+		}
 		return PONERSE_ESPERA, nil
 	}
 	return PONERSE_ESPERA, fmt.Errorf("instruccion desconocida: %s", instDeco.Nombre)
@@ -343,6 +383,78 @@ func RecibirProcesoAEjecutar(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}
+
+func EnviarIOAKernel(syscallData globals_cpu.SyscallIO) error {
+	body, err := json.Marshal(syscallData)
+	if err != nil {
+		return fmt.Errorf("error codificando struct SYSCALL: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/syscallIO", globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("error enviando SYSCALL a Kernel (%s): %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody := new(bytes.Buffer)
+		respBody.ReadFrom(resp.Body)
+		return fmt.Errorf("kernel respondió con error al recibir SYSCALL (%d %s): %s", resp.StatusCode, resp.Status, respBody.String())
+	}
+
+	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "IO", resp.Status)
+	return nil
+}
+
+func EnviarEXITAKernel(syscallData globals_cpu.SyscallExit) error {
+	body, err := json.Marshal(syscallData)
+	if err != nil {
+		return fmt.Errorf("error codificando struct SYSCALL: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/syscallEXIT", globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("error enviando SYSCALL a Kernel (%s): %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody := new(bytes.Buffer)
+		respBody.ReadFrom(resp.Body)
+		return fmt.Errorf("kernel respondió con error al recibir SYSCALL (%d %s): %s", resp.StatusCode, resp.Status, respBody.String())
+	}
+
+	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "EXIT", resp.Status)
+	return nil
+}
+
+func EnviarINITAKernel(syscallData globals_cpu.SyscallInit) error {
+	body, err := json.Marshal(syscallData)
+	if err != nil {
+		return fmt.Errorf("error codificando struct SYSCALL: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/syscallINIT", globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("error enviando SYSCALL a Kernel (%s): %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody := new(bytes.Buffer)
+		respBody.ReadFrom(resp.Body)
+		return fmt.Errorf("kernel respondió con error al recibir SYSCALL (%d %s): %s", resp.StatusCode, resp.Status, respBody.String())
+	}
+
+	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "INIT", resp.Status)
+	return nil
 }
 
 // TEMPORAL -- para probar

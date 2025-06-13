@@ -85,11 +85,11 @@ type SyscallExit struct { //endpoint: syscallEXIT
 type SyscallDump = SyscallExit
 
 type SyscallInit struct {
-	Tamanio     int64  `json:"tamanio"`
-	Archivo     string `json:"archivo"`
-	Nombre_CPU  string `json:"nombre_cpu"`
-	Pid_proceso int64  `json:"pid_proceso"` // pid del proceso que ejecuta la syscall
-	Pc          int64  `json:"pc"`          // pc actualizado
+	Tamanio   int64  `json:"tamanio"`
+	Archivo   string `json:"archivo"`
+	NombreCPU string `json:"nombre_cpu"`
+	PID       int64  `json:"pid_proceso"` // pid del proceso que ejecuta la syscall
+	PC        int64  `json:"pc"`          // pc actualizado
 }
 
 // TEMPORAL -- para probar
