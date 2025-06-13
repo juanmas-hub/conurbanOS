@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	utils_general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
@@ -46,7 +45,7 @@ func main() {
 	mensaje := "Mensaje desde Kernel"
 	utils_general.EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
 
-	// Prueba IO -- simulo llamada a IO teclado
+	/* Prueba IO -- simulo llamada a IO teclado
 	go func() {
 		time.Sleep(10 * time.Second)
 		pid := int64(1)
@@ -56,7 +55,7 @@ func main() {
 		globals.MapaIOs["teclado"] = io
 		utils_general.EnviarSolicitudIO(io.Instancias[0].Handshake.IP, io.Instancias[0].Handshake.Puerto, pid, tiempo)
 
-	}()
+	}()*/
 
 	//log.Print("IO llamada teclado: ", globals.MapaIOs["teclado"])
 

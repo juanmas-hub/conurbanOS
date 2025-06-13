@@ -28,23 +28,6 @@ func main() {
 
 	// Ahora hay que recibir la petición del Kernel para que el modulo hago un usleep (no esta hecho)
 
-	// Servidor
-	// Cuando se ejecuta CPU, hay que mandar a kernel su puerto e IP para que kernel se pueda conectar (no esta hecho)
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/dispatchProceso", utils_cpu.RecibirProcesoAEjecutar)
-	mux.HandleFunc("/mensajeDeKernel", utils_cpu.RecibirMensajeDeKernel)
-	mux.HandleFunc("/recibirPCB", utils_cpu.RecibirPCBDeKernel)
-
-	puerto := globals_cpu.CpuConfig.Port_cpu
-
-	go func() {
-		err := http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)
-		if err != nil {
-			panic(err)
-		}
-	}()
-
 	// Cliente (manda mensaje a kernel y memoria)
 	mensaje := "Mensaje desde CPU"
 	utils_cpu.EnviarMensaje(globals_cpu.CpuConfig.Ip_kernel, globals_cpu.CpuConfig.Port_kernel, mensaje)
@@ -113,4 +96,18 @@ func main() {
 		}
 	}()
 
+	// Servidor
+	// Cuando se ejecuta CPU, hay que mandar a kernel su puerto e IP para que kernel se pueda conectar (no esta hecho)
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/dispatchProceso", utils_cpu.RecibirProcesoAEjecutar)
+	mux.HandleFunc("/mensajeDeKernel", utils_cpu.RecibirMensajeDeKernel)
+	mux.HandleFunc("/recibirPCB", utils_cpu.RecibirPCBDeKernel)
+
+	puerto := globals_cpu.CpuConfig.Port_cpu
+
+	err := http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)
+	if err != nil {
+		panic(err)
+	}
 }

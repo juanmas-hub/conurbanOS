@@ -80,6 +80,7 @@ func EnviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64, pc int64) {
 		PC:  pc,
 	}
 
+	log.Printf("cpu libre elegida ip: %s, port: %d, pid: %d, pc: %d", ip, puerto, pid, pc)
 	body, err := json.Marshal(proc)
 	if err != nil {
 		log.Printf("error codificando proceso a ejecutar: %s", err.Error())
@@ -89,7 +90,7 @@ func EnviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64, pc int64) {
 	url := fmt.Sprintf("http://%s:%d/dispatchProceso", ip, puerto)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+		log.Printf("error enviando mensaje a ip:%s puerto:%d, error: %v", ip, puerto, err)
 	}
 
 	log.Printf("respuesta del servidor: %s", resp.Status)
@@ -645,6 +646,7 @@ func BuscarPosInstanciaIO(nombreIO string, ip string, puerto int64) int {
 
 	for i := range io.Instancias {
 		if io.Instancias[i].Handshake.Puerto == puerto && io.Instancias[i].Handshake.IP == ip {
+			log.Printf("posicion de BuscarPosInstanciaIO: %d", i)
 			return i
 		}
 	}

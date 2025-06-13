@@ -439,7 +439,7 @@ func EnviarINITAKernel(syscallData globals_cpu.SyscallInit) error {
 		return fmt.Errorf("error codificando struct SYSCALL: %w", err)
 	}
 
-	url := fmt.Sprintf("http://%s:%d/syscallINIT", globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel)
+	url := fmt.Sprintf("http://%s:%d/syscallINIT_PROC", globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel)
 
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
