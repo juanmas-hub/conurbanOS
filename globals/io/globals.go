@@ -35,4 +35,7 @@ type FinalizacionIO struct {
 
 type DesconexionIO struct {
 	NombreIO string `json:"nombre"`
+	PID      int64  `json:"pid"`
+	Ip       string `json:"ip"`
+	Puerto   int64  `json:"port"`
 }

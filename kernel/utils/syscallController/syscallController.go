@@ -45,6 +45,8 @@ func ManejarIO(syscallIO globals.SyscallIO) {
 	existe := verificarExistenciaIO(syscallIO.NombreIO)
 	nombreIO := syscallIO.NombreIO
 
+	log.Print("Vino una syscall IO a ManejarIO:", syscallIO)
+
 	if !existe {
 		general.FinalizarProceso(syscallIO.PID)
 	} else {
@@ -58,9 +60,9 @@ func ManejarIO(syscallIO globals.SyscallIO) {
 		utils_pm.BloquearProcesoDesdeExecute(proceso)
 
 		// Si hay instancias libres, envio solicitud, sino agrego a la cola
-		globals.ListaIOsMutex.Lock()
 		io := globals.MapaIOs[nombreIO]
 		instanciaIo, pos, hayLibre := buscarInstanciaIOLibre(syscallIO.NombreIO)
+		log.Print("Seleccionada IO libre: ", instanciaIo)
 		if hayLibre {
 			instanciaIo.PidProcesoActual = syscallIO.PID
 			general.EnviarSolicitudIO(instanciaIo.Handshake.IP, instanciaIo.Handshake.Puerto, syscallIO.PID, syscallIO.Tiempo)
@@ -69,7 +71,6 @@ func ManejarIO(syscallIO globals.SyscallIO) {
 		}
 		io.Instancias[pos] = instanciaIo
 		globals.MapaIOs[nombreIO] = io
-		globals.ListaIOsMutex.Unlock()
 
 	}
 

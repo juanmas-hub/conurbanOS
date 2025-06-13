@@ -145,10 +145,13 @@ func EnviarFinalizacionIOAKernel(ip string, puerto int64, pid int64) {
 
 }
 
-func Desconectar(ip string, puerto int64) {
+func Desconectar(ip string, puerto int64, pid int64) {
 
 	mensaje := globals.DesconexionIO{
 		NombreIO: globals.NombreIO,
+		PID:      pid,
+		Ip:       globals.IoConfig.IpIO,
+		Puerto:   globals.IoConfig.PortIO,
 	}
 	body, err := json.Marshal(mensaje)
 	if err != nil {

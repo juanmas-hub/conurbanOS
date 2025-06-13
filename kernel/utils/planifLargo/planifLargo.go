@@ -36,6 +36,8 @@ func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 
 	go escucharFinalizacionesDeProcesos()
 
+	go PasarProcesosAReady()
+
 	CrearProcesoNuevo(archivo, tamanio) // Primer proceso
 }
 
@@ -89,43 +91,51 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 
 	// Si se crea un proceso nuevo antes de que aprete Enter, se agrega a NEW pero no se pasan procesos a READY
 	if globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED == false {
-		PasarProcesosAReady()
+		general.Signal(globals.Sem_PasarProcesoAReady)
+		log.Print("holajee")
 	}
 }
 
 func PasarProcesosAReady() {
-	// Esta funcion deberia llamarse cuando llega un proceso a NEW, a EXIT, y a SUSP_BLOCKED
+	// Ejecuta en un hilo
+	// Esta funcion se ejecuta cuando llega un proceso a NEW, a EXIT, a SUSP_BLOCKED y a SUSP_READY
 	// Voy a intentar pasar la mayor cantidad de procesos que pueda mientras memoria tenga espacio
 
-	globals.EstadosMutex.Lock()
-	globals.MapaProcesosMutex.Lock()
+	for {
+		general.Wait(globals.Sem_PasarProcesoAReady)
 
-	var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
-	for lenghtSUSP_READY > 0 {
-		pid := globals.ESTADOS.SUSP_READY[0]
-		if solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid) == false {
-			break
-		}
-		proceso := globals.MapaProcesos[pid]
-		suspReadyAReady(proceso)
-		lenghtSUSP_READY--
-	}
+		log.Print("Intentando pasar procesos a ready")
 
-	if lenghtSUSP_READY == 0 {
+		globals.EstadosMutex.Lock()
+		globals.MapaProcesosMutex.Lock()
 
-		for len(globals.ESTADOS.NEW) > 0 {
-			procesoNuevo := globals.ESTADOS.NEW[0]
-
-			if solicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
+		var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
+		for lenghtSUSP_READY > 0 {
+			pid := globals.ESTADOS.SUSP_READY[0]
+			if solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid) == false {
 				break
 			}
-
-			newAReady(procesoNuevo)
+			proceso := globals.MapaProcesos[pid]
+			suspReadyAReady(proceso)
+			lenghtSUSP_READY--
 		}
-	}
 
-	globals.EstadosMutex.Unlock()
-	globals.MapaProcesosMutex.Unlock()
+		if lenghtSUSP_READY == 0 {
+
+			for len(globals.ESTADOS.NEW) > 0 {
+				procesoNuevo := globals.ESTADOS.NEW[0]
+
+				if solicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
+					break
+				}
+
+				newAReady(procesoNuevo)
+			}
+		}
+
+		globals.EstadosMutex.Unlock()
+		globals.MapaProcesosMutex.Unlock()
+	}
 }
 
 // Hay una funcion FinalizarProceso en utils general que no pude poner aca, pero tiene que
@@ -237,7 +247,7 @@ func finalizarProceso(pid int64) {
 	log.Printf("El PCB del proceso con PID %d fue liberado", pid)
 
 	// Iniciar nuevos procesos
-	PasarProcesosAReady()
+	general.Signal(globals.Sem_PasarProcesoAReady)
 }
 
 func eliminarDeSuCola(pid int64, estadoActual string) {

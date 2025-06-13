@@ -10,7 +10,6 @@ import (
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
-	pl "github.com/sisoputnfrba/tp-golang/kernel/utils/planifLargo"
 )
 
 // ----- FUNCIONES EXPORTADAS -------
@@ -34,6 +33,8 @@ func BloquearProcesoDesdeExecute(proceso globals.Proceso) {
 	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE[:pos], globals.ESTADOS.EXECUTE[pos+1:]...)
 	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED, proceso.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
+
+	log.Printf("Bloqueado proceso desde execute PID %d", proceso.Pcb.Pid)
 
 	// -- Timer hasta ser suspendido
 	go timer(globals.KernelConfig.Suspension_time, proceso)
@@ -65,7 +66,7 @@ func sigueBloqueado(proceso globals.Proceso) {
 		blockedASuspBlocked(proceso)
 
 		// Libere espacio => llamo a nuevos procesos
-		pl.PasarProcesosAReady()
+		general.Signal(globals.Sem_PasarProcesoAReady)
 	}
 }
 
@@ -82,6 +83,8 @@ func blockedASuspBlocked(proceso globals.Proceso) {
 	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED[:pos], globals.ESTADOS.BLOCKED[pos+1:]...)
 	globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED, proceso.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
+
+	log.Printf("El proceso de PID %d fue movido a Susp Blocked", proceso.Pcb.Pid)
 
 }
 

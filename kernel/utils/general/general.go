@@ -242,84 +242,95 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%+v\n", finalizacionIo)
 
 	go func() {
-		globals.ListaIOsMutex.Lock()
-
-		io := globals.MapaIOs[finalizacionIo.NombreIO]
-		posInstanciaIo := BuscarInstanciaIO(finalizacionIo.NombreIO, finalizacionIo.PID)
-		if posInstanciaIo == -1 {
-			log.Printf("Error buscando instancia de IO de nombre: %s, con el proceso: %d", finalizacionIo.NombreIO, finalizacionIo.PID)
-		}
-		instanciaIo := io.Instancias[posInstanciaIo]
-
-		// Cambio el PID del proceso actual
-		instanciaIo.PidProcesoActual = -1
-		io.Instancias[posInstanciaIo] = instanciaIo
-
-		globals.MapaIOs[finalizacionIo.NombreIO] = io
-
-		// Si hay procesos esperando IO, envio solicitud
-		if len(globals.MapaIOs[finalizacionIo.NombreIO].ColaProcesosEsperando) > 0 {
-			procesoAIO := globals.MapaIOs[finalizacionIo.NombreIO].ColaProcesosEsperando[0]
-			instanciaIo.PidProcesoActual = procesoAIO.PID
-			EnviarSolicitudIO(
-				instanciaIo.Handshake.IP,
-				instanciaIo.Handshake.Puerto,
-				procesoAIO.PID,
-				procesoAIO.Tiempo,
-			)
-
-			// Saco al nuevo proceso de la cola de procesos esperando
-			io.ColaProcesosEsperando = io.ColaProcesosEsperando[1:]
-		}
-
-		io.Instancias[posInstanciaIo] = instanciaIo
-		globals.MapaIOs[finalizacionIo.NombreIO] = io
-
-		globals.ListaIOsMutex.Unlock()
-
-		globals.MapaProcesosMutex.Lock()
-		proceso := globals.MapaProcesos[finalizacionIo.PID]
-		globals.MapaProcesosMutex.Unlock()
-
-		// Si esta en Susp Blocked lo paso a Susp Ready
-		if proceso.Estado_Actual == globals.SUSP_BLOCKED {
-			globals.MapaProcesosMutex.Lock()
-			proceso = ActualizarMetricas(proceso, proceso.Estado_Actual)
-			proceso.Estado_Actual = globals.SUSP_READY
-			globals.MapaProcesos[finalizacionIo.PID] = proceso
-			globals.MapaProcesosMutex.Unlock()
-
-			pos := BuscarProcesoEnSuspBlocked(proceso.Pcb.Pid)
-
-			globals.EstadosMutex.Lock()
-			globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED[:pos], globals.ESTADOS.SUSP_BLOCKED[pos+1:]...)
-			globals.ESTADOS.SUSP_READY = append(globals.ESTADOS.SUSP_READY, proceso.Pcb.Pid)
-			globals.EstadosMutex.Unlock()
-		}
-
-		// Si esta en Blocked lo paso Ready (no lo dice el enunciado!¡)
-		if proceso.Estado_Actual == globals.BLOCKED {
-			globals.MapaProcesosMutex.Lock()
-			proceso = ActualizarMetricas(proceso, proceso.Estado_Actual)
-			proceso.Estado_Actual = globals.READY
-			globals.MapaProcesos[finalizacionIo.PID] = proceso
-			globals.MapaProcesosMutex.Unlock()
-
-			pos := BuscarProcesoEnBlocked(proceso.Pcb.Pid)
-
-			globals.EstadosMutex.Lock()
-			globals.ESTADOS.BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED[:pos], globals.ESTADOS.SUSP_BLOCKED[pos+1:]...)
-			globals.ESTADOS.READY = append(globals.ESTADOS.SUSP_READY, proceso.Pcb.Pid)
-			globals.EstadosMutex.Unlock()
-		}
+		manejarFinIO(finalizacionIo)
+		Signal(globals.Sem_PasarProcesoAReady)
 	}()
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
 
+func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
+	globals.ListaIOsMutex.Lock()
+
+	io := globals.MapaIOs[finalizacionIo.NombreIO]
+	posInstanciaIo := BuscarInstanciaIO(finalizacionIo.NombreIO, finalizacionIo.PID)
+	if posInstanciaIo == -1 {
+		log.Printf("Error buscando instancia de IO de nombre: %s, con el proceso: %d", finalizacionIo.NombreIO, finalizacionIo.PID)
+	}
+	instanciaIo := io.Instancias[posInstanciaIo]
+
+	// Cambio el PID del proceso actual
+	instanciaIo.PidProcesoActual = -1
+	io.Instancias[posInstanciaIo] = instanciaIo
+
+	globals.MapaIOs[finalizacionIo.NombreIO] = io
+
+	// Si hay procesos esperando IO, envio solicitud
+	if len(globals.MapaIOs[finalizacionIo.NombreIO].ColaProcesosEsperando) > 0 {
+		procesoAIO := globals.MapaIOs[finalizacionIo.NombreIO].ColaProcesosEsperando[0]
+		instanciaIo.PidProcesoActual = procesoAIO.PID
+		EnviarSolicitudIO(
+			instanciaIo.Handshake.IP,
+			instanciaIo.Handshake.Puerto,
+			procesoAIO.PID,
+			procesoAIO.Tiempo,
+		)
+
+		// Saco al nuevo proceso de la cola de procesos esperando
+		io.ColaProcesosEsperando = io.ColaProcesosEsperando[1:]
+	}
+
+	io.Instancias[posInstanciaIo] = instanciaIo
+	globals.MapaIOs[finalizacionIo.NombreIO] = io
+
+	globals.ListaIOsMutex.Unlock()
+
+	globals.MapaProcesosMutex.Lock()
+	proceso := globals.MapaProcesos[finalizacionIo.PID]
+	globals.MapaProcesosMutex.Unlock()
+
+	// Si esta en Susp Blocked lo paso a Susp Ready
+	if proceso.Estado_Actual == globals.SUSP_BLOCKED {
+		globals.MapaProcesosMutex.Lock()
+		proceso = ActualizarMetricas(proceso, proceso.Estado_Actual)
+		proceso.Estado_Actual = globals.SUSP_READY
+		globals.MapaProcesos[finalizacionIo.PID] = proceso
+		globals.MapaProcesosMutex.Unlock()
+
+		pos := BuscarProcesoEnSuspBlocked(proceso.Pcb.Pid)
+
+		globals.EstadosMutex.Lock()
+		globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED[:pos], globals.ESTADOS.SUSP_BLOCKED[pos+1:]...)
+		globals.ESTADOS.SUSP_READY = append(globals.ESTADOS.SUSP_READY, proceso.Pcb.Pid)
+		globals.EstadosMutex.Unlock()
+
+		log.Printf("Proceso de PID %d fue movido de Susp Blocked a Susp Ready", proceso.Pcb.Pid)
+
+	}
+
+	// Si esta en Blocked lo paso Ready (no lo dice el enunciado!¡)
+	if proceso.Estado_Actual == globals.BLOCKED {
+		globals.MapaProcesosMutex.Lock()
+		proceso = ActualizarMetricas(proceso, proceso.Estado_Actual)
+		proceso.Estado_Actual = globals.READY
+		globals.MapaProcesos[finalizacionIo.PID] = proceso
+		globals.MapaProcesosMutex.Unlock()
+
+		pos := BuscarProcesoEnBlocked(proceso.Pcb.Pid)
+
+		globals.EstadosMutex.Lock()
+		globals.ESTADOS.BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED[:pos], globals.ESTADOS.SUSP_BLOCKED[pos+1:]...)
+		globals.ESTADOS.READY = append(globals.ESTADOS.SUSP_READY, proceso.Pcb.Pid)
+		globals.EstadosMutex.Unlock()
+
+		log.Printf("Proceso de PID %d fue movido de Blocked a Ready", proceso.Pcb.Pid)
+	}
+}
+
 // Dada una cola y un PID, busca el proceso en la cola y devuelve la posicion.
 func buscarProcesoEnColaIO(cola []globals.SyscallIO, pid int64) int {
+	log.Print("Se ejecutó buscarProcesoEnColaIO")
 	return 0
 }
 

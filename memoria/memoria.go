@@ -24,7 +24,6 @@ func main() {
 
 	utils_memoria.InicializarMemoria()
 
-
 	// Multiplexor de servidor HTTP
 	mux := http.NewServeMux()
 
