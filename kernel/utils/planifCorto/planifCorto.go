@@ -83,12 +83,14 @@ func casoSRTdesalojo() {
 		<-globals.NotificadorDesalojo // espero a que llegue una señal (bloquea hasta que llegue)
 
 		globals.EstadosMutex.Lock()
-		ordenarReadyPorRafaga()
+		//log.Print("Se quiere loquear MapaProcesos en casoSRTdesalojo")
 		globals.MapaProcesosMutex.Lock()
+		ordenarReadyPorRafaga()
 		pidEnExec, restanteExec := buscarProcesoEnExecuteDeMenorRafagaRestante()
 		rafagaNuevo := globals.MapaProcesos[globals.ESTADOS.READY[0]].Rafaga.Est_Sgte
-
 		globals.MapaProcesosMutex.Unlock()
+		//log.Print("Se unloquea MapaProcesos en casoSRTdesalojo")
+
 		if rafagaNuevo < restanteExec {
 			ipCPU, puertoCPU, ok := general.BuscarCpuPorPID(pidEnExec)
 			if ok {
@@ -137,14 +139,17 @@ func ordenarReadyPorRafaga() {
 }
 
 func ejecutarUnProceso() {
+	//log.Print("Se quiere loquear MapaProcesos en ejecutarUnProceso")
 	globals.MapaProcesosMutex.Lock()
 	procesoAEjecutar := globals.ESTADOS.READY[0]
+	log.Print("Proceso a ejecutar: ", procesoAEjecutar)
 	ip, port := elegirCPUlibre()
 	proceso := globals.MapaProcesos[procesoAEjecutar]
 	general.EnviarProcesoAEjecutar_ACPU(ip, port, proceso.Pcb.Pid, proceso.Pcb.PC)
 	readyAExecute(proceso)
 	log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
 	globals.MapaProcesosMutex.Unlock()
+	//log.Print("Se unloquea MapaProcesos en ejecutarUnProceso")
 }
 
 // Capaz esta funcion no hace falta - hay que ver si las devoluciones de CPU son unicamente syscalls

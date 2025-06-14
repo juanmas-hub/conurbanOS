@@ -289,9 +289,11 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 
 	globals.ListaIOsMutex.Unlock()
 
+	//log.Print("Se quiere loquear MapaProcesos en manejarFinIO")
 	globals.MapaProcesosMutex.Lock()
 	proceso := globals.MapaProcesos[finalizacionIo.PID]
 	globals.MapaProcesosMutex.Unlock()
+	//log.Print("Se unloquea MapaProcesos en manejarFinIO")
 
 	// Si esta en Susp Blocked lo paso a Susp Ready
 	if proceso.Estado_Actual == globals.SUSP_BLOCKED {
@@ -305,11 +307,13 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 }
 
 func SuspBlockedASuspReady(proceso globals.Proceso) {
+	//log.Print("Se quiere loquear MapaProcesos en SuspBlockedASuspReady")
 	globals.MapaProcesosMutex.Lock()
 	proceso = ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.SUSP_READY
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
+	//log.Print("Se unloquea MapaProcesos en SuspBlockedASuspReady")
 
 	pos := BuscarProcesoEnSuspBlocked(proceso.Pcb.Pid)
 
@@ -327,11 +331,13 @@ func SuspBlockedASuspReady(proceso globals.Proceso) {
 }
 
 func BlockedAReady(proceso globals.Proceso) {
+	//log.Print("Se quiere loquear MapaProcesos en BlockedAReady")
 	globals.MapaProcesosMutex.Lock()
 	proceso = ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.READY
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
+	//log.Print("Se unloquea MapaProcesos en BlockedAReady")
 
 	pos := BuscarProcesoEnBlocked(proceso.Pcb.Pid)
 
@@ -643,11 +649,14 @@ func LiberarCPU(nombreCPU string) {
 }
 
 func ActualizarPC(pid int64, pc int64) {
+
+	//log.Print("Se quiere loquear MapaProcesos en ActualizarPC")
 	globals.MapaProcesosMutex.Lock()
 	proceso := globals.MapaProcesos[pid]
 	proceso.Pcb.PC = pc
 	globals.MapaProcesos[pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
+	//log.Print("Se unloquea MapaProcesos en ActualizarPC")
 }
 
 func EnviarDumpMemory(pid int64) bool {

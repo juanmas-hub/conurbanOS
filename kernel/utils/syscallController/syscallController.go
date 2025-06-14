@@ -53,25 +53,26 @@ func ManejarIO(syscallIO globals.SyscallIO) {
 
 		// Bloqueo el proceso y le actualizo el PC
 		general.ActualizarPC(syscallIO.PID, syscallIO.PC)
+		//log.Print("Se quiere loquear MapaProcesos en ManejarIO")
 		globals.MapaProcesosMutex.Lock()
 		proceso := globals.MapaProcesos[syscallIO.PID]
-		log.Print("PC EN EL SYSCALL CONTROLLER: ", proceso.Pcb.PC)
 		globals.MapaProcesosMutex.Unlock()
+		//log.Print("Se unloquea MapaProcesos en ManejarIO")
 
-		utils_pm.BloquearProcesoDesdeExecute(proceso, "Syscall IO")
 		general.LiberarCPU(syscallIO.NombreCPU)
 
 		// Si hay instancias libres, envio solicitud, sino agrego a la cola
 		io := globals.MapaIOs[nombreIO]
 		instanciaIo, pos, hayLibre := buscarInstanciaIOLibre(syscallIO.NombreIO)
-		log.Print("Seleccionada IO libre: ", instanciaIo)
 		if hayLibre {
+			log.Print("Seleccionada IO libre: ", instanciaIo)
 			instanciaIo.PidProcesoActual = syscallIO.PID
 			general.EnviarSolicitudIO(instanciaIo.Handshake.IP, instanciaIo.Handshake.Puerto, syscallIO.PID, syscallIO.Tiempo)
+			io.Instancias[pos] = instanciaIo
 		} else {
 			io.ColaProcesosEsperando = append(io.ColaProcesosEsperando, syscallIO)
 		}
-		io.Instancias[pos] = instanciaIo
+		utils_pm.BloquearProcesoDesdeExecute(proceso, "Syscall IO")
 		globals.MapaIOs[nombreIO] = io
 
 	}
@@ -95,14 +96,14 @@ func ManejarINIT_PROC(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 
-		utils_pl.CrearProcesoNuevo(syscallINIT.Archivo, syscallINIT.Tamanio)
+		go utils_pl.CrearProcesoNuevo(syscallINIT.Archivo, syscallINIT.Tamanio)
 
 		// El proceso vuelve a ejecutar
 		globals.ListaCPUsMutex.Lock()
 		posCpu := general.BuscarCpu(syscallINIT.Nombre_CPU)
 		cpu := globals.ListaCPUs[posCpu]
 		globals.ListaCPUsMutex.Unlock()
-		general.EnviarProcesoAEjecutar_ACPU(cpu.Handshake.IP, cpu.Handshake.Puerto, syscallINIT.Pc, syscallINIT.Pc)
+		general.EnviarProcesoAEjecutar_ACPU(cpu.Handshake.IP, cpu.Handshake.Puerto, syscallINIT.Pid_proceso, syscallINIT.Pc)
 	}()
 
 	w.WriteHeader(http.StatusOK)
@@ -125,9 +126,11 @@ func ManejarDUMP_MEMORY(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 
+		//log.Print("Se quiere loquear MapaProcesos en ManejarDUMP_MEMORY")
 		globals.MapaProcesosMutex.Lock()
 		proceso := globals.MapaProcesos[syscallDUMP.PID]
 		globals.MapaProcesosMutex.Unlock()
+		//log.Print("Se unloquea MapaProcesos en ManejarDUMP_MEMORY")
 
 		utils_pm.BloquearProcesoDesdeExecute(proceso, "Syscall Dump")
 		general.LiberarCPU(syscallDUMP.NombreCPU)

@@ -109,7 +109,6 @@ func PasarProcesosAReady() {
 		log.Print("Intentando pasar procesos a ready porque llego un proceso a: ", globals.DeDondeSeLlamaPasarProcesosAReady)
 
 		globals.EstadosMutex.Lock()
-		globals.MapaProcesosMutex.Lock()
 
 		var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
 		for lenghtSUSP_READY > 0 {
@@ -117,7 +116,13 @@ func PasarProcesosAReady() {
 			if solicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid) == false {
 				break
 			}
+
+			//log.Print("Se quiere loquear MapaProcesos en PasarProcesosAReady x1")
+			globals.MapaProcesosMutex.Lock()
+			//log.Print("Se loquea MapaProcesos en PasarProcesosAReady x1")
 			proceso := globals.MapaProcesos[pid]
+			globals.MapaProcesosMutex.Unlock()
+			//log.Print("Se unloquea MapaProcesos en PasarProcesosAReady x1")
 			suspReadyAReady(proceso)
 			lenghtSUSP_READY--
 		}
@@ -132,11 +137,11 @@ func PasarProcesosAReady() {
 				}
 
 				newAReady(procesoNuevo)
+
 			}
 		}
 
 		globals.EstadosMutex.Unlock()
-		globals.MapaProcesosMutex.Unlock()
 	}
 }
 
@@ -222,9 +227,11 @@ func escucharFinalizacionesDeProcesos() {
 
 func finalizarProceso(pid int64) {
 
+	//log.Print("Se quiere loquear MapaProcesos en finalizarProceso x1")
 	globals.MapaProcesosMutex.Lock()
 	proceso, ok := globals.MapaProcesos[pid]
 	globals.MapaProcesosMutex.Unlock()
+	//log.Print("Se unloquea MapaProcesos en finalizarProceso x1")
 	if !ok {
 		log.Printf("No se encontró el proceso con PID %d", pid)
 		return
@@ -243,9 +250,11 @@ func finalizarProceso(pid int64) {
 	procesoAExit(proceso)
 
 	// Elimino del mapa procesos
+	//log.Print("Se quiere loquear MapaProcesos en finalizarProceso x2")
 	globals.MapaProcesosMutex.Lock()
 	delete(globals.MapaProcesos, pid)
 	globals.MapaProcesosMutex.Unlock()
+	//log.Print("Se unloquea MapaProcesos en finalizarProceso x2")
 	log.Printf("El PCB del proceso con PID %d fue liberado", pid)
 
 	// Iniciar nuevos procesos
@@ -298,10 +307,16 @@ func newAReady(proceso globals.Proceso_Nuevo) {
 		Estado_Actual: globals.READY,
 		Rafaga:        nil,
 	}
+
+	//log.Print("Se quiere loquear MapaProcesos en newAReady")
+	globals.MapaProcesosMutex.Lock()
+	//log.Print("Se loquea MapaProcesos en newAReady")
 	procesoEnReady = general.ActualizarMetricas(procesoEnReady, globals.NEW)
 	globals.MapaProcesos[procesoEnReady.Pcb.Pid] = procesoEnReady
 	globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, procesoEnReady.Pcb.Pid)
+	globals.MapaProcesosMutex.Unlock()
+	//log.Print("Se unloquea MapaProcesos en newAReady")
 
 	log.Printf("cantidad de procesos en READY: %+v", len(globals.ESTADOS.READY))
 
@@ -311,11 +326,15 @@ func newAReady(proceso globals.Proceso_Nuevo) {
 
 func suspReadyAReady(proceso globals.Proceso) {
 
+	//log.Print("Se quiere loquear MapaProcesos en suspReadyAReady")
+	globals.MapaProcesosMutex.Lock()
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.READY
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.ESTADOS.SUSP_READY = globals.ESTADOS.SUSP_READY[1:]
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
+	globals.MapaProcesosMutex.Unlock()
+	//log.Print("Se unloquea MapaProcesos en suspReadyAReady")
 
 	general.NotificarProcesoEnReady(globals.NotificadorDesalojo)
 	general.Signal(globals.Sem_ProcesosEnReady) // Nuevo proceso en ready

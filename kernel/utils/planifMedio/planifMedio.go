@@ -21,12 +21,14 @@ func BloquearProcesoDesdeExecute(proceso globals.Proceso, razon string) {
 	// Como la cola de Execute 'no tiene' orden (todos los que estan en execute tienen una cpu ya ejecutando)
 	// no se saca el primero de la cola como en las otras funciones
 
+	//log.Print("Se quiere loquear MapaProcesos en BloquearProcesoDesdeExecute")
 	globals.MapaProcesosMutex.Lock()
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.BLOCKED
 
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
+	//log.Print("Se unloquea MapaProcesos en BloquearProcesoDesdeExecute")
 
 	globals.EstadosMutex.Lock()
 	pos := general.BuscarProcesoEnExecute(proceso.Pcb.Pid)
@@ -58,15 +60,18 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 	// Para que no siga bloqueado, el proceso tuvo que terminar su IO (lo recibimos como mensaje desde IO, siendo kernel servidor)
 	// Cuando kernel reciba de IO el mensaje, ahí le cambiamos el estado
 
+	//log.Print("Se quiere loquear MapaProcesos en sigueBloqueado")
 	globals.MapaProcesosMutex.Lock()
 	procesoActualmente := globals.MapaProcesos[proceso.Pcb.Pid]
 	globals.MapaProcesosMutex.Unlock()
+	//log.Print("Se unloquea MapaProcesos en sigueBloqueado")
 
 	// Comparo cantidad de sesiones:
 	// 		- Son iguales: es la misma sesion => me fijo si swappeo
 	//		- Son distintas: distintas sesiones => no hago nada
 
 	globals.CantidadSesionesIOMutex.Lock()
+	log.Printf("Cantidad sesiones actual: %d, previa: %d", globals.CantidadSesionesIO[procesoActualmente.Pcb.Pid], cantidadSesionesPrevia)
 	if globals.CantidadSesionesIO[procesoActualmente.Pcb.Pid] == cantidadSesionesPrevia {
 		if procesoActualmente.Estado_Actual == globals.BLOCKED {
 			// Aviso a memoria que hay que swappear
@@ -87,11 +92,13 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 
 func blockedASuspBlocked(proceso globals.Proceso) {
 	// Muevo el proceso en la colas
+	//log.Print("Se quiere loquear MapaProcesos en blockedASuspBlocked")
 	globals.MapaProcesosMutex.Lock()
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.SUSP_BLOCKED
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
+	//log.Print("Se unloquea MapaProcesos en blockedASuspBlocked")
 
 	globals.EstadosMutex.Lock()
 	pos := general.BuscarProcesoEnBlocked(proceso.Pcb.Pid)
