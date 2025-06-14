@@ -82,7 +82,11 @@ type SyscallExit struct { //endpoint: syscallEXIT
 	NombreCPU string `json:"nombre_cpu"`
 }
 
-type SyscallDump = SyscallExit
+type SyscallDump struct {
+	PID       int64  `json:"pid"`
+	PC        int64  `json:"pc"`
+	NombreCPU string `json:"nombre_cpu"`
+}
 
 type SyscallInit struct {
 	Tamanio   int64  `json:"tamanio"`

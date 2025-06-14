@@ -304,6 +304,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 		if err != nil {
 			fmt.Printf("Error al convertir '%s' a int64: %s\n", instDeco.Parametros[1], err)
 		}
+		pcb.PC++
 		IO := globals.SyscallIO{
 			NombreIO:  instDeco.Parametros[0],
 			NombreCPU: os.Args[1],
@@ -321,6 +322,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 		if err != nil {
 			fmt.Printf("Error al convertir '%s' a int64: %s\n", instDeco.Parametros[1], err)
 		}
+		pcb.PC++
 		INIT := globals.SyscallInit{
 			Tamanio:   TamanioINT,
 			Archivo:   instDeco.Parametros[0],
@@ -334,10 +336,12 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 		}
 		return PONERSE_ESPERA, nil
 	case "DUMP_MEMORY":
-		EXIT := globals.SyscallExit{
+		pcb.PC++
+		DUMP := globals.SyscallDump{
 			PID:       pcb.Pid,
+			PC:        pcb.PC,
 			NombreCPU: os.Args[1]}
-		err := EnviarEXITAKernel(EXIT)
+		err := EnviarDUMPAKernel(DUMP)
 		if err != nil {
 			log.Printf("ERROR: No se pudo enviar SYSCALL DUMP MEMORY del PID %d al Kernel: %s", pcb.Pid, err)
 			return ERROR_EJECUCION, fmt.Errorf("fallo al enviar SYSCALL DUMP MEMORY: %w", err)
@@ -410,6 +414,30 @@ func EnviarIOAKernel(syscallData globals_cpu.SyscallIO) error {
 }
 
 func EnviarEXITAKernel(syscallData globals_cpu.SyscallExit) error {
+	body, err := json.Marshal(syscallData)
+	if err != nil {
+		return fmt.Errorf("error codificando struct SYSCALL: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/syscallEXIT", globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("error enviando SYSCALL a Kernel (%s): %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody := new(bytes.Buffer)
+		respBody.ReadFrom(resp.Body)
+		return fmt.Errorf("kernel respondió con error al recibir SYSCALL (%d %s): %s", resp.StatusCode, resp.Status, respBody.String())
+	}
+
+	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "EXIT", resp.Status)
+	return nil
+}
+
+func EnviarDUMPAKernel(syscallData globals_cpu.SyscallDump) error {
 	body, err := json.Marshal(syscallData)
 	if err != nil {
 		return fmt.Errorf("error codificando struct SYSCALL: %w", err)

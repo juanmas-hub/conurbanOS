@@ -14,7 +14,7 @@ import (
 
 // ----- FUNCIONES EXPORTADAS -------
 
-func BloquearProcesoDesdeExecute(proceso globals.Proceso) {
+func BloquearProcesoDesdeExecute(proceso globals.Proceso, razon string) {
 	// Esta funcion deberia llamarse cuando un proceso en ejecucion llama a IO con la syscall IO (desde syscallController)
 
 	// -- Paso el proceso entre las colas
@@ -34,22 +34,26 @@ func BloquearProcesoDesdeExecute(proceso globals.Proceso) {
 	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED, proceso.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
 
-	log.Printf("Bloqueado proceso desde execute PID %d", proceso.Pcb.Pid)
+	log.Printf("Bloqueado proceso desde execute PID %d, razon: %s", proceso.Pcb.Pid, razon)
+
+	globals.CantidadSesionesIOMutex.Lock()
+	cantidadSesiones := globals.CantidadSesionesIO[proceso.Pcb.Pid]
+	globals.CantidadSesionesIOMutex.Unlock()
 
 	// -- Timer hasta ser suspendido
-	go timer(globals.KernelConfig.Suspension_time, proceso)
+	go timer(globals.KernelConfig.Suspension_time, proceso, cantidadSesiones)
 
 }
 
 // ----- FUNCIONES LOCALES -------
 
-func timer(tiempo int64, proceso globals.Proceso) {
-	defer sigueBloqueado(proceso)
+func timer(tiempo int64, proceso globals.Proceso, cantidadSesiones int) {
+	defer sigueBloqueado(proceso, cantidadSesiones)
 	duracion := time.Duration(tiempo) * time.Millisecond
 	time.Sleep(duracion)
 }
 
-func sigueBloqueado(proceso globals.Proceso) {
+func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 	// Si sigue bloqueado (en IO) hay que suspenderlo
 	// Para que no siga bloqueado, el proceso tuvo que terminar su IO (lo recibimos como mensaje desde IO, siendo kernel servidor)
 	// Cuando kernel reciba de IO el mensaje, ahí le cambiamos el estado
@@ -58,16 +62,27 @@ func sigueBloqueado(proceso globals.Proceso) {
 	procesoActualmente := globals.MapaProcesos[proceso.Pcb.Pid]
 	globals.MapaProcesosMutex.Unlock()
 
-	if procesoActualmente.Estado_Actual == globals.BLOCKED {
-		// Aviso a memoria que hay que swappear
-		avisarSwappeo(procesoActualmente.Pcb.Pid)
+	// Comparo cantidad de sesiones:
+	// 		- Son iguales: es la misma sesion => me fijo si swappeo
+	//		- Son distintas: distintas sesiones => no hago nada
 
-		// Cambio de estado
-		blockedASuspBlocked(proceso)
+	globals.CantidadSesionesIOMutex.Lock()
+	if globals.CantidadSesionesIO[procesoActualmente.Pcb.Pid] == cantidadSesionesPrevia {
+		if procesoActualmente.Estado_Actual == globals.BLOCKED {
+			// Aviso a memoria que hay que swappear
+			avisarSwappeo(procesoActualmente.Pcb.Pid)
 
-		// Libere espacio => llamo a nuevos procesos
-		general.Signal(globals.Sem_PasarProcesoAReady)
+			// Cambio de estado
+			blockedASuspBlocked(proceso)
+
+			// Libere espacio => llamo a nuevos procesos
+			globals.DeDondeSeLlamaMutex.Lock()
+			globals.DeDondeSeLlamaPasarProcesosAReady = "Susp Blocked"
+			globals.DeDondeSeLlamaMutex.Unlock()
+			general.Signal(globals.Sem_PasarProcesoAReady)
+		}
 	}
+	globals.CantidadSesionesIOMutex.Unlock()
 }
 
 func blockedASuspBlocked(proceso globals.Proceso) {

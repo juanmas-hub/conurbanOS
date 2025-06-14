@@ -223,6 +223,10 @@ func EnviarSolicitudIO(ipIO string, puertoIO int64, pid int64, tiempo int64) {
 		log.Printf("Error enviando solicitud IO a ipIO:%s puertoIO:%d", ipIO, puertoIO)
 	}
 
+	globals.CantidadSesionesIOMutex.Lock()
+	globals.CantidadSesionesIO[pid]++
+	globals.CantidadSesionesIOMutex.Unlock()
+
 	log.Printf("Solicitud IO enviada al modulo IO - PID: %d, Tiempo: %dms", pid, tiempo)
 	log.Printf("Respuesta del modulo IO: %s", resp.Status)
 }
@@ -243,7 +247,6 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		manejarFinIO(finalizacionIo)
-		Signal(globals.Sem_PasarProcesoAReady)
 	}()
 
 	w.WriteHeader(http.StatusOK)
@@ -292,47 +295,64 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 
 	// Si esta en Susp Blocked lo paso a Susp Ready
 	if proceso.Estado_Actual == globals.SUSP_BLOCKED {
-		globals.MapaProcesosMutex.Lock()
-		proceso = ActualizarMetricas(proceso, proceso.Estado_Actual)
-		proceso.Estado_Actual = globals.SUSP_READY
-		globals.MapaProcesos[finalizacionIo.PID] = proceso
-		globals.MapaProcesosMutex.Unlock()
-
-		pos := BuscarProcesoEnSuspBlocked(proceso.Pcb.Pid)
-
-		globals.EstadosMutex.Lock()
-		globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED[:pos], globals.ESTADOS.SUSP_BLOCKED[pos+1:]...)
-		globals.ESTADOS.SUSP_READY = append(globals.ESTADOS.SUSP_READY, proceso.Pcb.Pid)
-		globals.EstadosMutex.Unlock()
-
-		log.Printf("Proceso de PID %d fue movido de Susp Blocked a Susp Ready", proceso.Pcb.Pid)
-
+		SuspBlockedASuspReady(proceso)
 	}
 
 	// Si esta en Blocked lo paso Ready (no lo dice el enunciado!¡)
 	if proceso.Estado_Actual == globals.BLOCKED {
-		globals.MapaProcesosMutex.Lock()
-		proceso = ActualizarMetricas(proceso, proceso.Estado_Actual)
-		proceso.Estado_Actual = globals.READY
-		globals.MapaProcesos[finalizacionIo.PID] = proceso
-		globals.MapaProcesosMutex.Unlock()
-
-		pos := BuscarProcesoEnBlocked(proceso.Pcb.Pid)
-
-		globals.EstadosMutex.Lock()
-		globals.ESTADOS.BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED[:pos], globals.ESTADOS.SUSP_BLOCKED[pos+1:]...)
-		globals.ESTADOS.READY = append(globals.ESTADOS.SUSP_READY, proceso.Pcb.Pid)
-		globals.EstadosMutex.Unlock()
-
-		log.Printf("Proceso de PID %d fue movido de Blocked a Ready", proceso.Pcb.Pid)
+		BlockedAReady(proceso)
 	}
 }
 
-// Dada una cola y un PID, busca el proceso en la cola y devuelve la posicion.
-func buscarProcesoEnColaIO(cola []globals.SyscallIO, pid int64) int {
-	log.Print("Se ejecutó buscarProcesoEnColaIO")
-	return 0
+func SuspBlockedASuspReady(proceso globals.Proceso) {
+	globals.MapaProcesosMutex.Lock()
+	proceso = ActualizarMetricas(proceso, proceso.Estado_Actual)
+	proceso.Estado_Actual = globals.SUSP_READY
+	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
+	globals.MapaProcesosMutex.Unlock()
+
+	pos := BuscarProcesoEnSuspBlocked(proceso.Pcb.Pid)
+
+	globals.EstadosMutex.Lock()
+	globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED[:pos], globals.ESTADOS.SUSP_BLOCKED[pos+1:]...)
+	globals.ESTADOS.SUSP_READY = append(globals.ESTADOS.SUSP_READY, proceso.Pcb.Pid)
+	globals.EstadosMutex.Unlock()
+
+	log.Printf("Proceso de PID %d fue movido de Susp Blocked a Susp Ready", proceso.Pcb.Pid)
+
+	globals.DeDondeSeLlamaMutex.Lock()
+	globals.DeDondeSeLlamaPasarProcesosAReady = "SUSP READY"
+	globals.DeDondeSeLlamaMutex.Unlock()
+	Signal(globals.Sem_PasarProcesoAReady)
 }
+
+func BlockedAReady(proceso globals.Proceso) {
+	globals.MapaProcesosMutex.Lock()
+	proceso = ActualizarMetricas(proceso, proceso.Estado_Actual)
+	proceso.Estado_Actual = globals.READY
+	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
+	globals.MapaProcesosMutex.Unlock()
+
+	pos := BuscarProcesoEnBlocked(proceso.Pcb.Pid)
+
+	globals.EstadosMutex.Lock()
+	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED[:pos], globals.ESTADOS.BLOCKED[pos+1:]...)
+	globals.ESTADOS.READY = append(globals.ESTADOS.SUSP_READY, proceso.Pcb.Pid)
+	globals.EstadosMutex.Unlock()
+
+	log.Printf("Proceso de PID %d fue movido de Blocked a Ready", proceso.Pcb.Pid)
+
+	log.Printf("cantidad de procesos en READY: %+v", len(globals.ESTADOS.READY))
+
+	NotificarProcesoEnReady(globals.NotificadorDesalojo)
+	Signal(globals.Sem_ProcesosEnReady) // Nuevo proceso en ready
+}
+
+// Dada una cola y un PID, busca el proceso en la cola y devuelve la posicion.
+//func buscarProcesoEnColaIO(cola []globals.SyscallIO, pid int64) int {
+//	log.Print("Se ejecutó buscarProcesoEnColaIO")
+//	return 0
+//}
 
 // Cuando se cambia de estado. Se tiene que llamar con el mutex del mapa proceso LOCKEADO, y antes de cambiar el estado al nuevo. Devuelve el proceso con las metricas cambiadas.
 func ActualizarMetricas(proceso globals.Proceso, estadoAnterior string) globals.Proceso {
@@ -626,6 +646,7 @@ func ActualizarPC(pid int64, pc int64) {
 	globals.MapaProcesosMutex.Lock()
 	proceso := globals.MapaProcesos[pid]
 	proceso.Pcb.PC = pc
+	globals.MapaProcesos[pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
 }
 
@@ -657,7 +678,6 @@ func BuscarPosInstanciaIO(nombreIO string, ip string, puerto int64) int {
 
 	for i := range io.Instancias {
 		if io.Instancias[i].Handshake.Puerto == puerto && io.Instancias[i].Handshake.IP == ip {
-			log.Printf("posicion de BuscarPosInstanciaIO: %d", i)
 			return i
 		}
 	}

@@ -91,8 +91,10 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 
 	// Si se crea un proceso nuevo antes de que aprete Enter, se agrega a NEW pero no se pasan procesos a READY
 	if globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED == false {
+		globals.DeDondeSeLlamaMutex.Lock()
+		globals.DeDondeSeLlamaPasarProcesosAReady = "New"
+		globals.DeDondeSeLlamaMutex.Unlock()
 		general.Signal(globals.Sem_PasarProcesoAReady)
-		log.Print("holajee")
 	}
 }
 
@@ -104,7 +106,7 @@ func PasarProcesosAReady() {
 	for {
 		general.Wait(globals.Sem_PasarProcesoAReady)
 
-		log.Print("Intentando pasar procesos a ready")
+		log.Print("Intentando pasar procesos a ready porque llego un proceso a: ", globals.DeDondeSeLlamaPasarProcesosAReady)
 
 		globals.EstadosMutex.Lock()
 		globals.MapaProcesosMutex.Lock()
@@ -247,6 +249,9 @@ func finalizarProceso(pid int64) {
 	log.Printf("El PCB del proceso con PID %d fue liberado", pid)
 
 	// Iniciar nuevos procesos
+	globals.DeDondeSeLlamaMutex.Lock()
+	globals.DeDondeSeLlamaPasarProcesosAReady = "Exit"
+	globals.DeDondeSeLlamaMutex.Unlock()
 	general.Signal(globals.Sem_PasarProcesoAReady)
 }
 

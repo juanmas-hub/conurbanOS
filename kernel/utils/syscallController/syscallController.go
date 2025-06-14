@@ -55,9 +55,11 @@ func ManejarIO(syscallIO globals.SyscallIO) {
 		general.ActualizarPC(syscallIO.PID, syscallIO.PC)
 		globals.MapaProcesosMutex.Lock()
 		proceso := globals.MapaProcesos[syscallIO.PID]
+		log.Print("PC EN EL SYSCALL CONTROLLER: ", proceso.Pcb.PC)
 		globals.MapaProcesosMutex.Unlock()
 
-		utils_pm.BloquearProcesoDesdeExecute(proceso)
+		utils_pm.BloquearProcesoDesdeExecute(proceso, "Syscall IO")
+		general.LiberarCPU(syscallIO.NombreCPU)
 
 		// Si hay instancias libres, envio solicitud, sino agrego a la cola
 		io := globals.MapaIOs[nombreIO]
@@ -75,8 +77,6 @@ func ManejarIO(syscallIO globals.SyscallIO) {
 	}
 
 	globals.ListaIOsMutex.Unlock()
-
-	general.LiberarCPU(syscallIO.NombreCPU)
 }
 
 func ManejarINIT_PROC(w http.ResponseWriter, r *http.Request) {
@@ -125,12 +125,18 @@ func ManejarDUMP_MEMORY(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 
-		// Le pido a memoria que haga un Dump del proceso mandandole el PID.
+		globals.MapaProcesosMutex.Lock()
+		proceso := globals.MapaProcesos[syscallDUMP.PID]
+		globals.MapaProcesosMutex.Unlock()
+
+		utils_pm.BloquearProcesoDesdeExecute(proceso, "Syscall Dump")
+		general.LiberarCPU(syscallDUMP.NombreCPU)
+
 		if general.EnviarDumpMemory(syscallDUMP.PID) {
-			// No entiendo: issue
+			// Se desbloquea normalmente
+			general.BlockedAReady(proceso)
 		} else {
 			general.FinalizarProceso(syscallDUMP.PID)
-			general.LiberarCPU(syscallDUMP.NombreCPU)
 		}
 
 	}()

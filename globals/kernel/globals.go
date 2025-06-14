@@ -108,13 +108,19 @@ var Sem_ProcesosEnReady = CrearSemaforo(0)
 var Sem_ProcesoAFinalizar = CrearSemaforo(0)
 var ProcesosAFinalizar []int64
 
-// Se usa para poder manejar el fin de IO (por un tema de archivos)
 var Sem_PasarProcesoAReady = CrearSemaforo(0)
 
 // Con el semaforo le aviso al planificador de largo plazo que hay un proceso para finalizar
 // En el slice le pongo el PID
 
 var NotificadorDesalojo = make(chan struct{}, 1)
+
+var DeDondeSeLlamaPasarProcesosAReady string = ""
+var DeDondeSeLlamaMutex sync.Mutex
+
+// Mapa PID:Cantidad. La cantidad de sesiones de IO indica cuantas veces fue a IO. Se usa para controlar el timer en planificador medio.
+var CantidadSesionesIO map[int64]int = make(map[int64]int)
+var CantidadSesionesIOMutex sync.Mutex
 
 type MetricasEstado struct {
 	New          int64
@@ -206,7 +212,11 @@ type SyscallExit struct {
 	NombreCPU string `json:"nombre_cpu"`
 }
 
-type SyscallDump = SyscallExit
+type SyscallDump struct {
+	PID       int64  `json:"pid"`
+	PC        int64  `json:"pc"`
+	NombreCPU string `json:"nombre_cpu"`
+}
 
 type SyscallInit struct {
 	Tamanio     int64  `json:"tamanio"`
