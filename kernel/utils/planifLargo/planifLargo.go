@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"sort"
@@ -96,6 +97,9 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		globals.DeDondeSeLlamaMutex.Unlock()
 		general.Signal(globals.Sem_PasarProcesoAReady)
 	}
+
+	// LOG Creación de Proceso: “## (<PID>) Se crea el proceso - Estado: NEW”
+	slog.Info(fmt.Sprintf("## (%d) Se crea el proceso - Estado: NEW", pid))
 }
 
 func PasarProcesosAReady() {

@@ -2,7 +2,9 @@ package utils_syscallController
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
@@ -78,6 +80,9 @@ func ManejarIO(syscallIO globals.SyscallIO) {
 	}
 
 	globals.ListaIOsMutex.Unlock()
+
+	logSyscalls(syscallIO.PID, "IO")
+
 }
 
 func ManejarINIT_PROC(w http.ResponseWriter, r *http.Request) {
@@ -104,6 +109,8 @@ func ManejarINIT_PROC(w http.ResponseWriter, r *http.Request) {
 		cpu := globals.ListaCPUs[posCpu]
 		globals.ListaCPUsMutex.Unlock()
 		general.EnviarProcesoAEjecutar_ACPU(cpu.Handshake.IP, cpu.Handshake.Puerto, syscallINIT.Pid_proceso, syscallINIT.Pc)
+
+		logSyscalls(syscallINIT.Pid_proceso, "INIT_PROC")
 	}()
 
 	w.WriteHeader(http.StatusOK)
@@ -142,6 +149,7 @@ func ManejarDUMP_MEMORY(w http.ResponseWriter, r *http.Request) {
 			general.FinalizarProceso(syscallDUMP.PID)
 		}
 
+		logSyscalls(syscallDUMP.PID, "DUMP_MEMORY")
 	}()
 
 	w.WriteHeader(http.StatusOK)
@@ -165,6 +173,8 @@ func ManejarEXIT(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		general.FinalizarProceso(syscallEXIT.PID)
 		general.LiberarCPU(syscallEXIT.NombreCPU)
+
+		logSyscalls(syscallEXIT.PID, "EXIT")
 	}()
 
 	w.WriteHeader(http.StatusOK)
@@ -193,4 +203,8 @@ func buscarInstanciaIOLibre(nombreIO string) (globals.InstanciaIO, int, bool) {
 func verificarExistenciaIO(nombreIO string) bool {
 	_, existe := globals.MapaIOs[nombreIO]
 	return existe
+}
+
+func logSyscalls(pid int64, syscall string) {
+	slog.Info(fmt.Sprintf("## (%d) - Solicitó syscall: %s", pid, syscall))
 }
