@@ -24,6 +24,8 @@ func main() {
 		log.Fatal("No se pudo iniciar el config")
 	}
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.KernelConfig.Log_level))
+	slog.Info("hola")
+	log.Println("JAjaja")
 
 	// INIT
 
