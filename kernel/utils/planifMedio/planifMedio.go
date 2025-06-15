@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -41,6 +42,9 @@ func BloquearProcesoDesdeExecute(proceso globals.Proceso, razon string) {
 	globals.CantidadSesionesIOMutex.Lock()
 	cantidadSesiones := globals.CantidadSesionesIO[proceso.Pcb.Pid]
 	globals.CantidadSesionesIOMutex.Unlock()
+
+	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
+	slog.Info(fmt.Sprintf("## (%d) Pasa del estado EXECUTE al estado BLOCKED", proceso.Pcb.Pid))
 
 	// -- Timer hasta ser suspendido
 	go timer(globals.KernelConfig.Suspension_time, proceso, cantidadSesiones)
@@ -106,7 +110,8 @@ func blockedASuspBlocked(proceso globals.Proceso) {
 	globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED, proceso.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
 
-	log.Printf("El proceso de PID %d fue movido a Susp Blocked", proceso.Pcb.Pid)
+	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
+	slog.Info(fmt.Sprintf("## (%d) Pasa del estado BLOCKED al estado SUSP_BLOCKED", proceso.Pcb.Pid))
 
 }
 

@@ -80,6 +80,8 @@ func ManejarIO(syscallIO globals.SyscallIO) {
 	}
 
 	globals.ListaIOsMutex.Unlock()
+	// Motivo de Bloqueo: ## (<PID>) - Bloqueado por IO: <DISPOSITIVO_IO>
+	slog.Info(fmt.Sprintf("## (%d) - Bloqueado por IO: %s", syscallIO.PID, syscallIO.NombreIO))
 
 	logSyscalls(syscallIO.PID, "IO")
 

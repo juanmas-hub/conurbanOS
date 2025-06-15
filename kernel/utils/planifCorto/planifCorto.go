@@ -2,7 +2,9 @@ package utils_planifCorto
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"sort"
 	"time"
@@ -146,7 +148,7 @@ func ejecutarUnProceso() {
 	ip, port := elegirCPUlibre()
 	proceso := globals.MapaProcesos[procesoAEjecutar]
 	general.EnviarProcesoAEjecutar_ACPU(ip, port, proceso.Pcb.Pid, proceso.Pcb.PC)
-	readyAExecute(proceso)
+	aExecute(proceso)
 	log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
 	globals.MapaProcesosMutex.Unlock()
 	//log.Print("Se unloquea MapaProcesos en ejecutarUnProceso")
@@ -239,12 +241,17 @@ func elegirCPUlibre() (string, int64) {
 	}
 }
 
-func readyAExecute(proceso globals.Proceso) {
+func aExecute(proceso globals.Proceso) {
 	// Esto funcionaría para FIFO y SJF. Nose si SRT
+
+	estado_anterior := proceso.Estado_Actual
 
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.EXECUTE
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.ESTADOS.READY = globals.ESTADOS.READY[1:]
 	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE, proceso.Pcb.Pid)
+
+	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
+	slog.Info(fmt.Sprintf("## (%d) Pasa del estado %s al estado EXECUTE", proceso.Pcb.Pid, estado_anterior))
 }

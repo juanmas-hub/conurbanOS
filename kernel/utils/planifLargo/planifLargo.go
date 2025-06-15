@@ -298,9 +298,35 @@ func eliminarDeSuCola(pid int64, estadoActual string) {
 
 func procesoAExit(proceso globals.Proceso) {
 	// Actualizamos metricas
+	globals.MapaProcesosMutex.Lock()
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
+	globals.MapaProcesosMutex.Unlock()
 
-	// Logueamos metricas
+	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
+	slog.Info(fmt.Sprintf("## (%d) Pasa del estado %s al estado EXIT", proceso.Pcb.Pid, proceso.Estado_Actual))
+
+	// LOG Fin de Proceso: ## (<PID>) - Finaliza el proceso
+	slog.Info(fmt.Sprintf("## (%d) - Finaliza el proceso", proceso.Pcb.Pid))
+
+	// Counts
+	newCount := proceso.Pcb.ME.New
+	readyCount := proceso.Pcb.ME.Ready
+	execCount := proceso.Pcb.ME.Execute
+	blockedCount := proceso.Pcb.ME.Blocked
+	suspblockedCount := proceso.Pcb.ME.Susp_Blocked
+	suspreadyCount := proceso.Pcb.ME.Susp_Ready
+
+	// Times
+	newTimes := proceso.Pcb.ME.New
+	readyTimes := proceso.Pcb.ME.Ready
+	execTimes := proceso.Pcb.ME.Execute
+	blockedTimes := proceso.Pcb.ME.Blocked
+	suspblockedTimes := proceso.Pcb.ME.Susp_Blocked
+	suspreadyTimes := proceso.Pcb.ME.Susp_Ready
+
+	// LOG Métricas de Estado: ## (<PID>) - Métricas de estado: NEW (NEW_COUNT) (NEW_TIME), READY (READY_COUNT) (READY_TIME), …
+	slog.Info(fmt.Sprintf("## (%d) - Métricas de estado: NEW %d %d, READY %d %d, EXECUTE %d %d, BLOCKED %d %d, SUSP_BLOCKED %d %d, SUSP_READY %d %d", proceso.Pcb.Pid, newCount, newTimes, readyCount, readyTimes, execCount, execTimes, blockedCount, blockedTimes, suspblockedCount, suspblockedTimes, suspreadyCount, suspreadyTimes))
+
 }
 
 func newAReady(proceso globals.Proceso_Nuevo) {
@@ -326,6 +352,9 @@ func newAReady(proceso globals.Proceso_Nuevo) {
 
 	general.NotificarProcesoEnReady(globals.NotificadorDesalojo)
 	general.Signal(globals.Sem_ProcesosEnReady) // Nuevo proceso en ready
+
+	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
+	slog.Info(fmt.Sprintf("## (%d) Pasa del estado NEW al estado READY", procesoEnReady.Pcb.Pid))
 }
 
 func suspReadyAReady(proceso globals.Proceso) {
@@ -343,4 +372,6 @@ func suspReadyAReady(proceso globals.Proceso) {
 	general.NotificarProcesoEnReady(globals.NotificadorDesalojo)
 	general.Signal(globals.Sem_ProcesosEnReady) // Nuevo proceso en ready
 
+	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
+	slog.Info(fmt.Sprintf("## (%d) Pasa del estado SUSP_READY al estado READY", proceso.Pcb.Pid))
 }

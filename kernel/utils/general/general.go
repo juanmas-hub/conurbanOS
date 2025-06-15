@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -247,6 +248,8 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		manejarFinIO(finalizacionIo)
+		// LOG : Fin de IO: ## (<PID>) finalizó IO y pasa a READY
+		slog.Info(fmt.Sprintf("## (%d) finalizó IO y pasa a READY", finalizacionIo.PID))
 	}()
 
 	w.WriteHeader(http.StatusOK)
@@ -328,6 +331,9 @@ func SuspBlockedASuspReady(proceso globals.Proceso) {
 	globals.DeDondeSeLlamaPasarProcesosAReady = "SUSP READY"
 	globals.DeDondeSeLlamaMutex.Unlock()
 	Signal(globals.Sem_PasarProcesoAReady)
+
+	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
+	slog.Info(fmt.Sprintf("## (%d) Pasa del estado SUSP_BLOCKED al estado SUSP_READY", proceso.Pcb.Pid))
 }
 
 func BlockedAReady(proceso globals.Proceso) {
@@ -352,13 +358,10 @@ func BlockedAReady(proceso globals.Proceso) {
 
 	NotificarProcesoEnReady(globals.NotificadorDesalojo)
 	Signal(globals.Sem_ProcesosEnReady) // Nuevo proceso en ready
-}
 
-// Dada una cola y un PID, busca el proceso en la cola y devuelve la posicion.
-//func buscarProcesoEnColaIO(cola []globals.SyscallIO, pid int64) int {
-//	log.Print("Se ejecutó buscarProcesoEnColaIO")
-//	return 0
-//}
+	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
+	slog.Info(fmt.Sprintf("## (%d) Pasa del estado BLOCKED al estado READY", proceso.Pcb.Pid))
+}
 
 // Cuando se cambia de estado. Se tiene que llamar con el mutex del mapa proceso LOCKEADO, y antes de cambiar el estado al nuevo. Devuelve el proceso con las metricas cambiadas.
 func ActualizarMetricas(proceso globals.Proceso, estadoAnterior string) globals.Proceso {
