@@ -368,59 +368,38 @@ func ActualizarMetricas(proceso globals.Proceso, estadoAnterior string) globals.
 	// Falta hacer MT
 	ahora := time.Now()
 
+	ME := proceso.Pcb.ME
+	MT := proceso.Pcb.MT
+	tiempoEnEstado := ahora.Sub(proceso.UltimoCambioDeEstado)
+
 	switch estadoAnterior {
 	case globals.NEW:
-		ME := proceso.Pcb.ME
 		ME.New++
-		proceso.Pcb.ME = ME
-		MT := proceso.Pcb.MT
-		MT.New = MT.New + ahora.Sub(proceso.UltimoCambioDeEstado)
-		proceso.UltimoCambioDeEstado = ahora
-		return proceso
+		MT.New += tiempoEnEstado
 	case globals.READY:
-		ME := proceso.Pcb.ME
 		ME.Ready++
-		proceso.Pcb.ME = ME
-		MT := proceso.Pcb.MT
-		MT.Ready = MT.Ready + ahora.Sub(proceso.UltimoCambioDeEstado)
-		proceso.UltimoCambioDeEstado = ahora
-		return proceso
+		MT.Ready += tiempoEnEstado
 	case globals.EXECUTE:
-		ME := proceso.Pcb.ME
 		ME.Execute++
-		proceso.Pcb.ME = ME
-		MT := proceso.Pcb.MT
-		MT.Execute = MT.Execute + ahora.Sub(proceso.UltimoCambioDeEstado)
-		proceso.UltimoCambioDeEstado = ahora
-		return proceso
+		MT.Execute += tiempoEnEstado
 	case globals.BLOCKED:
-		ME := proceso.Pcb.ME
 		ME.Blocked++
-		proceso.Pcb.ME = ME
-		MT := proceso.Pcb.MT
-		MT.Blocked = MT.Blocked + ahora.Sub(proceso.UltimoCambioDeEstado)
-		proceso.UltimoCambioDeEstado = ahora
-		return proceso
+		MT.Blocked += tiempoEnEstado
 	case globals.SUSP_BLOCKED:
-		ME := proceso.Pcb.ME
 		ME.Susp_Blocked++
-		proceso.Pcb.ME = ME
-		MT := proceso.Pcb.MT
-		MT.Susp_Blocked = MT.Susp_Blocked + ahora.Sub(proceso.UltimoCambioDeEstado)
-		proceso.UltimoCambioDeEstado = ahora
-		return proceso
+		MT.Susp_Blocked += tiempoEnEstado
 	case globals.SUSP_READY:
-		ME := proceso.Pcb.ME
-		ME.Susp_Blocked++
-		proceso.Pcb.ME = ME
-		MT := proceso.Pcb.MT
-		MT.Susp_Ready = MT.Susp_Ready + ahora.Sub(proceso.UltimoCambioDeEstado)
-		proceso.UltimoCambioDeEstado = ahora
-		return proceso
+		ME.Susp_Ready++
+		MT.Susp_Ready += tiempoEnEstado
 	default:
 		// No deberia entrar nunca aca
-		return proceso
 	}
+
+	proceso.Pcb.ME = ME
+	proceso.Pcb.MT = MT
+	proceso.UltimoCambioDeEstado = ahora
+
+	return proceso
 }
 
 // Se llama con estados mutex lockeado

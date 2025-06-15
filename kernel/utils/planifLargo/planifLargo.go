@@ -224,6 +224,7 @@ func escucharFinalizacionesDeProcesos() {
 		general.Wait(globals.Sem_ProcesoAFinalizar)
 		globals.ProcesosAFinalizarMutex.Lock()
 		pid := globals.ProcesosAFinalizar[0]
+		globals.ProcesosAFinalizar = globals.ProcesosAFinalizar[1:]
 		globals.ProcesosAFinalizarMutex.Unlock()
 		go finalizarProceso(pid)
 	}
@@ -317,15 +318,15 @@ func procesoAExit(proceso globals.Proceso) {
 	suspreadyCount := proceso.Pcb.ME.Susp_Ready
 
 	// Times
-	newTimes := proceso.Pcb.ME.New
-	readyTimes := proceso.Pcb.ME.Ready
-	execTimes := proceso.Pcb.ME.Execute
-	blockedTimes := proceso.Pcb.ME.Blocked
-	suspblockedTimes := proceso.Pcb.ME.Susp_Blocked
-	suspreadyTimes := proceso.Pcb.ME.Susp_Ready
+	newTimes := proceso.Pcb.MT.New.Milliseconds()
+	readyTimes := proceso.Pcb.MT.Ready.Milliseconds()
+	execTimes := proceso.Pcb.MT.Execute.Milliseconds()
+	blockedTimes := proceso.Pcb.MT.Blocked.Milliseconds()
+	suspblockedTimes := proceso.Pcb.MT.Susp_Blocked.Milliseconds()
+	suspreadyTimes := proceso.Pcb.MT.Susp_Ready.Milliseconds()
 
 	// LOG Métricas de Estado: ## (<PID>) - Métricas de estado: NEW (NEW_COUNT) (NEW_TIME), READY (READY_COUNT) (READY_TIME), …
-	slog.Info(fmt.Sprintf("## (%d) - Métricas de estado: NEW %d %d, READY %d %d, EXECUTE %d %d, BLOCKED %d %d, SUSP_BLOCKED %d %d, SUSP_READY %d %d", proceso.Pcb.Pid, newCount, newTimes, readyCount, readyTimes, execCount, execTimes, blockedCount, blockedTimes, suspblockedCount, suspblockedTimes, suspreadyCount, suspreadyTimes))
+	slog.Info(fmt.Sprintf("## (%d) - Métricas de estado: NEW %d %dms, READY %d %dms, EXECUTE %d %dms, BLOCKED %d %dms, SUSP_BLOCKED %d %dms, SUSP_READY %d %dms", proceso.Pcb.Pid, newCount, newTimes, readyCount, readyTimes, execCount, execTimes, blockedCount, blockedTimes, suspblockedCount, suspblockedTimes, suspreadyCount, suspreadyTimes))
 
 }
 
@@ -333,9 +334,10 @@ func newAReady(proceso globals.Proceso_Nuevo) {
 	// Mutex de estados y mapa procesos estan lockeados (pasarProcesosAReady)
 
 	procesoEnReady := globals.Proceso{
-		Pcb:           proceso.Proceso.Pcb,
-		Estado_Actual: globals.READY,
-		Rafaga:        nil,
+		Pcb:                  proceso.Proceso.Pcb,
+		Estado_Actual:        globals.READY,
+		Rafaga:               proceso.Proceso.Rafaga,
+		UltimoCambioDeEstado: proceso.Proceso.UltimoCambioDeEstado,
 	}
 
 	//log.Print("Se quiere loquear MapaProcesos en newAReady")

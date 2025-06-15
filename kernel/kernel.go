@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	utils_general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
@@ -25,6 +26,13 @@ func main() {
 	}
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.KernelConfig.Log_level))
 	// INIT
+
+	go func() {
+		ahora := time.Now()
+		time.Sleep(time.Millisecond * 2000)
+		slog.Warn(strconv.Itoa(int(time.Now().Sub(ahora).Milliseconds())))
+
+	}()
 
 	if len(os.Args) != 3 {
 		log.Fatal("Uso: go run . archivo tamaño")

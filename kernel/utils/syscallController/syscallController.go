@@ -33,8 +33,8 @@ func RecibirIO(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Hubo una Syscall IO")
-	log.Printf("%+v\n", syscallIO)
+	//log.Println("Hubo una Syscall IO")
+	//log.Printf("%+v\n", syscallIO)
 
 	go ManejarIO(syscallIO)
 
@@ -47,7 +47,9 @@ func ManejarIO(syscallIO globals.SyscallIO) {
 	existe := verificarExistenciaIO(syscallIO.NombreIO)
 	nombreIO := syscallIO.NombreIO
 
-	log.Print("Vino una syscall IO a ManejarIO:", syscallIO)
+	//log.Print("Vino una syscall IO a ManejarIO:", syscallIO)
+
+	logSyscalls(syscallIO.PID, "IO")
 
 	if !existe {
 		general.FinalizarProceso(syscallIO.PID)
@@ -83,8 +85,6 @@ func ManejarIO(syscallIO globals.SyscallIO) {
 	// Motivo de Bloqueo: ## (<PID>) - Bloqueado por IO: <DISPOSITIVO_IO>
 	slog.Info(fmt.Sprintf("## (%d) - Bloqueado por IO: %s", syscallIO.PID, syscallIO.NombreIO))
 
-	logSyscalls(syscallIO.PID, "IO")
-
 }
 
 func ManejarINIT_PROC(w http.ResponseWriter, r *http.Request) {
@@ -98,11 +98,12 @@ func ManejarINIT_PROC(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Hubo una syscallINIT")
-	log.Printf("%+v\n", syscallINIT)
+	//log.Println("Hubo una syscallINIT")
+	//log.Printf("%+v\n", syscallINIT)
 
 	go func() {
 
+		logSyscalls(syscallINIT.Pid_proceso, "INIT_PROC")
 		go utils_pl.CrearProcesoNuevo(syscallINIT.Archivo, syscallINIT.Tamanio)
 
 		// El proceso vuelve a ejecutar
@@ -111,8 +112,6 @@ func ManejarINIT_PROC(w http.ResponseWriter, r *http.Request) {
 		cpu := globals.ListaCPUs[posCpu]
 		globals.ListaCPUsMutex.Unlock()
 		general.EnviarProcesoAEjecutar_ACPU(cpu.Handshake.IP, cpu.Handshake.Puerto, syscallINIT.Pid_proceso, syscallINIT.Pc)
-
-		logSyscalls(syscallINIT.Pid_proceso, "INIT_PROC")
 	}()
 
 	w.WriteHeader(http.StatusOK)
@@ -130,10 +129,11 @@ func ManejarDUMP_MEMORY(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Hubo una SyscallDump")
-	log.Printf("%+v\n", syscallDUMP)
+	//log.Println("Hubo una SyscallDump")
+	//log.Printf("%+v\n", syscallDUMP)
 
 	go func() {
+		logSyscalls(syscallDUMP.PID, "DUMP_MEMORY")
 
 		//log.Print("Se quiere loquear MapaProcesos en ManejarDUMP_MEMORY")
 		globals.MapaProcesosMutex.Lock()
@@ -150,8 +150,6 @@ func ManejarDUMP_MEMORY(w http.ResponseWriter, r *http.Request) {
 		} else {
 			general.FinalizarProceso(syscallDUMP.PID)
 		}
-
-		logSyscalls(syscallDUMP.PID, "DUMP_MEMORY")
 	}()
 
 	w.WriteHeader(http.StatusOK)
@@ -169,14 +167,15 @@ func ManejarEXIT(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Hubo una Syscall EXIT")
-	log.Printf("%+v\n", syscallEXIT)
+	//log.Println("Hubo una Syscall EXIT")
+	//log.Printf("%+v\n", syscallEXIT)
 
 	go func() {
+		logSyscalls(syscallEXIT.PID, "EXIT")
+
 		general.FinalizarProceso(syscallEXIT.PID)
 		general.LiberarCPU(syscallEXIT.NombreCPU)
 
-		logSyscalls(syscallEXIT.PID, "EXIT")
 	}()
 
 	w.WriteHeader(http.StatusOK)
