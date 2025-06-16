@@ -71,11 +71,9 @@ type SolicitudInstruccion struct {
 	Pc  int64 `json:"pc"`
 }
 
-type EntradaSwap struct {
-    Pagina    int
-    Offset    int64
-    Tamaño    int
-}
-type TablaDeSWAP map[int]EntradaSwap
+var DireccionesSwapProceso map[int][]int // pid - direcciones swap
 
-var TablaSWAP TablaDeSWAP
+
+var ListaDireccionesSwapDisponibles []int
+
+var ProximaDireccionSwap int

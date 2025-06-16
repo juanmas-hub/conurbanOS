@@ -13,7 +13,7 @@ import (
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
-/*
+
 func CalcularMock() int {
 	PAGE_SIZE := int(globals_memoria.MemoriaConfig.Page_size)
 	libres := 0
@@ -25,9 +25,9 @@ func CalcularMock() int {
 	}
 	return libres * PAGE_SIZE
 }
-*/
+
 func ConsultarMock(w http.ResponseWriter, r *http.Request) {
-	mock := 1000 // valor fijo, segundo checpoint
+	mock := 1000 // valor fijo, segundo checkpoint
 
 	var enviado struct {
 		Mock int `json:"mock"`

@@ -1,6 +1,6 @@
 package utils
 
-/*import (
+import (
 	//"encoding/json"
 	//"fmt"
 	//"log"
@@ -10,6 +10,8 @@ package utils
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
-func escribirEnSWAP(datos []byte) globals_memoria.EntradaSwap{
 
-}*/
+func escribirEnSWAP(datos []string){
+	
+}
+

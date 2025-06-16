@@ -40,6 +40,13 @@ func InicializarMemoria() {
 	globals_memoria.ProcessManager = &manager
 
 	globals_memoria.Instrucciones = make(globals_memoria.Pseudocodigo)
+
+	//SWAP
+	globals_memoria.DireccionesSwapProceso = make(map[int][]int)
+
+	globals_memoria.ListaDireccionesSwapDisponibles = make([]int, 0)
+
+	globals_memoria.ProximaDireccionSwap = 0
 }
 
 func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {

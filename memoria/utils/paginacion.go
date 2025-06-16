@@ -20,6 +20,9 @@ func leer(direccion int, tamanio int) string {
 }
 
 func escribir(direccion int, dato string){
+
+	// var marco int = direccion / int(globals_memoria.MemoriaConfig.Page_size) // redondea hacia abajo
+
 	for i := 0; i < len(dato); i++{
 		globals_memoria.Memoria[direccion + i] = dato[i]
 	}
@@ -38,16 +41,7 @@ func verificarPIDUnico(pid int) int {
 	return 0
 }
 
-func extraerIndices(direccionLogica int) []int {
-	// Consultar indices a cpu
-	var indicesNiveles []int = []int{}
-	return indicesNiveles
-}
 
-func consultarOffset(direccionLogica int) int {
-	// Consultar offset a cpu
-	return 0
-}
 
 func buscarMarcosDisponibles(cantidad int) []int {
 	var result []int = make([]int, 0, cantidad)
