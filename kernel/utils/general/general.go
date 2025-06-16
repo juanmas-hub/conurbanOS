@@ -248,8 +248,6 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		manejarFinIO(finalizacionIo)
-		// LOG : Fin de IO: ## (<PID>) finalizó IO y pasa a READY
-		slog.Info(fmt.Sprintf("## (%d) finalizó IO y pasa a READY", finalizacionIo.PID))
 	}()
 
 	w.WriteHeader(http.StatusOK)
@@ -298,15 +296,22 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 	globals.MapaProcesosMutex.Unlock()
 	//log.Print("Se unloquea MapaProcesos en manejarFinIO")
 
+	var nuevo_estado string
+
 	// Si esta en Susp Blocked lo paso a Susp Ready
 	if proceso.Estado_Actual == globals.SUSP_BLOCKED {
+		nuevo_estado = globals.SUSP_READY
 		SuspBlockedASuspReady(proceso)
 	}
 
 	// Si esta en Blocked lo paso Ready (no lo dice el enunciado!¡)
 	if proceso.Estado_Actual == globals.BLOCKED {
+		nuevo_estado = globals.READY
 		BlockedAReady(proceso)
 	}
+
+	// LOG : Fin de IO: ## (<PID>) finalizó IO y pasa a READY
+	slog.Info(fmt.Sprintf("## (%d) finalizó IO y pasa a %s", finalizacionIo.PID, nuevo_estado))
 }
 
 func SuspBlockedASuspReady(proceso globals.Proceso) {
