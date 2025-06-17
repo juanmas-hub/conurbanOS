@@ -361,8 +361,12 @@ func BlockedAReady(proceso globals.Proceso) {
 
 	log.Printf("cantidad de procesos en READY: %+v", len(globals.ESTADOS.READY))
 
-	NotificarProcesoEnReady(globals.NotificadorDesalojo)
-	Signal(globals.Sem_ProcesosEnReady) // Nuevo proceso en ready
+	switch globals.KernelConfig.Scheduler_algorithm {
+	case "FIFO", "SJF":
+		Signal(globals.Sem_ProcesosEnReady)
+	case "SRT":
+		NotificarReplanifSRT()
+	}
 
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado BLOCKED al estado READY", proceso.Pcb.Pid))
@@ -575,7 +579,13 @@ func AgregarAListaCPUs(handshake globals.Handshake) {
 		EstaLibre: true,
 	}
 	globals.ListaCPUs = append(globals.ListaCPUs, elementoAAgregar)
-	Signal(globals.Sem_Cpus)
+
+	switch globals.KernelConfig.Scheduler_algorithm {
+	case "FIFO", "SJF":
+		Signal(globals.Sem_Cpus)
+	case "SRT":
+		NotificarReplanifSRT()
+	}
 }
 
 func BuscarCpu(nombre string) int {
@@ -618,21 +628,18 @@ func FinalizarProceso(pid int64) {
 	Signal(globals.Sem_ProcesoAFinalizar)
 }
 
-func NotificarProcesoEnReady(notificador chan struct{}) {
-	select {
-	case notificador <- struct{}{}: // intento mandar la señal
-	default:
-		// si el canal ya tiene una señal, no hago nada para no bloquear ni saturar
-	}
-}
-
 // Mandando nombre del CPU, se libera. Aumenta el semaforo de Semaforos de CPU, entonces el planificador corto replanifica.
 func LiberarCPU(nombreCPU string) {
 	globals.ListaCPUsMutex.Lock()
 	posCpu := BuscarCpu(nombreCPU)
 	globals.ListaCPUs[posCpu].EstaLibre = true
 	globals.ListaCPUsMutex.Unlock()
-	Signal(globals.Sem_Cpus)
+	switch globals.KernelConfig.Scheduler_algorithm {
+	case "FIFO", "SJF":
+		Signal(globals.Sem_Cpus)
+	case "SRT":
+		NotificarReplanifSRT()
+	}
 }
 
 func ActualizarPC(pid int64, pc int64) {
@@ -694,4 +701,11 @@ func BuscarInstanciaIO(nombreIO string, pid int64) int {
 	}
 
 	return -1
+}
+
+func NotificarReplanifSRT() {
+	select {
+	case globals.SrtReplanificarChan <- struct{}{}:
+	default:
+	}
 }

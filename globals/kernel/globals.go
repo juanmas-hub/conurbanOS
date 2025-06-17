@@ -113,14 +113,15 @@ var Sem_PasarProcesoAReady = CrearSemaforo(0)
 // Con el semaforo le aviso al planificador de largo plazo que hay un proceso para finalizar
 // En el slice le pongo el PID
 
-var NotificadorDesalojo = make(chan struct{}, 1)
-
 var DeDondeSeLlamaPasarProcesosAReady string = ""
 var DeDondeSeLlamaMutex sync.Mutex
 
 // Mapa PID:Cantidad. La cantidad de sesiones de IO indica cuantas veces fue a IO. Se usa para controlar el timer en planificador medio.
 var CantidadSesionesIO map[int64]int = make(map[int64]int)
 var CantidadSesionesIOMutex sync.Mutex
+
+// SRT
+var SrtReplanificarChan = make(chan struct{}, 1) // buffered para no bloquear
 
 type MetricasEstado struct {
 	New          int64

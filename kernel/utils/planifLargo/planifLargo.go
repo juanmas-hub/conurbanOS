@@ -352,8 +352,12 @@ func newAReady(proceso globals.Proceso_Nuevo) {
 
 	log.Printf("cantidad de procesos en READY: %+v", len(globals.ESTADOS.READY))
 
-	general.NotificarProcesoEnReady(globals.NotificadorDesalojo)
-	general.Signal(globals.Sem_ProcesosEnReady) // Nuevo proceso en ready
+	switch globals.KernelConfig.Scheduler_algorithm {
+	case "FIFO", "SJF":
+		general.Signal(globals.Sem_ProcesosEnReady)
+	case "SRT":
+		general.NotificarReplanifSRT()
+	}
 
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado NEW al estado READY", procesoEnReady.Pcb.Pid))
@@ -371,8 +375,12 @@ func suspReadyAReady(proceso globals.Proceso) {
 	globals.MapaProcesosMutex.Unlock()
 	//log.Print("Se unloquea MapaProcesos en suspReadyAReady")
 
-	general.NotificarProcesoEnReady(globals.NotificadorDesalojo)
-	general.Signal(globals.Sem_ProcesosEnReady) // Nuevo proceso en ready
+	switch globals.KernelConfig.Scheduler_algorithm {
+	case "FIFO", "SJF":
+		general.Signal(globals.Sem_ProcesosEnReady)
+	case "SRT":
+		general.NotificarReplanifSRT()
+	}
 
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado SUSP_READY al estado READY", proceso.Pcb.Pid))
