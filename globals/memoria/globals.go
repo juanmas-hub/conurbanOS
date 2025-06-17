@@ -71,9 +71,8 @@ type SolicitudInstruccion struct {
 	Pc  int64 `json:"pc"`
 }
 
-var DireccionesSwapProceso map[int][]int // pid - direcciones swap
+var PaginasSwapProceso map[int][]int // pid - direcciones swap
 
+var ListaPaginasSwapDisponibles []int
 
-var ListaDireccionesSwapDisponibles []int
-
-var ProximaDireccionSwap int
+var ProximaPaginaSwap int
