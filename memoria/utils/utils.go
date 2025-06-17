@@ -68,7 +68,7 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotImplemented)
 		w.Write([]byte("notImplemented"))
 	} else {
-		log.Println("Proceso iniciado con exito: ", globals_memoria.Instrucciones[int(mensaje.Pid)])
+		log.Println("Proceso iniciado con exito: ", globals_memoria.Procesos[int(mensaje.Pid)])
 
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
@@ -92,7 +92,8 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 
 	// Hay que swappear las instruccionesss
 
-	delete(globals_memoria.Instrucciones, int(mensaje.Pid))
+
+	globals_memoria.Procesos[int(mensaje.Pid)].Suspendido = true
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
@@ -111,11 +112,15 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Me llego para finalizar el proceso de pid: %d", mensaje.Pid)
 
-	// Aca tenes que hacer lo que sea para finalizar
+	var pid int = int(mensaje.Pid)
 
-	// Marcar como libres sus entradas en SWAP
-
-	delete(globals_memoria.Instrucciones, int(mensaje.Pid))
+	if globals_memoria.Procesos[pid].Suspendido {
+		eliminarPaginasSWAP(pid)
+	}else {
+		eliminarPaginasFisicas(pid)
+	}
+	
+	delete(globals_memoria.Procesos, pid)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
@@ -219,7 +224,7 @@ func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%+v\n", mensaje.Pid)
 
 	// Aca tu logica de SWAP, si no pudiste devolver avisar
-	instruccion := globals_memoria.Instrucciones[int(mensaje.Pid)][mensaje.Pc]
+	instruccion := globals_memoria.Procesos[int(mensaje.Pid)].Pseudocodigo[mensaje.Pc]
 	var enviado struct {
 		Instruccion string `json:"instruccion"`
 	}

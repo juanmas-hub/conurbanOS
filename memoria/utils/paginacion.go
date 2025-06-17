@@ -21,10 +21,18 @@ func leer(direccion int, tamanio int) string {
 
 func escribir(direccion int, dato string){
 
-	// var marco int = direccion / int(globals_memoria.MemoriaConfig.Page_size) // redondea hacia abajo
+	var tamanioDePagina int = int(globals_memoria.MemoriaConfig.Page_size)
+	var marco int = direccion / tamanioDePagina // redondea hacia abajo
+	
+	globals_memoria.MemoriaMarcosOcupados[marco] = true
 
 	for i := 0; i < len(dato); i++{
 		globals_memoria.Memoria[direccion + i] = dato[i]
+
+		if i != 0 && i%tamanioDePagina == 0{
+			marco++
+			globals_memoria.MemoriaMarcosOcupados[marco] = true
+		}
 	}
 }
 
@@ -40,8 +48,6 @@ func verificarPIDUnico(pid int) int {
 	}
 	return 0
 }
-
-
 
 func buscarMarcosDisponibles(cantidad int) []int {
 	var result []int = make([]int, 0, cantidad)
@@ -98,7 +104,7 @@ func AlmacenarProceso(pid int, filename string) error {
 
 	instrucciones = ObtenerInstruccionesDesdeArchivo(filename)
 
-	globals_memoria.Instrucciones[pid] = instrucciones
+	globals_memoria.Procesos[pid].Pseudocodigo = instrucciones
 	
 	(*globals_memoria.ProcessManager)[pid] = crearTabla(ENTRIES_PER_PAGE)
 
@@ -127,3 +133,23 @@ func obtenerMarcoDesdeTabla(pid int, pagina int) int {
 
 }
 
+func eliminarPaginasFisicas(pid int) int {
+	paginas := globals_memoria.Procesos[pid].PaginasFisicas
+	pageSize := int(globals_memoria.MemoriaConfig.Page_size)
+
+	for i:= 0; i<len(paginas); i++ {
+		inicio := paginas[i] * pageSize
+
+		// Sobrescribir con ceros en la memoria
+		for j := 0; j < pageSize; j++ {
+			globals_memoria.Memoria[inicio+j] = 0
+		}
+
+		globals_memoria.MemoriaMarcosOcupados[paginas[i]] = false
+	}
+
+	// Limpiar la lista de páginas físicas del proceso
+	globals_memoria.Procesos[pid].PaginasFisicas = nil
+
+	return 0
+}

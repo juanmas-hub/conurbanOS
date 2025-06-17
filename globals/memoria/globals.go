@@ -61,9 +61,16 @@ type PidProceso struct {
 	Pid int64 `json:"pid"`
 }
 
-type Pseudocodigo map[int][]string
+type Proceso struct {
+	Pseudocodigo []string
+	PaginasFisicas []int
+	Suspendido bool
+	PaginasSWAP []int
+}
 
-var Instrucciones Pseudocodigo
+type ProcesosMap map[int]*Proceso
+
+var Procesos ProcesosMap
 
 // Solicitud Instruccion
 type SolicitudInstruccion struct {
@@ -71,7 +78,6 @@ type SolicitudInstruccion struct {
 	Pc  int64 `json:"pc"`
 }
 
-var PaginasSwapProceso map[int][]int // pid - direcciones swap
 
 var ListaPaginasSwapDisponibles []int
 

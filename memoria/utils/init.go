@@ -39,10 +39,9 @@ func InicializarMemoria() {
 	manager := make(globals_memoria.Manager)
 	globals_memoria.ProcessManager = &manager
 
-	globals_memoria.Instrucciones = make(globals_memoria.Pseudocodigo)
+	globals_memoria.Procesos = make(globals_memoria.ProcesosMap)
 
 	//SWAP
-	globals_memoria.PaginasSwapProceso = make(map[int][]int)
 
 	globals_memoria.ListaPaginasSwapDisponibles = make([]int, 0)
 

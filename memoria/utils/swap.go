@@ -40,34 +40,31 @@ func leerPaginaSWAP(pagina int, archivo *os.File) string {
 	return string(buffer)
 }
 
-func eliminarPaginaSWAP(pid int, pagina int, archivo *os.File) int {
+func eliminarPaginasSWAP(pid int) int {
+	var archivo *os.File = abrirArchivoBinario()
+	paginas := globals_memoria.Procesos[pid].PaginasSWAP
 
-	if (moverseAPaginaSWAP(pagina, archivo) == 1) {
-		return 1
+	for i := 0; i < len(paginas); i++ {
+		if moverseAPaginaSWAP(paginas[i], archivo) == 1 {
+			return 1
+		}
+
+		// Sobrescribir con ceros
+		ceros := make([]byte, int(globals_memoria.MemoriaConfig.Page_size))
+		_, err := archivo.Write(ceros)
+		if err != nil {
+			log.Printf("error al sobrescribir la página: %v", err)
+			return 1
+		}
+
+		globals_memoria.ListaPaginasSwapDisponibles = append(globals_memoria.ListaPaginasSwapDisponibles, paginas[i])
 	}
 
-	// Sobrescribir con ceros
-	ceros := make([]byte, int(globals_memoria.MemoriaConfig.Page_size))
-	_, err := archivo.Write(ceros)
-	if err != nil {
-		log.Printf("error al sobrescribir la página: %v", err)
-		return 1
-	}
-
-	globals_memoria.ListaPaginasSwapDisponibles = append(globals_memoria.ListaPaginasSwapDisponibles, pagina)
-
-	for i := 0; i < len(globals_memoria.PaginasSwapProceso[pid]); i++{
-		if (globals_memoria.PaginasSwapProceso[pid])[i] == pagina {
-			globals_memoria.PaginasSwapProceso[pid] = 
-			append(globals_memoria.PaginasSwapProceso[pid][:i], globals_memoria.PaginasSwapProceso[pid][i+1:]...)
-			break
-		} 
-	}
-
-
+	globals_memoria.Procesos[pid].PaginasSWAP = nil
 
 	return 0
 }
+
 
 func abrirArchivoBinario() *os.File{
 	var ruta string = globals_memoria.MemoriaConfig.Swapfile_path
@@ -138,7 +135,7 @@ func escribirEnSWAP(pid int, datos []string, archivo *os.File) int {
 				log.Printf("Error al escribir en página %d: %v", paginaDisponible, err)
 				return 1
 			}
-			globals_memoria.PaginasSwapProceso[pid] = append(globals_memoria.PaginasSwapProceso[pid], paginaDisponible)
+			globals_memoria.Procesos[pid].PaginasSWAP = append(globals_memoria.Procesos[pid].PaginasSWAP, paginaDisponible)
 
 		}
 	}
