@@ -24,7 +24,6 @@ func escribir(direccion int, dato string) {
 
 	var tamanioDePagina int = int(globals_memoria.MemoriaConfig.Page_size)
 	var marco int = direccion / tamanioDePagina // redondea hacia abajo
-
 	globals_memoria.MemoriaMarcosOcupados[marco] = true
 
 	for i := 0; i < len(dato); i++ {
@@ -35,6 +34,7 @@ func escribir(direccion int, dato string) {
 			globals_memoria.MemoriaMarcosOcupados[marco] = true
 		}
 	}
+
 }
 
 func escribirPaginas(paginas []string, marcos []int) {
