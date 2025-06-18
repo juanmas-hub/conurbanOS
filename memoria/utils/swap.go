@@ -40,21 +40,29 @@ func leerPaginaSWAP(pagina int, archivo *os.File) string {
 	return string(buffer)
 }
 
-func eliminarPaginasSWAP(pid int) int {
+func eliminarPaginasSWAP(pid int) []string {
 	var archivo *os.File = abrirArchivoBinario()
 	paginas := globals_memoria.Procesos[pid].PaginasSWAP
+	pageSize := int(globals_memoria.MemoriaConfig.Page_size)
 
-	for i := 0; i < len(paginas); i++ {
+	contenidoPaginas := []string{}
+
+	for i:=0; i<len(paginas); i++ {
+		contenido := leerPaginaSWAP(paginas[i], archivo)
+		contenidoPaginas = append(contenidoPaginas, contenido)
+
+		// Volver a posicionarse para sobrescribir
 		if moverseAPaginaSWAP(paginas[i], archivo) == 1 {
-			return 1
+			log.Printf("Error al reposicionarse para sobrescribir la página SWAP %d", paginas[i])
+			return nil
 		}
 
 		// Sobrescribir con ceros
-		ceros := make([]byte, int(globals_memoria.MemoriaConfig.Page_size))
+		ceros := make([]byte, pageSize)
 		_, err := archivo.Write(ceros)
 		if err != nil {
 			log.Printf("error al sobrescribir la página: %v", err)
-			return 1
+			return nil
 		}
 
 		globals_memoria.ListaPaginasSwapDisponibles = append(globals_memoria.ListaPaginasSwapDisponibles, paginas[i])
@@ -62,9 +70,8 @@ func eliminarPaginasSWAP(pid int) int {
 
 	globals_memoria.Procesos[pid].PaginasSWAP = nil
 
-	return 0
+	return contenidoPaginas
 }
-
 
 func abrirArchivoBinario() *os.File{
 	var ruta string = globals_memoria.MemoriaConfig.Swapfile_path
@@ -92,8 +99,9 @@ func escribirPaginaSWAP(dato string, pagina int, archivo *os.File) int{ // dato 
 	return 0
 }
 
-func escribirEnSWAP(pid int, datos []string, archivo *os.File) int {
+func escribirEnSWAP(pid int, datos []string) int {
 	var tamanioPagina int = int(globals_memoria.MemoriaConfig.Page_size)
+	var archivo *os.File = abrirArchivoBinario()
 
 	for i := 0; i < len(datos); i++ {
 		var dato string = datos[i]

@@ -36,6 +36,12 @@ func escribir(direccion int, dato string){
 	}
 }
 
+func escribirPaginas(paginas []string, marcos []int){
+	for i:=0; i<len(marcos); i++ {
+		escribir(marcos[i], paginas[i])
+	}
+}
+
 func crearTabla(entradasPorPagina int64) *globals_memoria.TablaDePaginas {
 	return &globals_memoria.TablaDePaginas{
 		Entradas: make([]globals_memoria.EntradaTablaPagina, entradasPorPagina),
@@ -96,7 +102,7 @@ func actualizarTablaPaginas(pid int, indices []int) {
 func AlmacenarProceso(pid int, filename string) error {
 
 	if verificarPIDUnico(pid) != 0 {
-		fmt.Errorf("el proceso con PID %d ya existe", pid)
+		return fmt.Errorf("el proceso con PID %d ya existe", pid)
 	}
 
 	var ENTRIES_PER_PAGE int64 = globals_memoria.MemoriaConfig.Entries_per_page
@@ -115,30 +121,43 @@ func AlmacenarProceso(pid int, filename string) error {
 }
 
 func obtenerMarcoDesdeTabla(pid int, pagina int) int {
-	var NUMBER_OF_LEVELS int = int(globals_memoria.MemoriaConfig.Number_of_levels)
+	NUMBER_OF_LEVELS := int(globals_memoria.MemoriaConfig.Number_of_levels)
 
-	var indicesNiveles []int = extraerIndices(pagina)
-
-	var tablaActual *globals_memoria.TablaDePaginas = (*globals_memoria.ProcessManager)[pid]
+	tablaActual := (*globals_memoria.ProcessManager)[pid]
+	indiceActual := pagina
 
 	for i := 0; i < NUMBER_OF_LEVELS-1; i++ {
-		indiceActual := indicesNiveles[i]
-		tablaActual = tablaActual.Entradas[indiceActual].SiguienteNivel
+		
+		entrada := tablaActual.Entradas[indiceActual]
+		tablaActual = entrada.SiguienteNivel
+		indiceActual = entrada.Marco
 	}
 
-	// En el último nivel, obtener el marco físico
-	ultimoIndice := indicesNiveles[NUMBER_OF_LEVELS-1]
+	if indiceActual >= len(tablaActual.Entradas) {
+		log.Printf("Error: índice fuera de rango en nivel final para PID %d", pid)
+		return -1
+	}
 
-	return tablaActual.Entradas[ultimoIndice].Marco
+	return tablaActual.Entradas[indiceActual].Marco
 
 }
 
-func eliminarPaginasFisicas(pid int) int {
+func eliminarPaginasFisicas(pid int) []string {
+
+	if globals_memoria.Procesos[pid].PaginasFisicas == nil {
+		return nil
+	}
 	paginas := globals_memoria.Procesos[pid].PaginasFisicas
 	pageSize := int(globals_memoria.MemoriaConfig.Page_size)
 
+	contenidoPaginas := []string{}
+
 	for i:= 0; i<len(paginas); i++ {
 		inicio := paginas[i] * pageSize
+
+		// Leer contenido antes de sobrescribir
+		contenido := leer(inicio, pageSize)
+		contenidoPaginas = append(contenidoPaginas, contenido)
 
 		// Sobrescribir con ceros en la memoria
 		for j := 0; j < pageSize; j++ {
@@ -151,5 +170,5 @@ func eliminarPaginasFisicas(pid int) int {
 	// Limpiar la lista de páginas físicas del proceso
 	globals_memoria.Procesos[pid].PaginasFisicas = nil
 
-	return 0
+	return contenidoPaginas
 }

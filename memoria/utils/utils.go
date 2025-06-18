@@ -27,7 +27,7 @@ func CalcularMock() int {
 }
 
 func ConsultarMock(w http.ResponseWriter, r *http.Request) {
-	mock := 1000 // valor fijo, segundo checkpoint
+	mock := CalcularMock()
 
 	var enviado struct {
 		Mock int `json:"mock"`
@@ -64,11 +64,14 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 	log.Println("Me llego para iniciar un proceso")
 	log.Printf("%+v\n", mensaje)
 
-	if AlmacenarProceso(int(mensaje.Pid), mensaje.Archivo_Pseudocodigo) != nil {
+	// Aca empieza la logica
+	var pid int = int(mensaje.Pid)
+
+	if AlmacenarProceso(pid, mensaje.Archivo_Pseudocodigo) != nil {
 		w.WriteHeader(http.StatusNotImplemented)
 		w.Write([]byte("notImplemented"))
 	} else {
-		log.Println("Proceso iniciado con exito: ", globals_memoria.Procesos[int(mensaje.Pid)])
+		log.Println("Proceso iniciado con exito: ", globals_memoria.Procesos[pid])
 
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
@@ -88,12 +91,17 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Me llego para suspender el proceso de pid: %d", mensaje.Pid)
 
-	// Aca tenes que hacer lo que sea para suspender
+	// Aca empieza la logica
 
-	// Hay que swappear las instruccionesss
+	var pid int = int(mensaje.Pid)
 
+	var paginas []string
+	
+	paginas = eliminarPaginasFisicas(pid)
 
-	globals_memoria.Procesos[int(mensaje.Pid)].Suspendido = true
+	escribirEnSWAP(pid, paginas)
+
+	globals_memoria.Procesos[pid].Suspendido = true
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
@@ -112,6 +120,7 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Me llego para finalizar el proceso de pid: %d", mensaje.Pid)
 
+	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
 
 	if globals_memoria.Procesos[pid].Suspendido {
@@ -202,7 +211,21 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 	log.Println("Solicitud para reanudar proceso con swap")
 	log.Printf("%+v\n", mensaje.Pid)
 
-	// Aca tu logica de SWAP, si no pudiste devolver avisar
+	// Aca empieza la logica
+	var pid int = int(mensaje.Pid)
+	var paginasNecesarias int = len(globals_memoria.Procesos[pid].PaginasSWAP)
+
+	if paginasNecesarias != 0 {
+		var paginas []string
+		var marcosDisponibles []int = buscarMarcosDisponibles(paginasNecesarias)
+		if marcosDisponibles == nil{
+			// error no hay suficiente espacio
+		} 
+		paginas = eliminarPaginasSWAP(pid)
+		escribirPaginas(paginas, marcosDisponibles)
+	}
+	
+	
 
 	log.Printf("Proceso %d reanudado correctamente", mensaje.Pid)
 	w.WriteHeader(http.StatusOK)
@@ -223,7 +246,6 @@ func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Solicitud de instruccion de PID: %d y PC: %d", mensaje.Pid, mensaje.Pc)
 	log.Printf("%+v\n", mensaje.Pid)
 
-	// Aca tu logica de SWAP, si no pudiste devolver avisar
 	instruccion := globals_memoria.Procesos[int(mensaje.Pid)].Pseudocodigo[mensaje.Pc]
 	var enviado struct {
 		Instruccion string `json:"instruccion"`
