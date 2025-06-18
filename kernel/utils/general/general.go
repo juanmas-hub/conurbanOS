@@ -107,7 +107,7 @@ func EnviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64, pc int64) {
 	globals.ListaCPUsMutex.Unlock()
 }
 
-func EnviarInterrupcionACPU(ip string, puerto int64, pid int64) {
+func EnviarInterrupcionACPU(ip string, puerto int64, pid int64) (*globals.RespuestaInterrupcion, error) {
 	mensaje := globals.PidJSON{PID: pid}
 	body, err := json.Marshal(mensaje)
 	if err != nil {
@@ -122,6 +122,14 @@ func EnviarInterrupcionACPU(ip string, puerto int64, pid int64) {
 	}
 	log.Printf("Interrupción enviada a CPU - PID: %d", pid)
 	log.Printf("respuesta de la CPU: %s", resp.Status)
+
+	// Respuesta de CPU
+	var respuesta globals.RespuestaInterrupcion
+	if err := json.NewDecoder(resp.Body).Decode(&respuesta); err != nil {
+		log.Printf("error decodificando respuesta de la CPU: %s", err.Error())
+		return nil, err
+	}
+	return &respuesta, nil
 }
 
 func RecibirMensajeDeCpu(w http.ResponseWriter, r *http.Request) {

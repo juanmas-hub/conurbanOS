@@ -107,3 +107,7 @@ func CrearSemaforo(maxTareas int) Semaforo {
 }
 
 var Sem = CrearSemaforo(0)
+
+type RespuestaInterrupcion struct {
+	PC int64 `json:"pc"`
+}

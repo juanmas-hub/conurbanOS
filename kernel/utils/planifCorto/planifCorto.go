@@ -99,10 +99,16 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 		globals.MapaProcesosMutex.Unlock()
 		globals.EstadosMutex.Unlock()
 
-		general.EnviarInterrupcionACPU(ipCPU, puertoCPU, pidEnExec)
-		// Aca faltaría actualizar datos del proceso que desalojamos
+		respuestaInterrupcion, err := general.EnviarInterrupcionACPU(ipCPU, puertoCPU, pidEnExec)
+		if err != nil {
+			log.Fatal("Error en interrupción:", err)
+		}
+		general.ActualizarPC(pidEnExec, respuestaInterrupcion.PC)
 		general.EnviarProcesoAEjecutar_ACPU(ipCPU, puertoCPU, pidProcesoAEjecutar, pcProcesoAEjecutar)
 		log.Printf("Se desalojo el proceso %d", pidEnExec)
+
+		// LOG Desalojo: ## (<PID>) - Desalojado por algoritmo SJF/SRT
+		slog.Info(fmt.Sprintf("## (%d) - Desalojado por algoritmo SJF/SRT", proceso.Pcb.Pid))
 
 		globals.MapaProcesosMutex.Lock()
 		aExecute(proceso)

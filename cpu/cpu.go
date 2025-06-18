@@ -103,6 +103,7 @@ func main() {
 	mux.HandleFunc("/dispatchProceso", utils_cpu.RecibirProcesoAEjecutar)
 	mux.HandleFunc("/mensajeDeKernel", utils_cpu.RecibirMensajeDeKernel)
 	mux.HandleFunc("/recibirPCB", utils_cpu.RecibirPCBDeKernel)
+	mux.HandleFunc("/interrumpir", utils_cpu.Interrupcion)
 
 	puerto := globals_cpu.CpuConfig.Port_cpu
 

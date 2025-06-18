@@ -4,6 +4,7 @@ import (
 	//"encoding/json"
 	"fmt"
 	"log"
+
 	//"net/http"
 	//"os"
 
@@ -14,30 +15,30 @@ func leer(direccion int, tamanio int) string {
 	var leido string = ""
 
 	for i := 0; i < tamanio; i++ {
-		leido += string(globals_memoria.Memoria[direccion + i])
+		leido += string(globals_memoria.Memoria[direccion+i])
 	}
 	return leido
 }
 
-func escribir(direccion int, dato string){
+func escribir(direccion int, dato string) {
 
 	var tamanioDePagina int = int(globals_memoria.MemoriaConfig.Page_size)
 	var marco int = direccion / tamanioDePagina // redondea hacia abajo
-	
+
 	globals_memoria.MemoriaMarcosOcupados[marco] = true
 
-	for i := 0; i < len(dato); i++{
-		globals_memoria.Memoria[direccion + i] = dato[i]
+	for i := 0; i < len(dato); i++ {
+		globals_memoria.Memoria[direccion+i] = dato[i]
 
-		if i != 0 && i%tamanioDePagina == 0{
+		if i != 0 && i%tamanioDePagina == 0 {
 			marco++
 			globals_memoria.MemoriaMarcosOcupados[marco] = true
 		}
 	}
 }
 
-func escribirPaginas(paginas []string, marcos []int){
-	for i:=0; i<len(marcos); i++ {
+func escribirPaginas(paginas []string, marcos []int) {
+	for i := 0; i < len(marcos); i++ {
 		escribir(marcos[i], paginas[i])
 	}
 }
@@ -79,7 +80,7 @@ func actualizarTablaPaginas(pid int, indices []int) {
 
 	for i := 0; i < len(indices)-1; i++ {
 		var indiceActual int = indices[i]
-		var indiceSiguiente int = indices[i + 1]
+		var indiceSiguiente int = indices[i+1]
 
 		if tablaActual.Entradas[indiceActual].SiguienteNivel == nil {
 			tablaActual.Entradas[indiceActual].SiguienteNivel = crearTabla(ENTRIES_PER_PAGE)
@@ -87,12 +88,11 @@ func actualizarTablaPaginas(pid int, indices []int) {
 
 		tablaActual.Entradas[indiceActual].Pagina = indiceActual
 		tablaActual.Entradas[indiceActual].Marco = indiceSiguiente
-		
 
 		log.Printf("Nivel %d: pagina %d y marco %d", i+1, tablaActual.Entradas[indiceActual].Pagina, tablaActual.Entradas[indiceActual].Marco)
 
 		tablaActual = tablaActual.Entradas[indiceActual].SiguienteNivel
-		
+
 	}
 
 	fmt.Printf("Ruta de índices: %d->%d->%d->%d->%d\n", indices[0], indices[1], indices[2], indices[3], indices[4])
@@ -110,10 +110,17 @@ func AlmacenarProceso(pid int, filename string) error {
 
 	instrucciones = ObtenerInstruccionesDesdeArchivo(filename)
 
-	globals_memoria.Procesos[pid].Pseudocodigo = instrucciones
-	
-	(*globals_memoria.ProcessManager)[pid] = crearTabla(ENTRIES_PER_PAGE)
+	// Inicializamos el proceso antes de asignar campos
+	globals_memoria.Procesos[pid] = &globals_memoria.Proceso{
+		Pseudocodigo: instrucciones,
+		Suspendido:   false, // supongo je
+		// Fijate que poner en paginas fisicas, swap
+	}
 
+	globals_memoria.Procesos[pid].Pseudocodigo = instrucciones
+	log.Print(instrucciones)
+
+	(*globals_memoria.ProcessManager)[pid] = crearTabla(ENTRIES_PER_PAGE)
 
 	log.Println("Proceso almacenado")
 
@@ -127,7 +134,7 @@ func obtenerMarcoDesdeTabla(pid int, pagina int) int {
 	indiceActual := pagina
 
 	for i := 0; i < NUMBER_OF_LEVELS-1; i++ {
-		
+
 		entrada := tablaActual.Entradas[indiceActual]
 		tablaActual = entrada.SiguienteNivel
 		indiceActual = entrada.Marco
@@ -152,7 +159,7 @@ func eliminarPaginasFisicas(pid int) []string {
 
 	contenidoPaginas := []string{}
 
-	for i:= 0; i<len(paginas); i++ {
+	for i := 0; i < len(paginas); i++ {
 		inicio := paginas[i] * pageSize
 
 		// Leer contenido antes de sobrescribir
