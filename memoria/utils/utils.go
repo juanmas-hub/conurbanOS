@@ -50,6 +50,67 @@ func ConsultarMock(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func MemoryDump(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.PidProceso
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	log.Printf("Me llego para memory dump el proceso de pid: %d", mensaje.Pid)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+func abrirArchivo(filename string) *os.File {
+
+	var rutaArchivo string = globals_memoria.MemoriaConfig.Scripts_path + filename + ".txt"
+
+	log.Println("Intentando acceder a la direccion: ", rutaArchivo)
+
+	file, err := os.Open(rutaArchivo)
+	if err != nil {
+		log.Println("No se pudo abrir el archivo: ", err)
+		return nil
+	}
+	return file
+}
+
+func extraerInstrucciones(archivo *os.File) []string {
+	var instrucciones []string
+	scanner := bufio.NewScanner(archivo)
+	for scanner.Scan() {
+		linea := strings.TrimSpace(scanner.Text())
+		if linea != "" {
+			instrucciones = append(instrucciones, linea)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		log.Println("Error al extraer las instrucciones del archivo")
+		return nil
+	}
+
+	return instrucciones
+}
+
+func ObtenerInstruccionesDesdeArchivo(filename string) []string {
+
+	var archivo *os.File = abrirArchivo(filename)
+	if archivo == nil {
+		return nil
+	}
+
+	var instrucciones []string = extraerInstrucciones(archivo)
+
+	return instrucciones
+}
+
+// FUNCIONES RELACIONADAS A PROCESOS
 func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.SolicitudIniciarProceso
@@ -135,68 +196,6 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
-func MemoryDump(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var mensaje globals_memoria.PidProceso
-	err := decoder.Decode(&mensaje)
-	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Error al decodificar mensaje"))
-		return
-	}
-
-	log.Printf("Me llego para memory dump el proceso de pid: %d", mensaje.Pid)
-
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
-}
-
-func abrirArchivo(filename string) *os.File {
-
-	var rutaArchivo string = globals_memoria.MemoriaConfig.Scripts_path + filename + ".txt"
-
-	log.Println("Intentando acceder a la direccion: ", rutaArchivo)
-
-	file, err := os.Open(rutaArchivo)
-	if err != nil {
-		log.Println("No se pudo abrir el archivo: ", err)
-		return nil
-	}
-	return file
-}
-
-func extraerInstrucciones(archivo *os.File) []string {
-	var instrucciones []string
-	scanner := bufio.NewScanner(archivo)
-	for scanner.Scan() {
-		linea := strings.TrimSpace(scanner.Text())
-		if linea != "" {
-			instrucciones = append(instrucciones, linea)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		log.Println("Error al extraer las instrucciones del archivo")
-		return nil
-	}
-
-	return instrucciones
-}
-
-func ObtenerInstruccionesDesdeArchivo(filename string) []string {
-
-	var archivo *os.File = abrirArchivo(filename)
-	if archivo == nil {
-		return nil
-	}
-
-	var instrucciones []string = extraerInstrucciones(archivo)
-
-	return instrucciones
-}
-
-
-
 func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.PidProceso
@@ -232,6 +231,7 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
 }
 
+// FUNCIONES RELACIONADAS A INSTRUCCIONES
 func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.SolicitudInstruccion
@@ -262,4 +262,38 @@ func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonData)
+}
+
+func AccederEspacioUsuarioLectura(w http.ResponseWriter, r *http.Request){
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.SolicitudLectura
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	var leido string = leer(int(mensaje.Posicion), int(mensaje.Tamanio))
+
+	var enviado struct {
+		Dato string `json:"dato"`
+	}
+	enviado.Dato = leido
+	jsonData, err := json.Marshal(enviado)
+	if err != nil {
+		log.Printf("Error al codificar la instruccion a JSON: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error interno del servidor"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
+}
+
+func AccederEspacioUsuarioEscritura(w http.ResponseWriter, r *http.Request){
+	
 }

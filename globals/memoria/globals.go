@@ -49,18 +49,6 @@ var Memoria []byte
 
 var MemoriaMarcosOcupados []bool
 
-// Estructura donde recibo para inicializar proceso
-type SolicitudIniciarProceso struct {
-	Archivo_Pseudocodigo string
-	Tamanio              int64
-	Pid                  int64
-}
-
-// Estructura para recibir PID
-type PidProceso struct {
-	Pid int64 `json:"pid"`
-}
-
 type Proceso struct {
 	Pseudocodigo []string
 	PaginasFisicas []int
@@ -72,12 +60,25 @@ type ProcesosMap map[int]*Proceso
 
 var Procesos ProcesosMap
 
-// Solicitud Instruccion
+type SolicitudIniciarProceso struct {
+	Archivo_Pseudocodigo string
+	Tamanio              int64
+	Pid                  int64
+}
+
+type PidProceso struct {
+	Pid int64 `json:"pid"`
+}
+
 type SolicitudInstruccion struct {
 	Pid int64 `json:"pid"`
 	Pc  int64 `json:"pc"`
 }
 
+type SolicitudLectura struct {
+	Posicion int64 `json:"posicion"`
+	Tamanio int64 `json:"tamanio"`
+}
 
 var ListaPaginasSwapDisponibles []int
 
