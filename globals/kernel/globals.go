@@ -168,6 +168,10 @@ type Proceso_Nuevo struct {
 
 var MapaProcesos map[int64]Proceso = make(map[int64]Proceso)
 
+type RespuestaInterrupcion struct {
+	PC int64 `json:"pc"`
+}
+
 // Estructuras para los estados
 
 type Estados struct {
