@@ -96,6 +96,36 @@ type SyscallInit struct {
 	PC        int64  `json:"pc"`          // pc actualizado
 }
 
+type TLBentry struct {
+	Pagina int64 //Numero de pagina virtual
+	Marco  int64 //Numero de marco de pagina fisico
+	PID    int64 //PID para desalojar todas las paginas referidas a un proceso
+	//decidir algoritmo fifo o lru
+}
+
+type CacheEntry struct {
+	Pagina    int64    //Numero de pagina virtual
+	Contenido [64]byte //contenido de la pagina
+	PID       int64    //PID para desalojar todas las paginas referidas a un proceso
+	R         bool     //bit Referenced de acceso a la pagina
+	D         bool     //bit Dirty de modificacion de la pagina
+}
+
+type Cache struct {
+	Entries            []CacheEntry  //la lista de paginas
+	PaginaIndex        map[int64]int //mapa auxiliar para buscar las paginas en la lista
+	Capacidad          int64         //Cantidad maxima de paginas
+	AlgoritmoReemplazo string        //CLOCK o CLOCK-M
+	ClockHand          int           //Puntero para CLOCK
+}
+
+type TLB struct {
+	Entries            []TLBentry    //Lista de marcos/paginas
+	PaginaIndex        map[int64]int //map para agilizar busqueda
+	Capacidad          int64         //capacidad de tlb
+	AlgoritmoReemplazo string        //algoritmo de tlb FIFO/LRU
+}
+
 // TEMPORAL -- para probar
 type Semaforo chan struct{} // es un tipo que ocupa 0 bytes, entonces puedo hacer los semaforos mas eficientes
 func CrearSemaforo(maxTareas int) Semaforo {

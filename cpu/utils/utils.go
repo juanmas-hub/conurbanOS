@@ -485,6 +485,39 @@ func EnviarINITAKernel(syscallData globals_cpu.SyscallInit) error {
 	return nil
 }
 
+func NuevaCache(capacidad int64, algoritmo string) *globals.Cache { //CREA EL CACHE
+	return &globals.Cache{
+		Entries:            make([]globals.CacheEntry, 0, capacidad), //crea lista de paginas con capacidad de paginas de cache definida (capacidad viene en config)
+		PaginaIndex:        make(map[int64]int),                      //genera el map
+		Capacidad:          capacidad,
+		AlgoritmoReemplazo: algoritmo,
+		ClockHand:          0,
+	}
+}
+
+func NuevaTLB(capacidad int64, algoritmo string) *globals.TLB { //CREA LA TLB
+	return &globals.TLB{
+		Entries:            make([]globals.TLBentry, 0, capacidad), //crea lista de paginas con capacidad de la TLB (capacidad viene en config)
+		PaginaIndex:        make(map[int64]int),
+		Capacidad:          capacidad,
+		AlgoritmoReemplazo: algoritmo,
+	}
+}
+
+//FUNCIONES QUE NOS FALTAN
+
+//funcion que extraiga Entrada, Indice y Desplazamiento de la direccion logica
+//funcion que traduzca funcion logica a fisica teniendo el marco
+//funcion que inserte o reemplace en CACHE cuando esta lleno, con el algoritmo elegido
+//funcion que inserte o reemplace en TLB cuando esta llena, con el algoritmo elegido
+//funcion que pida a memoria el marco de una pagina
+//funcion que pida a memoria el contenido de una pagina
+//funcion que pida a memoria que escriba (cache deshabilitado)
+//funcion que pida a memoria que lea (cache deshabilitado)
+//funcion que pida a memoria actualizar una pagina (Dirty BIT)
+//funcion que escriba en cache
+//funcion que lea en cache
+
 // TEMPORAL -- para probar
 func Wait(semaforo globals.Semaforo) {
 	<-semaforo
