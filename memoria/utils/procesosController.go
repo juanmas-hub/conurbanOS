@@ -9,7 +9,6 @@ import (
 	//"os"
 	//"strings"
 
-	//globals "github.com/sisoputnfrba/tp-golang/globals/memoria"
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
@@ -34,7 +33,7 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotImplemented)
 		w.Write([]byte("notImplemented"))
 	} else {
-		log.Println("Proceso iniciado con exito: ", globals_memoria.Procesos[pid])
+		log.Printf("## PID: %v - Proceso Creado - Tamaño: %v", pid, mensaje.Tamanio)
 
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
@@ -54,9 +53,13 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Me llego para suspender el proceso de pid: %d", mensaje.Pid)
 
+	
+
 	// Aca empieza la logica
 
 	var pid int = int(mensaje.Pid)
+
+	(*globals_memoria.Metricas)[pid].BajadasSwap++
 
 	var paginas []globals_memoria.PaginaDTO
 	
@@ -99,6 +102,16 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 	
 	delete(globals_memoria.Procesos, pid)
 
+	var ATP int = (*globals_memoria.Metricas)[pid].AccesosTablas
+	var InstSol int = (*globals_memoria.Metricas)[pid].InstruccionesSolicitadas
+	var SWAP int = (*globals_memoria.Metricas)[pid].BajadasSwap
+	var MemPrin int = (*globals_memoria.Metricas)[pid].SubidasMemoria
+	var LecMem int = (*globals_memoria.Metricas)[pid].LecturasMemoria
+	var EscMem int = (*globals_memoria.Metricas)[pid].EscriturasMemoria
+
+	log.Printf("## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: <%d; Esc.Mem.: %d", pid, ATP,InstSol, SWAP, MemPrin,LecMem, EscMem)
+
+	delete((*globals_memoria.Metricas), pid)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
@@ -119,6 +132,7 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 
 	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
+	(*globals_memoria.Metricas)[pid].SubidasMemoria++
 	var paginasNecesarias int = len(globals_memoria.Procesos[pid].PaginasSWAP)
 
 	if paginasNecesarias != 0 {
@@ -156,7 +170,7 @@ func MemoryDump(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
 	}
-	log.Printf("Me llego para memory dump el proceso de pid: %d", mensaje.Pid)
+	log.Printf("PID: %d - Memory Dump solicitado", mensaje.Pid)
 
 	if generarMemoryDump(int(mensaje.Pid)) < 0 {
 		log.Printf("Proceso %d no hizo memory dump", mensaje.Pid)

@@ -51,7 +51,12 @@ func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Solicitud de instruccion de PID: %d y PC: %d", mensaje.Pid, mensaje.Pc)
 	log.Printf("%+v\n", mensaje.Pid)
 
-	instruccion := globals_memoria.Procesos[int(mensaje.Pid)].Pseudocodigo[mensaje.Pc]
+	var instruccion string = globals_memoria.Procesos[int(mensaje.Pid)].Pseudocodigo[mensaje.Pc]
+
+	(*globals_memoria.Metricas)[int(mensaje.Pid)].InstruccionesSolicitadas++
+
+	log.Printf("## PID: %d - Obtener instrucción: %d - Instrucción: %s", mensaje.Pid, mensaje.Pc, instruccion)
+
 	var enviado struct {
 		Instruccion string `json:"instruccion"`
 	}
@@ -80,7 +85,12 @@ func AccederEspacioUsuarioLectura(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	var leido string = leer(int(mensaje.Posicion), int(mensaje.Tamanio))
+	var pid int = int(mensaje.Pid)
+	var posicion int = int(mensaje.Posicion)
+	var tamanio int = int(mensaje.Tamanio)
+
+	(*globals_memoria.Metricas)[pid].LecturasMemoria++
+	var leido string = leer(posicion, tamanio)
 
 	var enviado struct {
 		Dato string `json:"dato"`
@@ -93,6 +103,8 @@ func AccederEspacioUsuarioLectura(w http.ResponseWriter, r *http.Request){
 		w.Write([]byte("Error interno del servidor"))
 		return
 	}
+
+	log.Printf("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d", mensaje.Pid, mensaje.Posicion, mensaje.Tamanio)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -110,12 +122,20 @@ func AccederEspacioUsuarioEscritura(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	if escribir(int(mensaje.Posicion), mensaje.Dato) < 0{
+	var pid int = int(mensaje.Pid)
+	var posicion int = int(mensaje.Posicion)
+	var dato string = mensaje.Dato
+
+	if escribir(posicion, dato) < 0{
 		log.Printf("Error al escribir en la posicion %v", int(mensaje.Posicion))
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte("Error al escribir en la posicion"))
 		return
 	}
+
+	(*globals_memoria.Metricas)[pid].EscriturasMemoria++
+	log.Printf("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d", mensaje.Pid, mensaje.Posicion, len(mensaje.Dato))
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }

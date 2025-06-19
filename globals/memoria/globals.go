@@ -30,6 +30,10 @@ type Memoria_Metrica struct {
 	EscriturasMemoria        int `json:"escrituras_memoria"`
 }
 
+type MetricasMap map[int]*Memoria_Metrica
+
+var Metricas *MetricasMap
+
 // Entrada de una tabla de páginas
 type EntradaTablaPagina struct {
 	Pagina         int
@@ -88,13 +92,15 @@ type InstruccionDTO struct {
 }
 
 type LecturaDTO struct {
+	Pid int64 `json:"pid"`
 	Posicion int64 `json:"posicion"`
 	Tamanio int64 `json:"tamanio"`
 }
 
 type EscrituraDTO struct {
+	Pid int64 `json:"pid"`
 	Posicion int64 `json:"posicion"`
-	Dato string `json:"tamanio"`
+	Dato string `json:"dato"`
 }
 type TablaDTO struct {
 	Pid int64 `json:"pid"`

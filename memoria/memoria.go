@@ -37,7 +37,7 @@ func main() {
 	// KERNEL
 	mux.HandleFunc("/iniciarProceso", utils_memoria.IniciarProceso)
 	mux.HandleFunc("/reanudarproceso", utils_memoria.ReanudarProceso) 
-	mux.HandleFunc("/suspenderProceso", utils_memoria.SuspenderProceso) // ya hice la funcion desde kernel en /kernel/utils/planifMedio (avisarSwappeo)
+	mux.HandleFunc("/suspenderProceso", utils_memoria.SuspenderProceso)
 	mux.HandleFunc("/finalizarProceso", utils_memoria.FinalizarProceso)
 	mux.HandleFunc("/memoryDump", utils_memoria.MemoryDump)
 

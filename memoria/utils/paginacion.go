@@ -97,8 +97,10 @@ func buscarMarcosDisponibles(cantidad int) []int {
 }
 
 func actualizarTablaPaginas(pid int, indices []int) int{
-	var ENTRIES_PER_PAGE int64 = globals_memoria.MemoriaConfig.Entries_per_page
 
+	(*globals_memoria.Metricas)[pid].AccesosTablas++
+
+	var ENTRIES_PER_PAGE int64 = globals_memoria.MemoriaConfig.Entries_per_page
 	var tablaActual *globals_memoria.TablaDePaginas = (*globals_memoria.ProcessManager)[pid]
 	var marcoDisponible []int = buscarMarcosDisponibles(1)
 
@@ -165,14 +167,14 @@ func AlmacenarProceso(pid int, filename string) error {
 
 	(*globals_memoria.ProcessManager)[pid] = crearTabla(ENTRIES_PER_PAGE)
 
-	log.Println("Proceso almacenado")
 
 	return nil
 }
 
 func obtenerMarcoDesdeTabla(pid int, primerIndice int) int {
-	NUMBER_OF_LEVELS := int(globals_memoria.MemoriaConfig.Number_of_levels)
+	(*globals_memoria.Metricas)[pid].AccesosTablas++
 
+	var NUMBER_OF_LEVELS int = int(globals_memoria.MemoriaConfig.Number_of_levels)
 	var tablaActual *globals_memoria.TablaDePaginas = (*globals_memoria.ProcessManager)[pid]
 	var indiceActual int = primerIndice
 
