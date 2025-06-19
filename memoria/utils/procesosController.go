@@ -2,10 +2,12 @@ package utils
 
 import (
 	"encoding/json"
+	"time"
 	//"fmt"
 	//"bufio"
 	"log"
 	"net/http"
+
 	//"os"
 	//"strings"
 
@@ -58,6 +60,9 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 	// Aca empieza la logica
 
 	var pid int = int(mensaje.Pid)
+	var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
+
+	time.Sleep(time.Duration(delay) * time.Second)
 
 	(*globals_memoria.Metricas)[pid].BajadasSwap++
 
@@ -65,6 +70,7 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 	
 	paginas = eliminarMarcosFisicos(pid)
 
+	
 	if escribirEnSWAP(pid, paginas) < 0 {
 		log.Printf("Proceso %d no se pudo suspender por falo al escribir en SWAP", mensaje.Pid)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -95,6 +101,9 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 	var pid int = int(mensaje.Pid)
 
 	if globals_memoria.Procesos[pid].Suspendido {
+		var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
+
+		time.Sleep(time.Duration(delay) * time.Second)
 		eliminarPaginasSWAP(pid)
 	}else {
 		eliminarMarcosFisicos(pid)
@@ -132,7 +141,9 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 
 	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
-	(*globals_memoria.Metricas)[pid].SubidasMemoria++
+	var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
+
+	time.Sleep(time.Duration(delay) * time.Second)
 	var paginasNecesarias int = len(globals_memoria.Procesos[pid].PaginasSWAP)
 
 	if paginasNecesarias != 0 {
@@ -154,6 +165,7 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 		escribirPaginas(paginasDTO, marcosDisponibles)
 	}
 	globals_memoria.Procesos[pid].Suspendido = false
+	(*globals_memoria.Metricas)[pid].SubidasMemoria++
 
 	log.Printf("Proceso %d reanudado correctamente", mensaje.Pid)
 	w.WriteHeader(http.StatusOK)
