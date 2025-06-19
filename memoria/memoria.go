@@ -42,8 +42,9 @@ func main() {
 	mux.HandleFunc("/memoryDump", utils_memoria.MemoryDump)
 
 	// CPU
-	// mux.HandleFunc("/obtenerMarcoProceso", utils_memoria.obtenerMarcoProceso)
-	// mux.HandleFunc("/accederEspacioUsuario", utils_memoria.accederEspacioUsuario)
+	mux.HandleFunc("/obtenerMarcoProceso", utils_memoria.ObtenerMarcoProceso)
+	mux.HandleFunc("/accederEspacioUsuarioLectura", utils_memoria.AccederEspacioUsuarioLectura)
+	mux.HandleFunc("/accederEspacioUsuarioEscritura", utils_memoria.AccederEspacioUsuarioEscritura)
 	// mux.HandleFunc("/leerPagina", utils_memoria.leerPagina)
 	// mux.HandleFunc("/actualizarPagina", utils_memoria.actualizarPagina)
 	mux.HandleFunc("/obtenerInstruccion", utils_memoria.EnviarInstruccion)

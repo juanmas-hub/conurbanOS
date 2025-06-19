@@ -117,5 +117,22 @@ func AccederEspacioUsuarioLectura(w http.ResponseWriter, r *http.Request){
 }
 
 func AccederEspacioUsuarioEscritura(w http.ResponseWriter, r *http.Request){
-	
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.EscrituraDTO
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	if escribir(int(mensaje.Posicion), mensaje.Dato) < 0{
+		log.Printf("Error al escribir en la posicion %v", int(mensaje.Posicion))
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte("Error al escribir en la posicion"))
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
 }

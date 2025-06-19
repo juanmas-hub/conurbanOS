@@ -65,7 +65,7 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 	if escribirEnSWAP(pid, paginas) < 0 {
 		log.Printf("Proceso %d no se pudo suspender por falo al escribir en SWAP", mensaje.Pid)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("fail"))
+		w.Write([]byte("Proceso no se pudo suspender por falo al escribir en SWAP"))
 		return
 	}
 
@@ -127,7 +127,7 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 		if marcosDisponibles == nil{
 			log.Printf("Proceso %d no se renaudo por falta de espacio", mensaje.Pid)
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("fail"))
+			w.Write([]byte("Proceso no se renaudo por falta de espacio"))
 			return
 		} 
 		paginasDTO = eliminarPaginasSWAP(pid)
@@ -135,7 +135,7 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 			// error al eliminar las paginas SWAP
 			log.Printf("Proceso %d no se renaudo por error al eliminar paginas swap", mensaje.Pid)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("fail"))
+			w.Write([]byte("Proceso %d no se renaudo por error al eliminar paginas swap"))
 			return
 		}
 		escribirPaginas(paginasDTO, marcosDisponibles)

@@ -92,6 +92,10 @@ type LecturaDTO struct {
 	Tamanio int64 `json:"tamanio"`
 }
 
+type EscrituraDTO struct {
+	Posicion int64 `json:"posicion"`
+	Dato string `json:"tamanio"`
+}
 type TablaDTO struct {
 	Pid int64 `json:"pid"`
 	Indices []int `json:"indices"`
