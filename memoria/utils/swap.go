@@ -136,7 +136,7 @@ func escribirEnSWAP(pid int, paginasDTO []globals_memoria.PaginaDTO) int {
 		err := escribirPaginaSWAP(paginaDTO.Contenido, paginaSwapDisponible, archivo)
 		if err != 0 {
 			log.Printf("Error al escribir en página SWAP %d: %v", paginaSwapDisponible.IndiceSwapAsignado, err)
-			return 1
+			return -1
 		}
 		globals_memoria.Procesos[pid].PaginasSWAP = append(globals_memoria.Procesos[pid].PaginasSWAP, paginaSwapDisponible)
 

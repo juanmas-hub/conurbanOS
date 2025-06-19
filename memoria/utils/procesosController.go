@@ -62,7 +62,12 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 	
 	paginas = eliminarMarcosFisicos(pid)
 
-	escribirEnSWAP(pid, paginas)
+	if escribirEnSWAP(pid, paginas) < 0 {
+		log.Printf("Proceso %d no se pudo suspender por falo al escribir en SWAP", mensaje.Pid)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("fail"))
+		return
+	}
 
 	globals_memoria.Procesos[pid].Suspendido = true
 
@@ -120,7 +125,6 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 		var paginasDTO []globals_memoria.PaginaDTO
 		var marcosDisponibles []int = buscarMarcosDisponibles(paginasNecesarias)
 		if marcosDisponibles == nil{
-			// error no hay suficiente espacio
 			log.Printf("Proceso %d no se renaudo por falta de espacio", mensaje.Pid)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("fail"))
