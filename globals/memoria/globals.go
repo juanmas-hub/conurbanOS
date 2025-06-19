@@ -106,6 +106,10 @@ type ConsultaPaginaDTO struct {
 	PrimerIndice int64 `json:"primer_indice"`
 }
 
+type LeerPaginaDTO struct {
+	IndicePagina int64 `json:"indice_pagina"`
+}
+
 var ListaPaginasSwapDisponibles []Pagina
 
 var ProximoIndiceSwap int

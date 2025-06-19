@@ -45,7 +45,7 @@ func main() {
 	mux.HandleFunc("/obtenerMarcoProceso", utils_memoria.ObtenerMarcoProceso)
 	mux.HandleFunc("/accederEspacioUsuarioLectura", utils_memoria.AccederEspacioUsuarioLectura)
 	mux.HandleFunc("/accederEspacioUsuarioEscritura", utils_memoria.AccederEspacioUsuarioEscritura)
-	// mux.HandleFunc("/leerPagina", utils_memoria.leerPagina)
+	mux.HandleFunc("/leerPagina", utils_memoria.LeerPagina)
 	// mux.HandleFunc("/actualizarPagina", utils_memoria.actualizarPagina)
 	mux.HandleFunc("/obtenerInstruccion", utils_memoria.EnviarInstruccion)
 	mux.HandleFunc("actualizarTablaDePaginas", utils_memoria.ActualizarTablaDePaginas)
