@@ -37,23 +37,6 @@ func ConsultarMock(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func MemoryDump(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var mensaje globals_memoria.PidDTO
-	err := decoder.Decode(&mensaje)
-	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Error al decodificar mensaje"))
-		return
-	}
-
-	log.Printf("Me llego para memory dump el proceso de pid: %d", mensaje.Pid)
-
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
-}
-
 func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.InstruccionDTO

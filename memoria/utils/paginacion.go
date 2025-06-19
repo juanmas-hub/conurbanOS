@@ -4,9 +4,9 @@ import (
 	//"encoding/json"
 	"fmt"
 	"log"
-
+	"time"
 	//"net/http"
-	//"os"
+	"os"
 
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
@@ -231,3 +231,38 @@ func eliminarMarcosFisicos(pid int) []globals_memoria.PaginaDTO {
 
 	return paginasDTO
 }
+
+func generarMemoryDump(pid int) int{
+	var marcos []globals_memoria.Pagina = globals_memoria.Procesos[pid].MarcosAsignados
+	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
+	var directorio string = globals_memoria.MemoriaConfig.Dump_path 
+
+	if marcos == nil || len(marcos) == 0 {
+		log.Printf("No hay marcos asignados para el proceso %d. No se genera dump.", pid)
+		return -1
+	}
+
+	var timestamp string = time.Now().Format("20060102-150405") // YYYYMMDD-HHMMSS
+	var nombreArchivo string = fmt.Sprintf("%s/%d-%s.dmp", directorio, pid, timestamp)
+
+	archivo, err := os.Create(nombreArchivo)
+	if err != nil {
+		log.Printf("Error al crear el archivo de dump: %v", err)
+		return -1
+	}
+	defer archivo.Close()
+
+	for i := 0; i < len(marcos); i++ {
+		var inicio int = marcos[i].IndiceAsignado * pageSize
+		var contenido string = leer(inicio, pageSize)
+		_, err := archivo.WriteString(contenido)
+		if err != nil {
+			log.Printf("Error al escribir al archivo de dump: %v", err)
+			return -1
+		}
+	}
+
+	log.Printf("Memory dump generado correctamente en: %s", nombreArchivo)
+	return 0
+}
+

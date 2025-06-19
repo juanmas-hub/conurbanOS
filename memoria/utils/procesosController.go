@@ -132,10 +132,9 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 		} 
 		paginasDTO = eliminarPaginasSWAP(pid)
 		if paginasDTO == nil{
-			// error al eliminar las paginas SWAP
 			log.Printf("Proceso %d no se renaudo por error al eliminar paginas swap", mensaje.Pid)
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Proceso %d no se renaudo por error al eliminar paginas swap"))
+			w.Write([]byte("No se renaudo por error al eliminar paginas swap"))
 			return
 		}
 		escribirPaginas(paginasDTO, marcosDisponibles)
@@ -143,6 +142,29 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 	globals_memoria.Procesos[pid].Suspendido = false
 
 	log.Printf("Proceso %d reanudado correctamente", mensaje.Pid)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+func MemoryDump(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.PidDTO
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+	log.Printf("Me llego para memory dump el proceso de pid: %d", mensaje.Pid)
+
+	if generarMemoryDump(int(mensaje.Pid)) < 0 {
+		log.Printf("Proceso %d no hizo memory dump", mensaje.Pid)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("No se hizo memory dump"))
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
