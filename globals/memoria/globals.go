@@ -110,6 +110,11 @@ type LeerPaginaDTO struct {
 	IndicePagina int64 `json:"indice_pagina"`
 }
 
+type ActualizarPaginaDTO struct {
+	IndicePagina int `json:"indice_pagina"`
+	Dato []byte `json:"dato"`
+}
+
 var ListaPaginasSwapDisponibles []Pagina
 
 var ProximoIndiceSwap int

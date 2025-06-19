@@ -105,3 +105,28 @@ func LeerPagina(w http.ResponseWriter, r *http.Request){
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonData)
 }
+
+func ActualizarPagina(w http.ResponseWriter, r *http.Request){
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.ActualizarPaginaDTO
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	if mensaje.IndicePagina % int(globals_memoria.MemoriaConfig.Page_size) != 0{
+		log.Printf("Error, el indice enviado (%v) no es multiplo de %v", mensaje.IndicePagina, int(globals_memoria.MemoriaConfig.Page_size))
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error indice no es multiplo del tamaño de pagina"))
+		return
+	}
+	
+	actualizarPagina(mensaje.IndicePagina, string(mensaje.Dato))
+
+	log.Printf("Pagina %v actualizada correctamente", mensaje.IndicePagina)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}

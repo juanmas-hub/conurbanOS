@@ -59,6 +59,14 @@ func escribirPaginas(paginasDTO []globals_memoria.PaginaDTO, marcos []int) {
 	}
 }
 
+func actualizarPagina(indicePagina int, dato string){
+	// INDICE PAGINA DEBE SER MULTIPLO DEL TAMAÑO DE PAGINA
+	// Se sobrescribe el dato
+	for i := 0; i < len(dato); i++ {
+		globals_memoria.Memoria[indicePagina+i] = dato[i]
+	}
+}
+
 func crearTabla(entradasPorPagina int64) *globals_memoria.TablaDePaginas {
 	return &globals_memoria.TablaDePaginas{
 		Entradas: make([]globals_memoria.EntradaTablaPagina, entradasPorPagina),
