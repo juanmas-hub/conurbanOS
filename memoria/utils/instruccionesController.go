@@ -39,7 +39,7 @@ func ConsultarMock(w http.ResponseWriter, r *http.Request) {
 
 func MemoryDump(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	var mensaje globals_memoria.PidProceso
+	var mensaje globals_memoria.PidDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
 		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
@@ -56,7 +56,7 @@ func MemoryDump(w http.ResponseWriter, r *http.Request) {
 
 func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	var mensaje globals_memoria.SolicitudInstruccion
+	var mensaje globals_memoria.InstruccionDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
 		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
@@ -88,7 +88,7 @@ func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 
 func AccederEspacioUsuarioLectura(w http.ResponseWriter, r *http.Request){
 	decoder := json.NewDecoder(r.Body)
-	var mensaje globals_memoria.SolicitudLectura
+	var mensaje globals_memoria.LecturaDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
 		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
@@ -119,5 +119,3 @@ func AccederEspacioUsuarioLectura(w http.ResponseWriter, r *http.Request){
 func AccederEspacioUsuarioEscritura(w http.ResponseWriter, r *http.Request){
 	
 }
-
-// FUNCIONES RELACIONADAS A TABLA DE PAGINAS

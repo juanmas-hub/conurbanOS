@@ -15,7 +15,7 @@ import (
 
 func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	var mensaje globals_memoria.SolicitudIniciarProceso
+	var mensaje globals_memoria.IniciarProcesoDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
 		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
@@ -30,7 +30,7 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
 
-	if AlmacenarProceso(pid, mensaje.Archivo_Pseudocodigo) != nil {
+	if AlmacenarProceso(pid, mensaje.ArchivoPseudocodigo) != nil {
 		w.WriteHeader(http.StatusNotImplemented)
 		w.Write([]byte("notImplemented"))
 	} else {
@@ -43,7 +43,7 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 
 func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	var mensaje globals_memoria.PidProceso
+	var mensaje globals_memoria.PidDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
 		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
@@ -72,7 +72,7 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 
 func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	var mensaje globals_memoria.PidProceso
+	var mensaje globals_memoria.PidDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
 		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
@@ -100,7 +100,7 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 
 func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	var mensaje globals_memoria.PidProceso
+	var mensaje globals_memoria.PidDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
 		log.Printf("Error al decodificar mensaje: %s\n", err.Error())

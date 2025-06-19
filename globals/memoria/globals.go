@@ -72,29 +72,34 @@ type ProcesosMap map[int]*Proceso
 
 var Procesos ProcesosMap
 
-type SolicitudIniciarProceso struct {
-	Archivo_Pseudocodigo string
-	Tamanio              int64
-	Pid                  int64
+type IniciarProcesoDTO struct {
+	ArchivoPseudocodigo string `json:"archivo_pseudocodigo"`
+	Tamanio              int64 `json:"tamanio"`
+	Pid                  int64 `json:"pid"`
 }
 
-type PidProceso struct {
+type PidDTO struct {
 	Pid int64 `json:"pid"`
 }
 
-type SolicitudInstruccion struct {
+type InstruccionDTO struct {
 	Pid int64 `json:"pid"`
 	Pc  int64 `json:"pc"`
 }
 
-type SolicitudLectura struct {
+type LecturaDTO struct {
 	Posicion int64 `json:"posicion"`
 	Tamanio int64 `json:"tamanio"`
 }
 
-type SolicitudActualizarTabla struct {
+type TablaDTO struct {
 	Pid int64 `json:"pid"`
 	Indices []int `json:"indices"`
+}
+
+type ConsultaPaginaDTO struct {
+	Pid int64 `json:"pid"`
+	PrimerIndice int64 `json:"primer_indice"`
 }
 
 var ListaPaginasSwapDisponibles []Pagina

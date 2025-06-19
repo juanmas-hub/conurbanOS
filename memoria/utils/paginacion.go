@@ -88,7 +88,7 @@ func buscarMarcosDisponibles(cantidad int) []int {
 	return nil
 }
 
-func actualizarTablaPaginas(pid int, indices []int) {
+func actualizarTablaPaginas(pid int, indices []int) int{
 	var ENTRIES_PER_PAGE int64 = globals_memoria.MemoriaConfig.Entries_per_page
 
 	var tablaActual *globals_memoria.TablaDePaginas = (*globals_memoria.ProcessManager)[pid]
@@ -96,6 +96,7 @@ func actualizarTablaPaginas(pid int, indices []int) {
 
 	if marcoDisponible == nil {
 		log.Println("Error al actualizar paginas, no hay marco disponible para asignar")
+		return 1
 	}
 
 	var indiceActual int
@@ -130,7 +131,7 @@ func actualizarTablaPaginas(pid int, indices []int) {
 
 
 	fmt.Printf("Ruta de índices: %d->%d->%d->%d->%d\n", indices[0], indices[1], indices[2], indices[3], indices[4])
-
+	return 0
 }
 
 func AlmacenarProceso(pid int, filename string) error {
@@ -161,15 +162,15 @@ func AlmacenarProceso(pid int, filename string) error {
 	return nil
 }
 
-func obtenerMarcoDesdeTabla(pid int, pagina int) int {
+func obtenerMarcoDesdeTabla(pid int, primerIndice int) int {
 	NUMBER_OF_LEVELS := int(globals_memoria.MemoriaConfig.Number_of_levels)
 
-	tablaActual := (*globals_memoria.ProcessManager)[pid]
-	indiceActual := pagina
+	var tablaActual *globals_memoria.TablaDePaginas = (*globals_memoria.ProcessManager)[pid]
+	var indiceActual int = primerIndice
 
 	for i := 0; i < NUMBER_OF_LEVELS-1; i++ {
 
-		entrada := tablaActual.Entradas[indiceActual]
+		var entrada *globals_memoria.EntradaTablaPagina = &tablaActual.Entradas[indiceActual]
 		tablaActual = entrada.SiguienteNivel
 		indiceActual = entrada.Marco
 	}
