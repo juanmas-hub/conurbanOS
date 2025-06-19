@@ -49,11 +49,23 @@ var Memoria []byte
 
 var MemoriaMarcosOcupados []bool
 
+
+type PaginaDTO struct{
+	Contenido string
+	Entrada *EntradaTablaPagina
+} 
+
+type Pagina struct{
+	IndiceAsignado int
+	IndiceSwapAsignado int
+	EntradaAsignada *EntradaTablaPagina
+}
+
 type Proceso struct {
 	Pseudocodigo []string
-	PaginasFisicas []int
+	MarcosAsignados []Pagina
 	Suspendido bool
-	PaginasSWAP []int
+	PaginasSWAP []Pagina
 }
 
 type ProcesosMap map[int]*Proceso
@@ -80,6 +92,11 @@ type SolicitudLectura struct {
 	Tamanio int64 `json:"tamanio"`
 }
 
-var ListaPaginasSwapDisponibles []int
+type SolicitudActualizarTabla struct {
+	Pid int64 `json:"pid"`
+	Indices []int `json:"indices"`
+}
 
-var ProximaPaginaSwap int
+var ListaPaginasSwapDisponibles []Pagina
+
+var ProximoIndiceSwap int

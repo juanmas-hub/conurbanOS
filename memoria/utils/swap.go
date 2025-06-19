@@ -10,8 +10,8 @@ import (
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
-func moverseAPaginaSWAP(pagina int, archivo *os.File) int {
-	direccion := int64(pagina * int(globals_memoria.MemoriaConfig.Page_size))
+func moverseAPaginaSWAP(pagina globals_memoria.Pagina, archivo *os.File) int {
+	direccion := int64(pagina.IndiceSwapAsignado * int(globals_memoria.MemoriaConfig.Page_size))
 
 	// Posicionarse en la dirección deseada
 	_, err := archivo.Seek(direccion, 0)
@@ -23,7 +23,7 @@ func moverseAPaginaSWAP(pagina int, archivo *os.File) int {
 }
 
 
-func leerPaginaSWAP(pagina int, archivo *os.File) string {
+func leerPaginaSWAP(pagina globals_memoria.Pagina, archivo *os.File) string {
 
 	if (moverseAPaginaSWAP(pagina, archivo) == 1) {
 		return ""
@@ -40,20 +40,25 @@ func leerPaginaSWAP(pagina int, archivo *os.File) string {
 	return string(buffer)
 }
 
-func eliminarPaginasSWAP(pid int) []string {
+func eliminarPaginasSWAP(pid int) []globals_memoria.PaginaDTO {
 	var archivo *os.File = abrirArchivoBinario()
-	paginas := globals_memoria.Procesos[pid].PaginasSWAP
-	pageSize := int(globals_memoria.MemoriaConfig.Page_size)
+	var paginasSwap *[]globals_memoria.Pagina = &globals_memoria.Procesos[pid].PaginasSWAP
+	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
+	var paginasDTO []globals_memoria.PaginaDTO
+	var nuevasPaginasSwapDisponibles []globals_memoria.Pagina
 
-	contenidoPaginas := []string{}
+	var paginaDTO globals_memoria.PaginaDTO
 
-	for i:=0; i<len(paginas); i++ {
-		contenido := leerPaginaSWAP(paginas[i], archivo)
-		contenidoPaginas = append(contenidoPaginas, contenido)
+	for i:=0; i<len(*paginasSwap); i++ {
+
+		paginaDTO.Contenido = leerPaginaSWAP((*paginasSwap)[i], archivo)
+		paginaDTO.Entrada = (*paginasSwap)[i].EntradaAsignada
+
+		paginasDTO = append(paginasDTO, paginaDTO)
 
 		// Volver a posicionarse para sobrescribir
-		if moverseAPaginaSWAP(paginas[i], archivo) == 1 {
-			log.Printf("Error al reposicionarse para sobrescribir la página SWAP %d", paginas[i])
+		if moverseAPaginaSWAP((*paginasSwap)[i], archivo) == 1 {
+			log.Printf("Error al reposicionarse para sobrescribir la página SWAP %d en el indice %v", (*paginasSwap)[i].IndiceSwapAsignado, i)
 			return nil
 		}
 
@@ -65,12 +70,12 @@ func eliminarPaginasSWAP(pid int) []string {
 			return nil
 		}
 
-		globals_memoria.ListaPaginasSwapDisponibles = append(globals_memoria.ListaPaginasSwapDisponibles, paginas[i])
+		nuevasPaginasSwapDisponibles = append(nuevasPaginasSwapDisponibles, (*paginasSwap)[i])
 	}
+	globals_memoria.ListaPaginasSwapDisponibles = append(globals_memoria.ListaPaginasSwapDisponibles, nuevasPaginasSwapDisponibles...)
+	*paginasSwap = nil
 
-	globals_memoria.Procesos[pid].PaginasSWAP = nil
-
-	return contenidoPaginas
+	return paginasDTO
 }
 
 func abrirArchivoBinario() *os.File{
@@ -83,7 +88,21 @@ func abrirArchivoBinario() *os.File{
 	return archivo
 }
 
-func escribirPaginaSWAP(dato string, pagina int, archivo *os.File) int{ // dato de tamanio 64
+func obtenerIndiceSwapDisponible()int{
+	var IndiceSwapDisponible int
+
+	if len(globals_memoria.ListaPaginasSwapDisponibles) > 0 {
+		IndiceSwapDisponible = globals_memoria.ListaPaginasSwapDisponibles[0].IndiceSwapAsignado
+		globals_memoria.ListaPaginasSwapDisponibles = globals_memoria.ListaPaginasSwapDisponibles[1:] // eliminar primera
+	} else {
+		IndiceSwapDisponible = globals_memoria.ProximoIndiceSwap
+		globals_memoria.ProximoIndiceSwap++
+	}
+
+	return IndiceSwapDisponible
+}
+
+func escribirPaginaSWAP(dato string, pagina globals_memoria.Pagina, archivo *os.File) int{ // dato de tamanio 64
 
 	if (moverseAPaginaSWAP(pagina, archivo) == 1) {
 		return 1
@@ -99,54 +118,31 @@ func escribirPaginaSWAP(dato string, pagina int, archivo *os.File) int{ // dato 
 	return 0
 }
 
-func escribirEnSWAP(pid int, datos []string) int {
-	var tamanioPagina int = int(globals_memoria.MemoriaConfig.Page_size)
+func escribirEnSWAP(pid int, paginasDTO []globals_memoria.PaginaDTO) int {
 	var archivo *os.File = abrirArchivoBinario()
 
-	for i := 0; i < len(datos); i++ {
-		var dato string = datos[i]
-		var bytesDato []byte = []byte(dato)
+	for i := 0; i < len(paginasDTO); i++ {
+		var paginaDTO globals_memoria.PaginaDTO 
+		var paginaSwapDisponible globals_memoria.Pagina
 
-		// Calcular cantidad de páginas necesarias (con redondeo hacia arriba)
-		cantidadPaginasNecesarias := (len(bytesDato) + tamanioPagina - 1) / tamanioPagina
+		paginaDTO = paginasDTO[i]
 
-		for j := 0; j < cantidadPaginasNecesarias; j++ {
-			// Calcular el inicio y fin del segmento
-			inicio := j * tamanioPagina
-			fin := inicio + tamanioPagina
-			if fin > len(bytesDato) {
-				fin = len(bytesDato)
-			}
+		// Transferimos los campos
+		paginaSwapDisponible.IndiceSwapAsignado = obtenerIndiceSwapDisponible()
+		paginaSwapDisponible.EntradaAsignada = paginaDTO.Entrada
+		paginaSwapDisponible.IndiceAsignado = -1
 
-			// Extraer segmento
-			var segmento []byte = bytesDato[inicio:fin]
-			// Asegurar que mida exactamente tamanioPagina (rellenar con ceros si es necesario)
-			if len(segmento) < tamanioPagina {
-				padding := make([]byte, tamanioPagina-len(segmento))
-				segmento = append(segmento, padding...) // Uso ellipsis (...)
-			}
-
-			// Obtener página disponible
-			var paginaDisponible int
-
-			if len(globals_memoria.ListaPaginasSwapDisponibles) > 0 {
-				paginaDisponible = globals_memoria.ListaPaginasSwapDisponibles[0]
-				globals_memoria.ListaPaginasSwapDisponibles = globals_memoria.ListaPaginasSwapDisponibles[1:] // eliminar primera
-			} else {
-				paginaDisponible = globals_memoria.ProximaPaginaSwap
-				globals_memoria.ProximaPaginaSwap++
-			}
-
-			// Escribir segmento en la página asignada
-			err := escribirPaginaSWAP(string(segmento), paginaDisponible, archivo)
-			if err != 0 {
-				log.Printf("Error al escribir en página %d: %v", paginaDisponible, err)
-				return 1
-			}
-			globals_memoria.Procesos[pid].PaginasSWAP = append(globals_memoria.Procesos[pid].PaginasSWAP, paginaDisponible)
-
+		// Escribir contenido en la página asignada
+		err := escribirPaginaSWAP(paginaDTO.Contenido, paginaSwapDisponible, archivo)
+		if err != 0 {
+			log.Printf("Error al escribir en página SWAP %d: %v", paginaSwapDisponible.IndiceSwapAsignado, err)
+			return 1
 		}
+		globals_memoria.Procesos[pid].PaginasSWAP = append(globals_memoria.Procesos[pid].PaginasSWAP, paginaSwapDisponible)
+
+	}
+		return 0
 	}
 
-	return 0
-}
+	
+

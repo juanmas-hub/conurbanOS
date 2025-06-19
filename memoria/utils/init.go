@@ -43,9 +43,9 @@ func InicializarMemoria() {
 
 	//SWAP
 
-	globals_memoria.ListaPaginasSwapDisponibles = make([]int, 0)
+	globals_memoria.ListaPaginasSwapDisponibles = make([]globals_memoria.Pagina, 0)
 
-	globals_memoria.ProximaPaginaSwap = 0
+	globals_memoria.ProximoIndiceSwap = 0
 }
 
 func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {
