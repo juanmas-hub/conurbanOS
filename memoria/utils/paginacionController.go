@@ -49,7 +49,18 @@ func ObtenerMarcoProceso(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	var marco int = obtenerMarcoDesdeTabla(int(mensaje.Pid), int(mensaje.PrimerIndice)) 
+	var pid int = int(mensaje.Pid)
+	var primerIndice int = int(mensaje.PrimerIndice)
+	var marco int 
+
+	marco = obtenerMarcoDesdeTabla(pid, primerIndice)
+
+	if marco < 0 {
+		log.Printf("Error al obtener marco")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error al obtener marco"))
+		return
+	}
 	
 	var enviado struct {
 		Dato int `json:"dato"`
@@ -80,19 +91,23 @@ func LeerPagina(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	if mensaje.IndicePagina % globals_memoria.MemoriaConfig.Page_size != 0{
-		log.Printf("Error, el indice enviado (%v) no es multiplo de %v", mensaje.IndicePagina, int(globals_memoria.MemoriaConfig.Page_size))
+	var indicePagina int = int(mensaje.IndicePagina)
+	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
+	var dato string
+
+	if indicePagina % pageSize != 0{
+		log.Printf("Error, el indice enviado (%v) no es multiplo de %v", indicePagina, pageSize)
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error indice no es multiplo del tamaño de pagina"))
 		return
 	}
 
-	var leido string = leer(int(mensaje.IndicePagina), int(globals_memoria.MemoriaConfig.Page_size))
+	dato = leer(indicePagina, pageSize)
 
 	var enviado struct {
 		Dato string `json:"dato"`
 	}
-	enviado.Dato = leido
+	enviado.Dato = dato
 	jsonData, err := json.Marshal(enviado)
 	if err != nil {
 		log.Printf("Error al codificar el mensaje a JSON: %s", err.Error())
@@ -117,14 +132,18 @@ func ActualizarPagina(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	if mensaje.IndicePagina % int(globals_memoria.MemoriaConfig.Page_size) != 0{
-		log.Printf("Error, el indice enviado (%v) no es multiplo de %v", mensaje.IndicePagina, int(globals_memoria.MemoriaConfig.Page_size))
+	var indicePagina int = int(mensaje.IndicePagina)
+	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
+	var dato string = string(mensaje.Dato)
+
+	if indicePagina % pageSize != 0{
+		log.Printf("Error, el indice enviado (%v) no es multiplo de %v", indicePagina, pageSize)
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error indice no es multiplo del tamaño de pagina"))
 		return
 	}
 	
-	actualizarPagina(mensaje.IndicePagina, string(mensaje.Dato))
+	actualizarPagina(indicePagina, dato)
 
 	log.Printf("Pagina %v actualizada correctamente", mensaje.IndicePagina)
 	w.WriteHeader(http.StatusOK)

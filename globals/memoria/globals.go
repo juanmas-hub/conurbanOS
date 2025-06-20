@@ -117,7 +117,7 @@ type LeerPaginaDTO struct {
 }
 
 type ActualizarPaginaDTO struct {
-	IndicePagina int `json:"indice_pagina"`
+	IndicePagina int64 `json:"indice_pagina"`
 	Dato []byte `json:"dato"`
 }
 

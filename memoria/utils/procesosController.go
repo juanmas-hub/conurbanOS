@@ -136,7 +136,7 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Solicitud para reanudar proceso con swap")
+	log.Printf("Me llego para reanudar proceso ")
 	log.Printf("%+v\n", mensaje.Pid)
 
 	// Aca empieza la logica

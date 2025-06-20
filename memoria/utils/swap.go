@@ -11,7 +11,7 @@ import (
 )
 
 func moverseAPaginaSWAP(pagina globals_memoria.Pagina, archivo *os.File) int {
-	direccion := int64(pagina.IndiceSwapAsignado * int(globals_memoria.MemoriaConfig.Page_size))
+	var direccion int64 = int64(pagina.IndiceSwapAsignado * int(globals_memoria.MemoriaConfig.Page_size))
 
 	// Posicionarse en la dirección deseada
 	_, err := archivo.Seek(direccion, 0)
@@ -71,8 +71,10 @@ func eliminarPaginasSWAP(pid int) []globals_memoria.PaginaDTO {
 		}
 
 		nuevasPaginasSwapDisponibles = append(nuevasPaginasSwapDisponibles, (*paginasSwap)[i])
+		(*paginasSwap)[i].IndiceSwapAsignado = -1
 	}
 	globals_memoria.ListaPaginasSwapDisponibles = append(globals_memoria.ListaPaginasSwapDisponibles, nuevasPaginasSwapDisponibles...)
+
 	*paginasSwap = nil
 
 	return paginasDTO
