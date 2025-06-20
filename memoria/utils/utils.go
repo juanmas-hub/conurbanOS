@@ -39,6 +39,16 @@ func abrirArchivo(filename string) *os.File {
 	return file
 }
 
+func abrirArchivoBinario() *os.File{
+	var ruta string = globals_memoria.MemoriaConfig.Swapfile_path
+
+	archivo, err := os.OpenFile(ruta, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return nil
+	}
+	return archivo
+}
+
 func extraerInstrucciones(archivo *os.File) []string {
 	var instrucciones []string
 	scanner := bufio.NewScanner(archivo)
@@ -66,4 +76,11 @@ func ObtenerInstruccionesDesdeArchivo(filename string) []string {
 	var instrucciones []string = extraerInstrucciones(archivo)
 
 	return instrucciones
+}
+
+func verificarPIDUnico(pid int) int {
+	if _, existe := (*globals_memoria.ProcessManager)[pid]; existe {
+		return 1
+	}
+	return 0
 }

@@ -73,13 +73,6 @@ func crearTabla(entradasPorPagina int64) *globals_memoria.TablaDePaginas {
 	}
 }
 
-func verificarPIDUnico(pid int) int {
-	if _, existe := (*globals_memoria.ProcessManager)[pid]; existe {
-		return 1
-	}
-	return 0
-}
-
 func buscarMarcosDisponibles(cantidad int) []int {
 	var result []int = make([]int, 0, cantidad)
 
@@ -96,18 +89,17 @@ func buscarMarcosDisponibles(cantidad int) []int {
 	return nil
 }
 
-func actualizarTablaPaginas(pid int, indices []int) int{
+func actualizarTablaPaginas(pid int, indices []int){
 
 	(*globals_memoria.Metricas)[pid].AccesosTablas++
 
 	var ENTRIES_PER_PAGE int64 = globals_memoria.MemoriaConfig.Entries_per_page
 	var tablaActual *globals_memoria.TablaDePaginas = (*globals_memoria.ProcessManager)[pid]
-	var marcoDisponible []int = buscarMarcosDisponibles(1)
+	var marcoDisponible *globals_memoria.Pagina = &globals_memoria.Procesos[pid].MarcosAsignados[1]
 
-	if marcoDisponible == nil {
-		log.Println("Error al actualizar paginas, no hay marco disponible para asignar")
-		return 1
-	}
+	// manda el marco recien tomado al final del slice
+	globals_memoria.Procesos[pid].MarcosAsignados = 
+		append(globals_memoria.Procesos[pid].MarcosAsignados[1:], globals_memoria.Procesos[pid].MarcosAsignados[0])
 
 	var indiceActual int
 	var indiceSiguiente int
@@ -129,26 +121,45 @@ func actualizarTablaPaginas(pid int, indices []int) int{
 	}
 
 	// Asignar el marco fisico
-	tablaActual.Entradas[indiceSiguiente].Marco = marcoDisponible[0]
+	tablaActual.Entradas[indiceSiguiente].Marco = marcoDisponible.IndiceAsignado
 
-	var marcoAsignado globals_memoria.Pagina
-
-	marcoAsignado.IndiceAsignado = marcoDisponible[0]
-	marcoAsignado.EntradaAsignada = &tablaActual.Entradas[indiceSiguiente]
-
-	globals_memoria.Procesos[pid].MarcosAsignados = append(globals_memoria.Procesos[pid].MarcosAsignados, marcoAsignado)
-	globals_memoria.MemoriaMarcosOcupados[marcoDisponible[0]] = true
-
+	marcoDisponible.EntradaAsignada = &tablaActual.Entradas[indiceSiguiente]
 
 	fmt.Printf("Ruta de índices: %d->%d->%d->%d->%d\n", indices[0], indices[1], indices[2], indices[3], indices[4])
-	return 0
 }
 
-func AlmacenarProceso(pid int, filename string) error {
+func asignarPaginasAProceso(pid int, indicesPaginas []int){
+	var paginaActual globals_memoria.Pagina
+	paginaActual.IndiceSwapAsignado = -1
+
+	for i:=0;i<len(indicesPaginas);i++{
+		paginaActual.IndiceAsignado = indicesPaginas[i]
+		globals_memoria.Procesos[pid].MarcosAsignados = append(globals_memoria.Procesos[pid].MarcosAsignados, paginaActual)
+
+		globals_memoria.MemoriaMarcosOcupados[indicesPaginas[i]] = true
+	}
+}
+
+func AlmacenarProceso(pid int, tamanio int, filename string) int {
 
 	if verificarPIDUnico(pid) != 0 {
-		return fmt.Errorf("el proceso con PID %d ya existe", pid)
+		log.Printf("el proceso con PID %d ya existia", pid)
+		return -1
 	}
+	var pageSize int 
+	var indicesNecesarios int
+	var indicesDisponibles []int
+
+	pageSize = int(globals_memoria.MemoriaConfig.Page_size)
+	indicesNecesarios = tamanio / pageSize
+	indicesDisponibles = buscarMarcosDisponibles(indicesNecesarios)
+
+	if indicesDisponibles == nil{
+		log.Printf("Error no hay suficiente espacio para almacenar el proceso %d", pid)
+		return -1
+	}
+
+	asignarPaginasAProceso(pid, indicesDisponibles)
 
 	var ENTRIES_PER_PAGE int64 = globals_memoria.MemoriaConfig.Entries_per_page
 	var instrucciones []string
@@ -157,7 +168,7 @@ func AlmacenarProceso(pid int, filename string) error {
 
 	globals_memoria.Procesos[pid] = &globals_memoria.Proceso{
 		Pseudocodigo: instrucciones,
-		Suspendido:   false, // supongo je
+		Suspendido:   false,
 		PaginasSWAP: nil,
 		MarcosAsignados: nil,
 	}
@@ -168,7 +179,7 @@ func AlmacenarProceso(pid int, filename string) error {
 	(*globals_memoria.ProcessManager)[pid] = crearTabla(ENTRIES_PER_PAGE)
 
 
-	return nil
+	return 0
 }
 
 func obtenerMarcoDesdeTabla(pid int, primerIndice int) int {
@@ -191,7 +202,6 @@ func obtenerMarcoDesdeTabla(pid int, primerIndice int) int {
 	}
 
 	return tablaActual.Entradas[indiceActual].Marco
-
 }
 
 func eliminarMarcosFisicos(pid int) []globals_memoria.PaginaDTO {

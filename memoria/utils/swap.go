@@ -80,16 +80,6 @@ func eliminarPaginasSWAP(pid int) []globals_memoria.PaginaDTO {
 	return paginasDTO
 }
 
-func abrirArchivoBinario() *os.File{
-	var ruta string = globals_memoria.MemoriaConfig.Swapfile_path
-
-	archivo, err := os.OpenFile(ruta, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return nil
-	}
-	return archivo
-}
-
 func obtenerIndiceSwapDisponible()int{
 	var IndiceSwapDisponible int
 

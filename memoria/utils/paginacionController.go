@@ -25,13 +25,8 @@ func ActualizarTablaDePaginas(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	
-	if actualizarTablaPaginas(int(mensaje.Pid), mensaje.Indices) != 0{
-		// Error no hay suficiente espacio
-		log.Printf("Proceso %d no actualizo tabla por falta de espacio", mensaje.Pid)
-		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte("Proceso no actualizo tabla por falta de espacio"))
-		return
-	}
+	actualizarTablaPaginas(int(mensaje.Pid), mensaje.Indices)
+
 
 	log.Printf("Proceso %d actualizo tabla correctamente", mensaje.Pid)
 	w.WriteHeader(http.StatusOK)

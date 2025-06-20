@@ -30,8 +30,9 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 
 	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
+	var tamanio int = int(mensaje.Tamanio)
 
-	if AlmacenarProceso(pid, mensaje.ArchivoPseudocodigo) != nil {
+	if AlmacenarProceso(pid, tamanio, mensaje.ArchivoPseudocodigo) < 0 {
 		w.WriteHeader(http.StatusNotImplemented)
 		w.Write([]byte("notImplemented"))
 	} else {
