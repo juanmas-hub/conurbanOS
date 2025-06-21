@@ -506,11 +506,66 @@ func NuevaTLB(capacidad int64, algoritmo string) *globals.TLB { //CREA LA TLB
 
 //FUNCIONES QUE NOS FALTAN
 
-//funcion que extraiga Entrada, Indice y Desplazamiento de la direccion logica
-//funcion que traduzca funcion logica a fisica teniendo el marco
-//funcion que inserte o reemplace en CACHE cuando esta lleno, con el algoritmo elegido
-//funcion que inserte o reemplace en TLB cuando esta llena, con el algoritmo elegido
-//funcion que pida a memoria el marco de una pagina
+// funcion que extraiga Entrada, Indice y Desplazamiento de la direccion logica
+// Devuelve:
+// entradas: slice con la entrada correspondiente a cada nivel (de 1 a N),
+// desplazamiento: el desplazamiento dentro de la página.
+func ExtraerEntradasYDesplazamiento(direccionLogica, tamanioPagina, cantEntradasTabla, niveles int64) ([]int64, int64) {
+	nroPagina := direccionLogica / tamanioPagina
+	entradas := make([]int64, niveles)
+	for x := int64(1); x <= niveles; x++ {
+		exp := int64(1)
+		for i := int64(0); i < (niveles - x); i++ {
+			exp *= cantEntradasTabla
+		}
+		entradaX := (nroPagina / exp) % cantEntradasTabla
+		entradas[x-1] = entradaX
+	}
+	desplazamiento := direccionLogica % tamanioPagina
+	return entradas, desplazamiento
+}
+
+// funcion que traduzca funcion logica a fisica teniendo el marco
+func TraducirLogicaAFisica(marco int64, desplazamiento int64, tamanioPagina int64) int64 {
+	return marco*tamanioPagina + desplazamiento
+}
+
+// funcion que inserte o reemplace en CACHE cuando esta lleno, con el algoritmo elegido
+// funcion que inserte o reemplace en TLB cuando esta llena, con el algoritmo elegido
+// funcion que pida a memoria el marco de una pagina
+func SolicitarMarcoAPagina(pid int64, nroPagina int64) (int64, error) {
+	payload := map[string]interface{}{
+		"pid":        pid,
+		"nro_pagina": nroPagina,
+	}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return 0, fmt.Errorf("error codificando payload: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/obtenerMarcoProceso", globals_cpu.CpuConfig.Ip_memory, globals_cpu.CpuConfig.Port_memory)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return 0, fmt.Errorf("error enviando solicitud a Memoria: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return 0, fmt.Errorf("memoria respondió con error %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	// Decodificamos la respuesta
+	var respuesta struct {
+		Marco int64 `json:"marco"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&respuesta)
+	if err != nil {
+		return 0, fmt.Errorf("error decodificando respuesta de Memoria: %w", err)
+	}
+	return respuesta.Marco, nil
+}
+
 //funcion que pida a memoria el contenido de una pagina
 //funcion que pida a memoria que escriba (cache deshabilitado)
 //funcion que pida a memoria que lea (cache deshabilitado)
