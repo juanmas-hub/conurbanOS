@@ -36,7 +36,7 @@ func main() {
 
 	// KERNEL
 	mux.HandleFunc("/iniciarProceso", utils_memoria.IniciarProceso)
-	mux.HandleFunc("/reanudarProceso", utils_memoria.ReanudarProceso) 
+	mux.HandleFunc("/reanudarProceso", utils_memoria.ReanudarProceso)
 	mux.HandleFunc("/suspenderProceso", utils_memoria.SuspenderProceso)
 	mux.HandleFunc("/finalizarProceso", utils_memoria.FinalizarProceso)
 	mux.HandleFunc("/memoryDump", utils_memoria.MemoryDump)
@@ -48,7 +48,7 @@ func main() {
 	mux.HandleFunc("/leerPagina", utils_memoria.LeerPagina)
 	mux.HandleFunc("/actualizarPagina", utils_memoria.ActualizarPagina)
 	mux.HandleFunc("/obtenerInstruccion", utils_memoria.EnviarInstruccion)
-	mux.HandleFunc("actualizarTablaDePaginas", utils_memoria.ActualizarTablaDePaginas)
+	mux.HandleFunc("/actualizarTablaDePaginas", utils_memoria.ActualizarTablaDePaginas)
 
 	// Inicia un servidor que escuche en el puerto del config
 	var puerto int64 = globals.MemoriaConfig.Port_memory
@@ -56,6 +56,5 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 
 }

@@ -116,7 +116,7 @@ var Sem_PasarProcesoAReady = CrearSemaforo(0)
 var DeDondeSeLlamaPasarProcesosAReady string = ""
 var DeDondeSeLlamaMutex sync.Mutex
 
-// Mapa PID:Cantidad. La cantidad de sesiones de IO indica cuantas veces fue a IO. Se usa para controlar el timer en planificador medio.
+// Mapa PID:Cantidad. La cantidad de sesiones de IO indica cuantas veces fue a IO. Se usa para controlar el timer en planificador medio. Se aumenta en EnviarSolicitudIO
 var CantidadSesionesIO map[int64]int = make(map[int64]int)
 var CantidadSesionesIOMutex sync.Mutex
 

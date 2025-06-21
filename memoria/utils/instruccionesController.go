@@ -6,6 +6,7 @@ import (
 	//"bufio"
 	"log"
 	"net/http"
+
 	//"os"
 	//"strings"
 
@@ -24,7 +25,7 @@ func ConsultarMock(w http.ResponseWriter, r *http.Request) {
 
 	jsonData, err := json.Marshal(enviado)
 
-	if (err != nil){
+	if err != nil {
 		log.Printf("Error al codificar el mock a JSON: %s", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error interno del servidor"))
@@ -53,6 +54,17 @@ func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 
 	var instruccion string = globals_memoria.Procesos[int(mensaje.Pid)].Pseudocodigo[mensaje.Pc]
 
+	if (*globals_memoria.Metricas)[int(mensaje.Pid)] == nil {
+		(*globals_memoria.Metricas)[int(mensaje.Pid)] = &globals_memoria.Memoria_Metrica{
+			AccesosTablas:            0,
+			InstruccionesSolicitadas: 0,
+			BajadasSwap:              0,
+			SubidasMemoria:           0,
+			LecturasMemoria:          0,
+			EscriturasMemoria:        0,
+		}
+	}
+
 	(*globals_memoria.Metricas)[int(mensaje.Pid)].InstruccionesSolicitadas++
 
 	log.Printf("## PID: %d - Obtener instrucción: %d - Instrucción: %s", mensaje.Pid, mensaje.Pc, instruccion)
@@ -74,7 +86,7 @@ func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonData)
 }
 
-func AccederEspacioUsuarioLectura(w http.ResponseWriter, r *http.Request){
+func AccederEspacioUsuarioLectura(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.LecturaDTO
 	err := decoder.Decode(&mensaje)
@@ -111,7 +123,7 @@ func AccederEspacioUsuarioLectura(w http.ResponseWriter, r *http.Request){
 	w.Write(jsonData)
 }
 
-func AccederEspacioUsuarioEscritura(w http.ResponseWriter, r *http.Request){
+func AccederEspacioUsuarioEscritura(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.EscrituraDTO
 	err := decoder.Decode(&mensaje)
@@ -126,7 +138,7 @@ func AccederEspacioUsuarioEscritura(w http.ResponseWriter, r *http.Request){
 	var posicion int = int(mensaje.Posicion)
 	var dato string = mensaje.Dato
 
-	if escribir(posicion, dato) < 0{
+	if escribir(posicion, dato) < 0 {
 		log.Printf("Error al escribir en la posicion %v", int(mensaje.Posicion))
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte("Error al escribir en la posicion"))
