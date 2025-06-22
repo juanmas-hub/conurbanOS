@@ -126,6 +126,31 @@ type TLB struct {
 	AlgoritmoReemplazo string        //algoritmo de tlb FIFO/LRU
 }
 
+//ahora si jeje
+
+// Para solicitudes de página
+type SolicitudPagina struct {
+	Pid    int64 `json:"pid"`
+	Pagina int64 `json:"pagina"`
+}
+
+// Para solicitudes con contenido de página
+type SolicitudPaginaContenido struct {
+	Pid       int64    `json:"pid"`
+	Pagina    int64    `json:"pagina"`
+	Contenido [64]byte `json:"contenido"`
+}
+
+// Para respuestas de contenido de página
+type RespuestaContenido struct {
+	Contenido [64]byte `json:"contenido"`
+}
+
+// Para respuestas de marco
+type RespuestaMarco struct {
+	Marco int64 `json:"marco"`
+}
+
 // TEMPORAL -- para probar
 type Semaforo chan struct{} // es un tipo que ocupa 0 bytes, entonces puedo hacer los semaforos mas eficientes
 func CrearSemaforo(maxTareas int) Semaforo {
