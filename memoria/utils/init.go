@@ -36,10 +36,18 @@ func InicializarMemoria() {
 	globals_memoria.Memoria = make([]byte, tamanio)
 	globals_memoria.MemoriaMarcosOcupados = make([]bool, cantidadMarcos)
 
-	manager := make(globals_memoria.Manager)
+	var manager globals_memoria.Manager= make(globals_memoria.Manager)
 	globals_memoria.ProcessManager = &manager
 
-	globals_memoria.Instrucciones = make(globals_memoria.Pseudocodigo)
+	globals_memoria.Procesos = make(globals_memoria.ProcesosMap)
+
+	var metricasMap globals_memoria.MetricasMap = make(globals_memoria.MetricasMap)
+	globals_memoria.Metricas = &metricasMap
+	//SWAP
+
+	globals_memoria.ListaPaginasSwapDisponibles = make([]globals_memoria.Pagina, 0)
+
+	globals_memoria.ProximoIndiceSwap = 0
 }
 
 func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {

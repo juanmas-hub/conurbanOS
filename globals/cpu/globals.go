@@ -82,14 +82,73 @@ type SyscallExit struct { //endpoint: syscallEXIT
 	NombreCPU string `json:"nombre_cpu"`
 }
 
-type SyscallDump = SyscallExit
+type SyscallDump struct {
+	PID       int64  `json:"pid"`
+	PC        int64  `json:"pc"`
+	NombreCPU string `json:"nombre_cpu"`
+}
 
 type SyscallInit struct {
-	Tamanio     int64  `json:"tamanio"`
-	Archivo     string `json:"archivo"`
-	Nombre_CPU  string `json:"nombre_cpu"`
-	Pid_proceso int64  `json:"pid_proceso"` // pid del proceso que ejecuta la syscall
-	Pc          int64  `json:"pc"`          // pc actualizado
+	Tamanio   int64  `json:"tamanio"`
+	Archivo   string `json:"archivo"`
+	NombreCPU string `json:"nombre_cpu"`
+	PID       int64  `json:"pid_proceso"` // pid del proceso que ejecuta la syscall
+	PC        int64  `json:"pc"`          // pc actualizado
+}
+
+type TLBentry struct {
+	Pagina int64 //Numero de pagina virtual
+	Marco  int64 //Numero de marco de pagina fisico
+	PID    int64 //PID para desalojar todas las paginas referidas a un proceso
+	//decidir algoritmo fifo o lru
+}
+
+type CacheEntry struct {
+	Pagina    int64    //Numero de pagina virtual
+	Contenido [64]byte //contenido de la pagina
+	PID       int64    //PID para desalojar todas las paginas referidas a un proceso
+	R         bool     //bit Referenced de acceso a la pagina
+	D         bool     //bit Dirty de modificacion de la pagina
+}
+
+type Cache struct {
+	Entries            []CacheEntry  //la lista de paginas
+	PaginaIndex        map[int64]int //mapa auxiliar para buscar las paginas en la lista
+	Capacidad          int64         //Cantidad maxima de paginas
+	AlgoritmoReemplazo string        //CLOCK o CLOCK-M
+	ClockHand          int           //Puntero para CLOCK
+}
+
+type TLB struct {
+	Entries            []TLBentry    //Lista de marcos/paginas
+	PaginaIndex        map[int64]int //map para agilizar busqueda
+	Capacidad          int64         //capacidad de tlb
+	AlgoritmoReemplazo string        //algoritmo de tlb FIFO/LRU
+}
+
+//ahora si jeje
+
+// Para solicitudes de página
+type SolicitudPagina struct {
+	Pid    int64 `json:"pid"`
+	Pagina int64 `json:"pagina"`
+}
+
+// Para solicitudes con contenido de página
+type SolicitudPaginaContenido struct {
+	Pid       int64    `json:"pid"`
+	Pagina    int64    `json:"pagina"`
+	Contenido [64]byte `json:"contenido"`
+}
+
+// Para respuestas de contenido de página
+type RespuestaContenido struct {
+	Contenido [64]byte `json:"contenido"`
+}
+
+// Para respuestas de marco
+type RespuestaMarco struct {
+	Marco int64 `json:"marco"`
 }
 
 // TEMPORAL -- para probar
@@ -103,3 +162,7 @@ func CrearSemaforo(maxTareas int) Semaforo {
 }
 
 var Sem = CrearSemaforo(0)
+
+type RespuestaInterrupcion struct {
+	PC int64 `json:"pc"`
+}

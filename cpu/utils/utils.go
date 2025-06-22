@@ -147,8 +147,6 @@ func EnviarSolicitudInstruccion(pid int64, pc int64) (string, error) {
 func Decode(instruccion string) (globals.InstruccionDecodificada, error) {
 	partes := strings.SplitN(instruccion, " ", 2) //divide la instruccion de los parametros
 
-	
-
 	nombre := partes[0]
 	parametrosStr := ""
 	if len(partes) > 1 {
@@ -163,10 +161,7 @@ func Decode(instruccion string) (globals.InstruccionDecodificada, error) {
 		parametros = []string{}
 	}
 
-
-	// Nose por que el len de parametros esta mal
-	// En caso de WRITE deberia ser 2, pero da 1:
-	log.Println("longitud: ",len(parametros))
+	log.Println("longitud: ", len(parametros))
 
 	instDeco := globals.InstruccionDecodificada{
 		Nombre:     nombre,
@@ -303,17 +298,64 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 		}
 		pcb.PC = nuevoPC
 		return CONTINUAR_EJECUCION, nil
+
 	case "IO":
-		//aca va la Logica
+		TiempoINT, err := strconv.ParseInt(instDeco.Parametros[1], 10, 64)
+		if err != nil {
+			fmt.Printf("Error al convertir '%s' a int64: %s\n", instDeco.Parametros[1], err)
+		}
+		pcb.PC++
+		IO := globals.SyscallIO{
+			NombreIO:  instDeco.Parametros[0],
+			NombreCPU: os.Args[1],
+			Tiempo:    TiempoINT,
+			PID:       pcb.Pid,
+			PC:        pcb.PC}
+		err = EnviarIOAKernel(IO)
+		if err != nil {
+			log.Printf("ERROR: No se pudo enviar SYSCALL IO del PID %d al Kernel: %s", pcb.Pid, err)
+			return ERROR_EJECUCION, fmt.Errorf("fallo al enviar SYSCALL IO: %w", err)
+		}
 		return PONERSE_ESPERA, nil
 	case "INIT_PROC":
-		//aca va la Logica
+		TamanioINT, err := strconv.ParseInt(instDeco.Parametros[1], 10, 64)
+		if err != nil {
+			fmt.Printf("Error al convertir '%s' a int64: %s\n", instDeco.Parametros[1], err)
+		}
+		pcb.PC++
+		INIT := globals.SyscallInit{
+			Tamanio:   TamanioINT,
+			Archivo:   instDeco.Parametros[0],
+			NombreCPU: os.Args[1],
+			PID:       pcb.Pid,
+			PC:        pcb.PC}
+		err = EnviarINITAKernel(INIT)
+		if err != nil {
+			log.Printf("ERROR: No se pudo enviar SYSCALL INIT del PID %d al Kernel: %s", pcb.Pid, err)
+			return ERROR_EJECUCION, fmt.Errorf("fallo al enviar SYSCALL INIT: %w", err)
+		}
 		return PONERSE_ESPERA, nil
 	case "DUMP_MEMORY":
-		//aca va la Logica
+		pcb.PC++
+		DUMP := globals.SyscallDump{
+			PID:       pcb.Pid,
+			PC:        pcb.PC,
+			NombreCPU: os.Args[1]}
+		err := EnviarDUMPAKernel(DUMP)
+		if err != nil {
+			log.Printf("ERROR: No se pudo enviar SYSCALL DUMP MEMORY del PID %d al Kernel: %s", pcb.Pid, err)
+			return ERROR_EJECUCION, fmt.Errorf("fallo al enviar SYSCALL DUMP MEMORY: %w", err)
+		}
 		return PONERSE_ESPERA, nil
 	case "EXIT":
-		//aca va la Logica
+		EXIT := globals.SyscallExit{
+			PID:       pcb.Pid,
+			NombreCPU: os.Args[1]}
+		err := EnviarEXITAKernel(EXIT)
+		if err != nil {
+			log.Printf("ERROR: No se pudo enviar SYSCALL EXIT del PID %d al Kernel: %s", pcb.Pid, err)
+			return ERROR_EJECUCION, fmt.Errorf("fallo al enviar SYSCALL EXIT: %w", err)
+		}
 		return PONERSE_ESPERA, nil
 	}
 	return PONERSE_ESPERA, fmt.Errorf("instruccion desconocida: %s", instDeco.Nombre)
@@ -346,6 +388,370 @@ func RecibirProcesoAEjecutar(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
+
+func EnviarIOAKernel(syscallData globals_cpu.SyscallIO) error {
+	body, err := json.Marshal(syscallData)
+	if err != nil {
+		return fmt.Errorf("error codificando struct SYSCALL: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/syscallIO", globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("error enviando SYSCALL a Kernel (%s): %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody := new(bytes.Buffer)
+		respBody.ReadFrom(resp.Body)
+		return fmt.Errorf("kernel respondió con error al recibir SYSCALL (%d %s): %s", resp.StatusCode, resp.Status, respBody.String())
+	}
+
+	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "IO", resp.Status)
+	return nil
+}
+
+func EnviarEXITAKernel(syscallData globals_cpu.SyscallExit) error {
+	body, err := json.Marshal(syscallData)
+	if err != nil {
+		return fmt.Errorf("error codificando struct SYSCALL: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/syscallEXIT", globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("error enviando SYSCALL a Kernel (%s): %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody := new(bytes.Buffer)
+		respBody.ReadFrom(resp.Body)
+		return fmt.Errorf("kernel respondió con error al recibir SYSCALL (%d %s): %s", resp.StatusCode, resp.Status, respBody.String())
+	}
+
+	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "EXIT", resp.Status)
+	return nil
+}
+
+func EnviarDUMPAKernel(syscallData globals_cpu.SyscallDump) error {
+	body, err := json.Marshal(syscallData)
+	if err != nil {
+		return fmt.Errorf("error codificando struct SYSCALL: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/syscallEXIT", globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("error enviando SYSCALL a Kernel (%s): %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody := new(bytes.Buffer)
+		respBody.ReadFrom(resp.Body)
+		return fmt.Errorf("kernel respondió con error al recibir SYSCALL (%d %s): %s", resp.StatusCode, resp.Status, respBody.String())
+	}
+
+	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "EXIT", resp.Status)
+	return nil
+}
+
+func EnviarINITAKernel(syscallData globals_cpu.SyscallInit) error {
+	body, err := json.Marshal(syscallData)
+	if err != nil {
+		return fmt.Errorf("error codificando struct SYSCALL: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/syscallINIT_PROC", globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("error enviando SYSCALL a Kernel (%s): %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody := new(bytes.Buffer)
+		respBody.ReadFrom(resp.Body)
+		return fmt.Errorf("kernel respondió con error al recibir SYSCALL (%d %s): %s", resp.StatusCode, resp.Status, respBody.String())
+	}
+
+	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "INIT", resp.Status)
+	return nil
+}
+
+func NuevaCache(capacidad int64, algoritmo string) *globals.Cache { //CREA EL CACHE
+	return &globals.Cache{
+		Entries:            make([]globals.CacheEntry, 0, capacidad), //crea lista de paginas con capacidad de paginas de cache definida (capacidad viene en config)
+		PaginaIndex:        make(map[int64]int),                      //genera el map
+		Capacidad:          capacidad,
+		AlgoritmoReemplazo: algoritmo,
+		ClockHand:          0,
+	}
+}
+
+func NuevaTLB(capacidad int64, algoritmo string) *globals.TLB { //CREA LA TLB
+	return &globals.TLB{
+		Entries:            make([]globals.TLBentry, 0, capacidad), //crea lista de paginas con capacidad de la TLB (capacidad viene en config)
+		PaginaIndex:        make(map[int64]int),
+		Capacidad:          capacidad,
+		AlgoritmoReemplazo: algoritmo,
+	}
+}
+
+//FUNCIONES QUE NOS FALTAN
+
+// (1) funcion que extraiga Entrada, Indice y Desplazamiento de la direccion logica
+// Devuelve:
+// entradas: slice con la entrada correspondiente a cada nivel (de 1 a N),
+// desplazamiento: el desplazamiento dentro de la página.
+func ExtraerEntradasYDesplazamiento(direccionLogica, tamanioPagina, cantEntradasTabla, niveles int64) ([]int64, int64) {
+	nroPagina := direccionLogica / tamanioPagina
+	entradas := make([]int64, niveles)
+	for x := int64(1); x <= niveles; x++ {
+		exp := int64(1)
+		for i := int64(0); i < (niveles - x); i++ {
+			exp *= cantEntradasTabla
+		}
+		entradaX := (nroPagina / exp) % cantEntradasTabla
+		entradas[x-1] = entradaX
+	}
+	desplazamiento := direccionLogica % tamanioPagina
+	return entradas, desplazamiento
+}
+
+// (2) funcion que traduzca funcion logica a fisica teniendo el marco
+func TraducirLogicaAFisica(marco int64, desplazamiento int64, tamanioPagina int64) int64 {
+	return marco*tamanioPagina + desplazamiento
+}
+
+// (3) funcion que inserte o reemplace en CACHE cuando esta lleno, con el algoritmo elegido
+func InsertarOReemplazarEnCache(c *globals.Cache, nueva globals.CacheEntry, escribirEnMemoria func(entry globals.CacheEntry)) {
+	// Si la página ya está en caché, la actualiza y setea Referenced
+	if idx, ok := c.PaginaIndex[nueva.Pagina]; ok {
+		c.Entries[idx] = nueva
+		c.Entries[idx].R = true
+		return
+	}
+
+	// Si hay espacio, inserta la nueva página
+	if int64(len(c.Entries)) < c.Capacidad {
+		c.Entries = append(c.Entries, nueva)
+		c.PaginaIndex[nueva.Pagina] = len(c.Entries) - 1
+		return
+	}
+
+	// Cache llena: elegir víctima según algoritmo
+	var victimaIdx int
+	switch c.AlgoritmoReemplazo {
+	case "CLOCK":
+		victimaIdx = buscarVictimaCLOCK(c)
+	case "CLOCK-M":
+		victimaIdx = buscarVictimaCLOCKM(c)
+	default:
+		panic("Algoritmo de reemplazo no soportado")
+	}
+
+	// Si la víctima está modificada, escribir su contenido a memoria principal
+	if c.Entries[victimaIdx].D {
+		escribirEnMemoria(c.Entries[victimaIdx])
+	}
+
+	// Eliminar la página víctima del índice
+	delete(c.PaginaIndex, c.Entries[victimaIdx].Pagina)
+
+	// Reemplazar entrada
+	c.Entries[victimaIdx] = nueva
+	c.PaginaIndex[nueva.Pagina] = victimaIdx
+
+	// Avanzar el clock hand
+	c.ClockHand = (victimaIdx + 1) % len(c.Entries)
+}
+
+// buscarVictimaCLOCK devuelve el índice de la víctima según el algoritmo CLOCK.
+func buscarVictimaCLOCK(c *globals.Cache) int {
+	for {
+		if !c.Entries[c.ClockHand].R {
+			return c.ClockHand
+		}
+		c.Entries[c.ClockHand].R = false
+		c.ClockHand = (c.ClockHand + 1) % len(c.Entries)
+	}
+}
+
+// buscarVictimaCLOCKM devuelve el índice de la víctima según el algoritmo CLOCK-M.
+func buscarVictimaCLOCKM(c *globals.Cache) int {
+	// Primera pasada: R=0 y D=0
+	for i := 0; i < len(c.Entries); i++ {
+		idx := (c.ClockHand + i) % len(c.Entries)
+		if !c.Entries[idx].R && !c.Entries[idx].D {
+			c.ClockHand = (idx + 1) % len(c.Entries)
+			return idx
+		}
+	}
+	// Segunda pasada: R=0 y D=1 (y setea R=0 para futuras vueltas)
+	for i := 0; i < len(c.Entries); i++ {
+		idx := (c.ClockHand + i) % len(c.Entries)
+		if !c.Entries[idx].R && c.Entries[idx].D {
+			c.ClockHand = (idx + 1) % len(c.Entries)
+			return idx
+		}
+		c.Entries[idx].R = false
+	}
+	// Si todos tenían R=1, vuelve a intentar
+	return buscarVictimaCLOCKM(c)
+}
+
+// (4) funcion que inserte o reemplace en TLB cuando esta llena, con el algoritmo elegido
+// (5) funcion que pida a memoria el marco de una pagina
+func PedirMarcoDePagina(pid int64, pagina int64) (int64, error) {
+	solicitud := struct {
+		Pid    int64 `json:"pid"`
+		Pagina int64 `json:"pagina"`
+	}{
+		Pid:    pid,
+		Pagina: pagina,
+	}
+
+	body, err := json.Marshal(solicitud)
+	if err != nil {
+		return 0, fmt.Errorf("error codificando solicitud de marco a Memoria: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/obtenerMarcoProceso", globals_cpu.CpuConfig.Ip_memory, globals_cpu.CpuConfig.Port_memory)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return 0, fmt.Errorf("error haciendo POST a Memoria: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("memoria respondió con error: %d", resp.StatusCode)
+	}
+
+	var respuesta struct {
+		Marco int64 `json:"marco"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&respuesta)
+	if err != nil {
+		return 0, fmt.Errorf("error al decodificar respuesta de Memoria: %w", err)
+	}
+
+	log.Printf("Marco recibido de Memoria: %d", respuesta.Marco)
+	return respuesta.Marco, nil
+}
+
+// (6) funcion que pida a memoria el contenido de una pagina
+func PedirContenidoPagina(pid int64, pagina int64) ([64]byte, error) {
+	solicitud := globals_cpu.SolicitudPagina{Pid: pid, Pagina: pagina}
+
+	body, err := json.Marshal(solicitud)
+	if err != nil {
+		return [64]byte{}, fmt.Errorf("error codificando solicitud: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/leerPagina", globals_cpu.CpuConfig.Ip_memory, globals_cpu.CpuConfig.Port_memory)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return [64]byte{}, fmt.Errorf("error haciendo POST a Memoria: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return [64]byte{}, fmt.Errorf("memoria respondió con error: %d", resp.StatusCode)
+	}
+
+	var respuesta globals_cpu.RespuestaContenido
+	err = json.NewDecoder(resp.Body).Decode(&respuesta)
+	if err != nil {
+		return [64]byte{}, fmt.Errorf("error al decodificar respuesta: %w", err)
+	}
+
+	return respuesta.Contenido, nil
+}
+
+// (7) funcion que pida a memoria que escriba (cache deshabilitado)
+func EscribirPaginaMemoria(pid int64, pagina int64, contenido [64]byte) error {
+	solicitud := globals_cpu.SolicitudPaginaContenido{Pid: pid, Pagina: pagina, Contenido: contenido}
+
+	body, err := json.Marshal(solicitud)
+	if err != nil {
+		return fmt.Errorf("error codificando solicitud: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/accederEspacioUsuarioEscritura", globals_cpu.CpuConfig.Ip_memory, globals_cpu.CpuConfig.Port_memory)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("error haciendo POST a Memoria: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("memoria respondió con error: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+// (8) funcion que pida a memoria que lea (cache deshabilitado)
+func LeerPaginaMemoria(pid int64, pagina int64) ([64]byte, error) {
+	solicitud := globals_cpu.SolicitudPagina{Pid: pid, Pagina: pagina}
+
+	body, err := json.Marshal(solicitud)
+	if err != nil {
+		return [64]byte{}, fmt.Errorf("error codificando solicitud: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/accederEspacioUsuarioLectura", globals_cpu.CpuConfig.Ip_memory, globals_cpu.CpuConfig.Port_memory)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return [64]byte{}, fmt.Errorf("error haciendo POST a Memoria: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return [64]byte{}, fmt.Errorf("memoria respondió con error: %d", resp.StatusCode)
+	}
+
+	var respuesta globals_cpu.RespuestaContenido
+	err = json.NewDecoder(resp.Body).Decode(&respuesta)
+	if err != nil {
+		return [64]byte{}, fmt.Errorf("error al decodificar respuesta: %w", err)
+	}
+
+	return respuesta.Contenido, nil
+}
+
+// (9) funcion que pida a memoria actualizar una pagina (Dirty BIT),
+func ActualizarPaginaMemoria(pid int64, pagina int64, contenido [64]byte) error {
+	solicitud := globals_cpu.SolicitudPaginaContenido{Pid: pid, Pagina: pagina, Contenido: contenido}
+
+	body, err := json.Marshal(solicitud)
+	if err != nil {
+		return fmt.Errorf("error codificando solicitud: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/actualizarPagina", globals_cpu.CpuConfig.Ip_memory, globals_cpu.CpuConfig.Port_memory)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("error haciendo POST a Memoria: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("memoria respondió con error: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+//(10) funcion que escriba en cache
+//(11) funcion que lea en cache
 
 // TEMPORAL -- para probar
 func Wait(semaforo globals.Semaforo) {

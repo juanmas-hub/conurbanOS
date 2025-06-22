@@ -24,7 +24,6 @@ func main() {
 
 	utils_memoria.InicializarMemoria()
 
-
 	// Multiplexor de servidor HTTP
 	mux := http.NewServeMux()
 
@@ -37,22 +36,25 @@ func main() {
 
 	// KERNEL
 	mux.HandleFunc("/iniciarProceso", utils_memoria.IniciarProceso)
-	// mux.HandleFunc("/reanudarproceso", utils_memoria.reanudarProceso) --- ya esta hecho en kernel. Es para mover el proceso desde memoria secundaria a principal
-	mux.HandleFunc("/suspenderProceso", utils_memoria.SuspenderProceso) // ya hice la funcion desde kernel en /kernel/utils/planifMedio (avisarSwappeo)
+	mux.HandleFunc("/reanudarProceso", utils_memoria.ReanudarProceso)
+	mux.HandleFunc("/suspenderProceso", utils_memoria.SuspenderProceso)
 	mux.HandleFunc("/finalizarProceso", utils_memoria.FinalizarProceso)
 	mux.HandleFunc("/memoryDump", utils_memoria.MemoryDump)
 
 	// CPU
-	// mux.HandleFunc("/obtenerMarcoProceso", utils_memoria.obtenerMarcoProceso)
-	// mux.HandleFunc("/accederEspacioUsuario", utils_memoria.accederEspacioUsuario)
-	// mux.HandleFunc("/leerPagina", utils_memoria.leerPagina)
-	// mux.HandleFunc("/actualizarPagina", utils_memoria.actualizarPagina)
+	mux.HandleFunc("/obtenerMarcoProceso", utils_memoria.ObtenerMarcoProceso)
+	mux.HandleFunc("/accederEspacioUsuarioLectura", utils_memoria.AccederEspacioUsuarioLectura)
+	mux.HandleFunc("/accederEspacioUsuarioEscritura", utils_memoria.AccederEspacioUsuarioEscritura)
+	mux.HandleFunc("/leerPagina", utils_memoria.LeerPagina)
+	mux.HandleFunc("/actualizarPagina", utils_memoria.ActualizarPagina)
 	mux.HandleFunc("/obtenerInstruccion", utils_memoria.EnviarInstruccion)
+	mux.HandleFunc("/actualizarTablaDePaginas", utils_memoria.ActualizarTablaDePaginas)
 
 	// Inicia un servidor que escuche en el puerto del config
-	puerto := globals.MemoriaConfig.Port_memory
+	var puerto int64 = globals.MemoriaConfig.Port_memory
 	err := http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)
 	if err != nil {
 		panic(err)
 	}
+
 }

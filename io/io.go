@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
+	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/io"
 	utils_io "github.com/sisoputnfrba/tp-golang/io/utils"
@@ -27,6 +32,9 @@ func main() {
 	mensaje := "Mensaje desde IO"
 	utils_io.EnviarMensajeAKernel(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel, mensaje)
 
+	// Canal para indicar que hemos terminado
+	done := make(chan bool, 1)
+
 	// Handshake al kernel
 	if len(os.Args) != 2 {
 		log.Fatal("No se paso como argumento el nombre de IO") //por ej:  go run . nombreIO
@@ -41,8 +49,20 @@ func main() {
 		globals.IoConfig.PortIO,
 	)
 
-	// Avisar desconexion de IO
-	defer utils_io.Desconectar(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel, globals.PidProcesoActual)
+	// Canal para recibir señales del sistema
+	sigs := make(chan os.Signal, 1)
+
+	// Notificar al canal si se recibe SIGINT o SIGTERM
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	/* Goroutine que espera la señal
+	go func() {
+		sig := <-sigs
+		fmt.Println()
+		fmt.Println("Señal recibida:", sig)
+		utils_io.Desconectar(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel, globals.PidProcesoActual)
+		done <- true
+	}()*/
 
 	// Servidor
 	mux := http.NewServeMux()
@@ -52,9 +72,47 @@ func main() {
 	mux.HandleFunc("/solicitudDeIo", utils_io.RecibirSolicitudDeKernel)
 
 	puerto := globals.IoConfig.PortIO
-	err := http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)
-	if err != nil {
-		panic(err)
+	srv := &http.Server{
+		Addr:    ":" + strconv.Itoa(int(puerto)),
+		Handler: mux,
 	}
 
+	// Ejecutar servidor en goroutine (no bloquea main)
+	go func() {
+		fmt.Println("Servidor escuchando en puerto", puerto)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Error en servidor: %v\n", err)
+		}
+	}()
+
+	// Goroutine para manejar señales
+	go func() {
+		sig := <-sigs
+		fmt.Println()
+		fmt.Println("Señal recibida:", sig)
+
+		utils_io.Desconectar(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel, globals.PidProcesoActual)
+
+		// Shutdown con contexto para que ListenAndServe termine
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Printf("Error al apagar servidor: %v\n", err)
+		} else {
+			fmt.Println("Servidor apagado correctamente")
+		}
+
+		done <- true
+	}()
+	/*
+		puerto := globals.IoConfig.PortIO
+		err := http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)
+		if err != nil {
+			panic(err)
+		}
+		<-done
+	*/
+
+	<-done
 }

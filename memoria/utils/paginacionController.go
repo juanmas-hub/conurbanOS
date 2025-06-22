@@ -1,0 +1,146 @@
+package utils
+
+import (
+	"encoding/json"
+	//"fmt"
+	//"bufio"
+	"log"
+	"net/http"
+	//"os"
+	//"strings"
+
+	//globals "github.com/sisoputnfrba/tp-golang/globals/memoria"
+	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
+)
+
+
+func ActualizarTablaDePaginas(w http.ResponseWriter, r *http.Request){
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.TablaDTO
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+	
+	actualizarTablaPaginas(int(mensaje.Pid), mensaje.Indices)
+
+
+	log.Printf("Proceso %d actualizo tabla correctamente", mensaje.Pid)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+func ObtenerMarcoProceso(w http.ResponseWriter, r *http.Request){
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.ConsultaPaginaDTO
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	var pid int = int(mensaje.Pid)
+	var primerIndice int = int(mensaje.PrimerIndice)
+	var marco int 
+
+	marco = obtenerMarcoDesdeTabla(pid, primerIndice)
+
+	if marco < 0 {
+		log.Printf("Error al obtener marco")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error al obtener marco"))
+		return
+	}
+	
+	var enviado struct {
+		Dato int `json:"dato"`
+	}
+	enviado.Dato = marco
+	jsonData, err := json.Marshal(enviado)
+	if err != nil {
+		log.Printf("Error al codificar la instruccion a JSON: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error interno del servidor"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
+	
+}
+
+func LeerPagina(w http.ResponseWriter, r *http.Request){
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.LeerPaginaDTO
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	var indicePagina int = int(mensaje.IndicePagina)
+	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
+	var dato string
+
+	if indicePagina % pageSize != 0{
+		log.Printf("Error, el indice enviado (%v) no es multiplo de %v", indicePagina, pageSize)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error indice no es multiplo del tamaño de pagina"))
+		return
+	}
+
+	dato = leer(indicePagina, pageSize)
+
+	var enviado struct {
+		Dato string `json:"dato"`
+	}
+	enviado.Dato = dato
+	jsonData, err := json.Marshal(enviado)
+	if err != nil {
+		log.Printf("Error al codificar el mensaje a JSON: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error interno del servidor"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonData)
+}
+
+func ActualizarPagina(w http.ResponseWriter, r *http.Request){
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.ActualizarPaginaDTO
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	var indicePagina int = int(mensaje.IndicePagina)
+	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
+	var dato string = string(mensaje.Dato)
+
+	if indicePagina % pageSize != 0{
+		log.Printf("Error, el indice enviado (%v) no es multiplo de %v", indicePagina, pageSize)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error indice no es multiplo del tamaño de pagina"))
+		return
+	}
+	
+	actualizarPagina(indicePagina, dato)
+
+	log.Printf("Pagina %v actualizada correctamente", mensaje.IndicePagina)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}

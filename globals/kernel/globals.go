@@ -1,6 +1,9 @@
 package globals
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 type Kernel_Config struct {
 	Ip_memory           string `json:"ip_memory"`
@@ -51,17 +54,23 @@ type Handshake struct {
 type ListaCpu struct {
 	Handshake Handshake
 	EstaLibre bool
+	PIDActual int64
 }
 
-type ListaIo struct {
-	Handshake             Handshake
-	PidProcesoActual      int64 // PID del proceso actual que esta en esta IO
+type EntradaMapaIO struct {
+	Instancias            []InstanciaIO
 	ColaProcesosEsperando []SyscallIO
 }
 
+type InstanciaIO struct {
+	Handshake        Handshake
+	PidProcesoActual int64 // PID del proceso actual que esta en esta IO | Si es -1 no hay procesos
+}
+
 // Listas
-var ListaIOs []ListaIo
 var ListaCPUs []ListaCpu
+
+var MapaIOs map[string]EntradaMapaIO = make(map[string]EntradaMapaIO) // mapa de las IOs conectadas, con clave nombre
 
 // Constantes
 const NEW string = "NEW"
@@ -99,10 +108,22 @@ var Sem_ProcesosEnReady = CrearSemaforo(0)
 var Sem_ProcesoAFinalizar = CrearSemaforo(0)
 var ProcesosAFinalizar []int64
 
+var Sem_PasarProcesoAReady = CrearSemaforo(0)
+
 // Con el semaforo le aviso al planificador de largo plazo que hay un proceso para finalizar
 // En el slice le pongo el PID
 
-type Metricas struct {
+var DeDondeSeLlamaPasarProcesosAReady string = ""
+var DeDondeSeLlamaMutex sync.Mutex
+
+// Mapa PID:Cantidad. La cantidad de sesiones de IO indica cuantas veces fue a IO. Se usa para controlar el timer en planificador medio. Se aumenta en EnviarSolicitudIO
+var CantidadSesionesIO map[int64]int = make(map[int64]int)
+var CantidadSesionesIOMutex sync.Mutex
+
+// SRT
+var SrtReplanificarChan = make(chan struct{}, 1) // buffered para no bloquear
+
+type MetricasEstado struct {
 	New          int64
 	Ready        int64
 	Execute      int64
@@ -110,11 +131,20 @@ type Metricas struct {
 	Susp_Ready   int64
 	Susp_Blocked int64
 }
+
+type MetricasTiempo struct {
+	New          time.Duration
+	Ready        time.Duration
+	Execute      time.Duration
+	Blocked      time.Duration
+	Susp_Ready   time.Duration
+	Susp_Blocked time.Duration
+}
 type PCB struct {
 	Pid int64
 	PC  int64
-	ME  Metricas
-	MT  Metricas
+	ME  MetricasEstado
+	MT  MetricasTiempo
 }
 
 type Rafagas struct {
@@ -124,9 +154,10 @@ type Rafagas struct {
 }
 
 type Proceso struct {
-	Pcb           PCB
-	Estado_Actual string
-	Rafaga        *Rafagas
+	Pcb                  PCB
+	Estado_Actual        string
+	Rafaga               *Rafagas
+	UltimoCambioDeEstado time.Time
 }
 
 type Proceso_Nuevo struct {
@@ -136,6 +167,10 @@ type Proceso_Nuevo struct {
 }
 
 var MapaProcesos map[int64]Proceso = make(map[int64]Proceso)
+
+type RespuestaInterrupcion struct {
+	PC int64 `json:"pc"`
+}
 
 // Estructuras para los estados
 
@@ -161,6 +196,13 @@ type FinalizacionIO struct {
 	NombreIO string `json:"nombre"`
 }
 
+type DesconexionIO struct {
+	NombreIO string `json:"nombre"`
+	PID      int64  `json:"pid"`
+	Ip       string `json:"ip"`
+	Puerto   int64  `json:"port"`
+}
+
 // Sycalls
 type SyscallIO struct {
 	NombreIO  string `json:"nombre_io"`
@@ -175,7 +217,11 @@ type SyscallExit struct {
 	NombreCPU string `json:"nombre_cpu"`
 }
 
-type SyscallDump = SyscallExit
+type SyscallDump struct {
+	PID       int64  `json:"pid"`
+	PC        int64  `json:"pc"`
+	NombreCPU string `json:"nombre_cpu"`
+}
 
 type SyscallInit struct {
 	Tamanio     int64  `json:"tamanio"`

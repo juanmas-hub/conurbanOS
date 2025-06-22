@@ -9,9 +9,9 @@ import (
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
+	utils_estados "github.com/sisoputnfrba/tp-golang/kernel/utils/estados"
 	utils_general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
-	utils_cp "github.com/sisoputnfrba/tp-golang/kernel/utils/planifCorto"
-	utils_lp "github.com/sisoputnfrba/tp-golang/kernel/utils/planifLargo"
+	utils_lp "github.com/sisoputnfrba/tp-golang/kernel/utils/planificadores/planifLargo"
 	utils_syscallController "github.com/sisoputnfrba/tp-golang/kernel/utils/syscallController"
 	utils_logger "github.com/sisoputnfrba/tp-golang/utils/loggers"
 )
@@ -25,8 +25,14 @@ func main() {
 		log.Fatal("No se pudo iniciar el config")
 	}
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.KernelConfig.Log_level))
-
 	// INIT
+
+	go func() {
+		ahora := time.Now()
+		time.Sleep(time.Millisecond * 2000)
+		slog.Warn(strconv.Itoa(int(time.Now().Sub(ahora).Milliseconds())))
+
+	}()
 
 	if len(os.Args) != 3 {
 		log.Fatal("Uso: go run . archivo tamaño")
@@ -46,29 +52,6 @@ func main() {
 	mensaje := "Mensaje desde Kernel"
 	utils_general.EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
 
-	// Prueba IO
-	go func() {
-		time.Sleep(10 * time.Second)
-		if len(globals.ListaIOs) > 0 {
-			io := globals.ListaIOs[0].Handshake
-			ipIO := io.IP
-			puertoIO := io.Puerto
-			pid := int64(1)
-			tiempo := int64(5000)
-			syscallIO := globals.SyscallIO{
-				NombreIO: "TECLADO",
-				Tiempo:   tiempo,
-				PID:      pid,
-			}
-
-			globals.ListaIOs[0].PidProcesoActual = pid
-			globals.ListaIOs[0].ColaProcesosEsperando = append(globals.ListaIOs[0].ColaProcesosEsperando, syscallIO)
-			utils_general.EnviarSolicitudIO(ipIO, puertoIO, pid, tiempo)
-		} else {
-			log.Println("No hay IOs registrados todavía")
-		}
-	}()
-
 	// Servidor (recibir mensaje de CPU y IO)
 	mux := http.NewServeMux()
 
@@ -77,15 +60,13 @@ func main() {
 	mux.HandleFunc("/handshakeIO", utils_general.RecibirHandshakeIO)
 	mux.HandleFunc("/handshakeCPU", utils_general.RecibirHandshakeCPU)
 
-	mux.HandleFunc("/finalizacionIO", utils_general.FinalizacionIO)
+	mux.HandleFunc("/finalizacionIO", utils_estados.FinalizacionIO)
 	mux.HandleFunc("/desconexionIO", utils_general.DesconexionIO)
 
-	mux.HandleFunc("/devolucionProceso", utils_cp.DevolucionProceso)
-
-	mux.HandleFunc("/syscallIO", utils_syscallController.ManejarIO)
-	mux.HandleFunc("/syscallDUMP_MEMORY", utils_syscallController.ManejarDUMP_MEMORY)
-	mux.HandleFunc("/syscallEXIT", utils_syscallController.ManejarEXIT)
-	mux.HandleFunc("/syscallINIT_PROC", utils_syscallController.ManejarINIT_PROC)
+	mux.HandleFunc("/syscallIO", utils_syscallController.RecibirIO)
+	mux.HandleFunc("/syscallDUMP_MEMORY", utils_syscallController.RecibirDUMP_MEMORY)
+	mux.HandleFunc("/syscallEXIT", utils_syscallController.RecibirEXIT)
+	mux.HandleFunc("/syscallINIT_PROC", utils_syscallController.RecibirINIT_PROC)
 
 	puerto := globals.KernelConfig.Port_kernel
 	err = http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)

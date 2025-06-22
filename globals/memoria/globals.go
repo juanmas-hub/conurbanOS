@@ -30,6 +30,10 @@ type Memoria_Metrica struct {
 	EscriturasMemoria        int `json:"escrituras_memoria"`
 }
 
+type MetricasMap map[int]*Memoria_Metrica
+
+var Metricas *MetricasMap
+
 // Entrada de una tabla de páginas
 type EntradaTablaPagina struct {
 	Pagina         int
@@ -38,7 +42,7 @@ type EntradaTablaPagina struct {
 }
 
 type TablaDePaginas struct {
-	Entradas []EntradaTablaPagina // 4*64=256
+	Entradas []EntradaTablaPagina
 }
 
 type Manager map[int]*TablaDePaginas
@@ -49,24 +53,74 @@ var Memoria []byte
 
 var MemoriaMarcosOcupados []bool
 
-// Estructura donde recibo para inicializar proceso
-type SolicitudIniciarProceso struct {
-	Archivo_Pseudocodigo string
-	Tamanio              int64
-	Pid                  int64
+
+type PaginaDTO struct{
+	Contenido string
+	Entrada *EntradaTablaPagina
+} 
+
+type Pagina struct{
+	IndiceAsignado int
+	IndiceSwapAsignado int
+	EntradaAsignada *EntradaTablaPagina
 }
 
-// Estructura para recibir PID
-type PidProceso struct {
+type Proceso struct {
+	Pseudocodigo []string
+	MarcosAsignados []Pagina
+	Suspendido bool
+	PaginasSWAP []Pagina
+}
+
+type ProcesosMap map[int]*Proceso
+
+var Procesos ProcesosMap
+
+type IniciarProcesoDTO struct {
+	ArchivoPseudocodigo string `json:"archivo_pseudocodigo"`
+	Tamanio              int64 `json:"tamanio"`
+	Pid                  int64 `json:"pid"`
+}
+
+type PidDTO struct {
 	Pid int64 `json:"pid"`
 }
 
-type Pseudocodigo map[int][]string
-
-var Instrucciones Pseudocodigo
-
-// Solicitud Instruccion
-type SolicitudInstruccion struct {
+type InstruccionDTO struct {
 	Pid int64 `json:"pid"`
 	Pc  int64 `json:"pc"`
 }
+
+type LecturaDTO struct {
+	Pid int64 `json:"pid"`
+	Posicion int64 `json:"posicion"`
+	Tamanio int64 `json:"tamanio"`
+}
+
+type EscrituraDTO struct {
+	Pid int64 `json:"pid"`
+	Posicion int64 `json:"posicion"`
+	Dato string `json:"dato"`
+}
+type TablaDTO struct {
+	Pid int64 `json:"pid"`
+	Indices []int `json:"indices"`
+}
+
+type ConsultaPaginaDTO struct {
+	Pid int64 `json:"pid"`
+	PrimerIndice int64 `json:"primer_indice"`
+}
+
+type LeerPaginaDTO struct {
+	IndicePagina int64 `json:"indice_pagina"`
+}
+
+type ActualizarPaginaDTO struct {
+	IndicePagina int64 `json:"indice_pagina"`
+	Dato []byte `json:"dato"`
+}
+
+var ListaPaginasSwapDisponibles []Pagina
+
+var ProximoIndiceSwap int
