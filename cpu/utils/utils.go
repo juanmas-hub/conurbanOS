@@ -501,6 +501,7 @@ func NuevaTLB(capacidad int64, algoritmo string) *globals.TLB { //CREA LA TLB
 		PaginaIndex:        make(map[int64]int),
 		Capacidad:          capacidad,
 		AlgoritmoReemplazo: algoritmo,
+		FIFOindex:          0,
 	}
 }
 
@@ -608,6 +609,55 @@ func buscarVictimaCLOCKM(c *globals.Cache) int {
 }
 
 // (4) funcion que inserte o reemplace en TLB cuando esta llena, con el algoritmo elegido
+func ReemplazarEnTLB(nuevaEntrada globals.TLBentry, tlb *globals.TLB) error {
+
+	if len(tlb.Entries) < int(tlb.Capacidad) {
+		return fmt.Errorf("error interno: la TLB no está llena, no se debería llamar a ReemplazarEnTLB")
+	}
+
+	var indiceVictima int
+
+	switch tlb.AlgoritmoReemplazo {
+	case "FIFO":
+		indiceVictima = tlb.FIFOindex
+
+	case "LRU":
+		minTimestamp := int64(-1)
+		foundVictim := false
+
+		for i, entry := range tlb.Entries {
+			if !foundVictim || entry.Timestamp < minTimestamp {
+				minTimestamp = entry.Timestamp
+				indiceVictima = i
+				foundVictim = true
+			}
+		}
+
+		if !foundVictim {
+			return fmt.Errorf("error LRU: no se encontró una víctima para reemplazar")
+		}
+
+	default:
+		return fmt.Errorf("algoritmo de reemplazo TLB '%s' no reconocido", tlb.AlgoritmoReemplazo)
+	}
+
+	// Eliminar la entrada de la víctima del map auxiliar
+	delete(tlb.PaginaIndex, tlb.Entries[indiceVictima].Pagina)
+
+	// Reemplazar la entrada en el slice
+	tlb.Entries[indiceVictima] = nuevaEntrada
+
+	// Actualizar el map auxiliar con la nueva entrada y su índice
+	tlb.PaginaIndex[nuevaEntrada.Pagina] = indiceVictima
+
+	// Avanzar el puntero si es FIFO
+	if tlb.AlgoritmoReemplazo == "FIFO" {
+		tlb.FIFOindex = (tlb.FIFOindex + 1) % int(tlb.Capacidad)
+	}
+
+	return nil
+}
+
 // (5) funcion que pida a memoria el marco de una pagina
 func PedirMarcoDePagina(pid int64, pagina int64) (int64, error) {
 	solicitud := struct {
@@ -750,8 +800,76 @@ func ActualizarPaginaMemoria(pid int64, pagina int64, contenido [64]byte) error 
 	return nil
 }
 
-//(10) funcion que escriba en cache
-//(11) funcion que lea en cache
+// (10) funcion que escriba en cache
+func EscribirCache(pagina int64, desplazamiento int64, dato string, cache *globals.Cache) error {
+	index, found := cache.PaginaIndex[pagina]
+	if !found {
+		return fmt.Errorf("error interno: la página %d no se encontró en la caché para el desplazamiento %d", pagina, desplazamiento)
+	}
+	entradaCache := &cache.Entries[index]
+	bytesAEscribir := []byte(dato)
+	tamanio := int64(len(bytesAEscribir))
+	if desplazamiento+tamanio > 64 {
+		return fmt.Errorf("intento de lectura excede los límites de la página en caché")
+	}
+	copy(entradaCache.Contenido[desplazamiento:], bytesAEscribir)
+	entradaCache.R = true
+	entradaCache.D = true
+
+	return nil
+
+}
+
+// (11) funcion que lea en cache
+func LeerDeCache(pagina int64, desplazamiento int64, tamanio int64, cache *globals.Cache) ([]byte, error) {
+	index, found := cache.PaginaIndex[pagina]
+	if !found {
+		return nil, fmt.Errorf("error interno: la página %d no se encontró en la caché para el desplazamiento %d", pagina, desplazamiento)
+	}
+
+	entradaCache := &cache.Entries[index]
+	if desplazamiento+tamanio > 64 {
+		return nil, fmt.Errorf("intento de lectura excede los límites de la página en caché")
+	}
+	bytesLeidos := entradaCache.Contenido[desplazamiento : desplazamiento+tamanio]
+	entradaCache.R = true
+
+	return bytesLeidos, nil
+
+}
+
+// 12 cargar TLB
+func CargarTLB(pV int64, marco int64, pid int64, tlb *globals.TLB) error {
+	nuevaEntrada := globals.TLBentry{
+		Pagina:    pV,
+		Marco:     marco,
+		PID:       pid,
+		Timestamp: time.Now().UnixNano(),
+	}
+	if _, found := tlb.PaginaIndex[pV]; found {
+		log.Printf("ADVERTENCIA TLB: Se intentó cargar página %d (PID %d) que ya está en TLB. Sobrescribiendo.", pV, pid)
+	}
+	if len(tlb.Entries) < int(tlb.Capacidad) {
+		// TLB no está llena: simplemente agrega la nueva entrada al final
+		tlb.Entries = append(tlb.Entries, nuevaEntrada)
+		// Registra la posición de la nueva entrada en el map auxiliar
+		tlb.PaginaIndex[nuevaEntrada.Pagina] = len(tlb.Entries) - 1
+		log.Printf("TLB: Entrada agregada (PID %d, Pag %d, Marco %d). TLB Size: %d/%d",
+			pid, pV, marco, len(tlb.Entries), tlb.Capacidad)
+	} else {
+		// TLB está llena: llama a la lógica de reemplazo
+		log.Printf("TLB: Llena, aplicando algoritmo %s para reemplazar.", tlb.AlgoritmoReemplazo)
+		err := ReemplazarEnTLB(nuevaEntrada, tlb) // Llama a la función de reemplazo que ya hicimos
+		if err != nil {
+			return fmt.Errorf("fallo al reemplazar en TLB: %w", err)
+		}
+		log.Printf("TLB: Reemplazo exitoso (PID %d, Pag %d, Marco %d). Algoritmo: %s",
+			pid, pV, marco, tlb.AlgoritmoReemplazo)
+	}
+
+	return nil
+
+}
 
 // TEMPORAL -- para probar
 func Wait(semaforo globals.Semaforo) {

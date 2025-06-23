@@ -97,10 +97,10 @@ type SyscallInit struct {
 }
 
 type TLBentry struct {
-	Pagina int64 //Numero de pagina virtual
-	Marco  int64 //Numero de marco de pagina fisico
-	PID    int64 //PID para desalojar todas las paginas referidas a un proceso
-	//decidir algoritmo fifo o lru
+	Pagina    int64 //Numero de pagina virtual
+	Marco     int64 //Numero de marco de pagina fisico
+	PID       int64 //PID para desalojar todas las paginas referidas a un proceso
+	Timestamp int64
 }
 
 type CacheEntry struct {
@@ -124,6 +124,7 @@ type TLB struct {
 	PaginaIndex        map[int64]int //map para agilizar busqueda
 	Capacidad          int64         //capacidad de tlb
 	AlgoritmoReemplazo string        //algoritmo de tlb FIFO/LRU
+	FIFOindex          int
 }
 
 //ahora si jeje
