@@ -108,7 +108,15 @@ var Sem_ProcesosEnReady = CrearSemaforo(0)
 var Sem_ProcesoAFinalizar = CrearSemaforo(0)
 var ProcesosAFinalizar []int64
 
-var Sem_PasarProcesoAReady = CrearSemaforo(0)
+// var Sem_PasarProcesoAReady = CrearSemaforo(0)
+var Sem_PasarProcesoAReady chan struct{} = make(chan struct{}, 1000) // buffer grande = acumulador de signals
+func SignalPasarProcesoAReady() {
+	Sem_PasarProcesoAReady <- struct{}{}
+}
+
+func WaitPasarProcesoAReady() {
+	<-Sem_PasarProcesoAReady
+}
 
 // Con el semaforo le aviso al planificador de largo plazo que hay un proceso para finalizar
 // En el slice le pongo el PID

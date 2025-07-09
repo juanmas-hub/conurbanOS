@@ -56,7 +56,8 @@ func finalizarProceso(pid int64) {
 	globals.DeDondeSeLlamaMutex.Lock()
 	globals.DeDondeSeLlamaPasarProcesosAReady = "Exit"
 	globals.DeDondeSeLlamaMutex.Unlock()
-	general.Signal(globals.Sem_PasarProcesoAReady)
+	//general.Signal(globals.Sem_PasarProcesoAReady)
+	globals.SignalPasarProcesoAReady()
 }
 
 func CrearProcesoNuevo(archivo string, tamanio int64) {
@@ -113,13 +114,11 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 	globals.EstadosMutex.Unlock()
 	//log.Print("Se desbloqueo en CrearProcesoNuevo")
 
-	// Si se crea un proceso nuevo antes de que aprete Enter, se agrega a NEW pero no se pasan procesos a READY
-	if globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED == false {
-		globals.DeDondeSeLlamaMutex.Lock()
-		globals.DeDondeSeLlamaPasarProcesosAReady = "New"
-		globals.DeDondeSeLlamaMutex.Unlock()
-		general.Signal(globals.Sem_PasarProcesoAReady)
-	}
+	globals.DeDondeSeLlamaMutex.Lock()
+	globals.DeDondeSeLlamaPasarProcesosAReady = "New"
+	globals.DeDondeSeLlamaMutex.Unlock()
+	//general.Signal(globals.Sem_PasarProcesoAReady)
+	globals.SignalPasarProcesoAReady()
 
 	// LOG Creación de Proceso: “## (<PID>) Se crea el proceso - Estado: NEW”
 	slog.Info(fmt.Sprintf("## (%d) Se crea el proceso - Estado: NEW", pid))
