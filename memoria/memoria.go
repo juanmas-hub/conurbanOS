@@ -16,9 +16,9 @@ func main() {
 
 	utils_logger.ConfigurarLogger("memoria.log")
 
-	prueba := os.Args[1]
+	globals.Prueba = os.Args[1]
 
-	globals.MemoriaConfig = utils_memoria.IniciarConfiguracion(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + "Memoria.config")
+	globals.MemoriaConfig = utils_memoria.IniciarConfiguracion(utils_logger.CONFIGS_DIRECTORY + "/" + globals.Prueba + "/" + "Memoria.config")
 	if globals.MemoriaConfig == nil {
 		log.Fatal("No se pudo iniciar el config")
 	}

@@ -7,7 +7,9 @@ import (
 )
 
 func buscarProcesoEnBlocked(pid int64) int64 {
+	globals.EstadosMutex.Lock()
 	colaBlocked := globals.ESTADOS.BLOCKED
+	globals.EstadosMutex.Unlock()
 
 	var posicion int64
 
@@ -23,7 +25,9 @@ func buscarProcesoEnBlocked(pid int64) int64 {
 
 // Se llama con estados mutex lockeado
 func buscarProcesoEnExecute(pid int64) int64 {
+	globals.EstadosMutex.Lock()
 	colaExecute := globals.ESTADOS.EXECUTE
+	globals.EstadosMutex.Unlock()
 
 	var posicion int64
 
@@ -107,7 +111,6 @@ func buscarProcesoEnReady(pid int64) int64 {
 
 // Busco la cola correspondiente y elimino el proceso
 func EliminarProcesoDeSuCola(pid int64, estadoActual string) {
-	globals.EstadosMutex.Lock()
 	switch estadoActual {
 	case globals.BLOCKED:
 		pos := buscarProcesoEnBlocked(pid)
@@ -130,5 +133,4 @@ func EliminarProcesoDeSuCola(pid int64, estadoActual string) {
 	default:
 		log.Printf("Error eliminando proceso PID: %d de su cola en EliminarDeSuCola", pid)
 	}
-	globals.EstadosMutex.Unlock()
 }

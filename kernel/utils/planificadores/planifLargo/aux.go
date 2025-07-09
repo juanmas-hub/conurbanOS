@@ -96,7 +96,10 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		Proceso:              proceso,
 	}
 
+	//log.Print("Se quiere bloquear en CrearProcesoNuevo")
 	globals.EstadosMutex.Lock()
+	//log.Print("Se bloqueo en CrearProcesoNuevo")
+
 	log.Printf("Agregando proceso a NEW. Cantidad actual: %d", len(globals.ESTADOS.NEW))
 
 	// Aca no hay metricas que actualizar
@@ -105,7 +108,10 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 	if globals.KernelConfig.New_algorithm == "PMCP" {
 		ordenarNewPorTamanio()
 	}
+
+	//log.Print("Se quiere desbloquear en CrearProcesoNuevo")
 	globals.EstadosMutex.Unlock()
+	//log.Print("Se desbloqueo en CrearProcesoNuevo")
 
 	// Si se crea un proceso nuevo antes de que aprete Enter, se agrega a NEW pero no se pasan procesos a READY
 	if globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED == false {

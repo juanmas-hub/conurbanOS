@@ -46,7 +46,9 @@ func aExecute(proceso globals.Proceso) {
 
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.EXECUTE
+	globals.MapaProcesosMutex.Lock()
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
+	globals.MapaProcesosMutex.Unlock()
 	globals.ESTADOS.READY = globals.ESTADOS.READY[1:]
 	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE, proceso.Pcb.Pid)
 
@@ -124,14 +126,14 @@ func ordenarReadyPorRafaga() {
 
 func ejecutarUnProceso() {
 	//log.Print("Se quiere loquear MapaProcesos en ejecutarUnProceso")
-	globals.MapaProcesosMutex.Lock()
 	procesoAEjecutar := globals.ESTADOS.READY[0]
 	log.Print("Proceso a ejecutar: ", procesoAEjecutar)
 	ip, port := elegirCPUlibre()
+	globals.MapaProcesosMutex.Lock()
 	proceso := globals.MapaProcesos[procesoAEjecutar]
+	globals.MapaProcesosMutex.Unlock()
 	general.EnviarProcesoAEjecutar_ACPU(ip, port, proceso.Pcb.Pid, proceso.Pcb.PC)
 	aExecute(proceso)
-	globals.MapaProcesosMutex.Unlock()
 	//log.Print("Se unloquea MapaProcesos en ejecutarUnProceso")
 }
 

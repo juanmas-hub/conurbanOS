@@ -36,10 +36,12 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 }
 
 func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
-	globals.ListaIOsMutex.Lock()
 
+	globals.ListaIOsMutex.Lock()
 	io := globals.MapaIOs[finalizacionIo.NombreIO]
 	posInstanciaIo := general.BuscarInstanciaIO(finalizacionIo.NombreIO, finalizacionIo.PID)
+	globals.ListaIOsMutex.Unlock()
+
 	if posInstanciaIo == -1 {
 		log.Printf("Error buscando instancia de IO de nombre: %s, con el proceso: %d", finalizacionIo.NombreIO, finalizacionIo.PID)
 	}
@@ -49,6 +51,7 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 	instanciaIo.PidProcesoActual = -1
 	io.Instancias[posInstanciaIo] = instanciaIo
 
+	globals.ListaIOsMutex.Lock()
 	globals.MapaIOs[finalizacionIo.NombreIO] = io
 
 	// Si hay procesos esperando IO, envio solicitud
@@ -68,7 +71,6 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 
 	io.Instancias[posInstanciaIo] = instanciaIo
 	globals.MapaIOs[finalizacionIo.NombreIO] = io
-
 	globals.ListaIOsMutex.Unlock()
 
 	//log.Print("Se quiere loquear MapaProcesos en manejarFinIO")

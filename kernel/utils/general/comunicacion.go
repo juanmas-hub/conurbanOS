@@ -248,11 +248,15 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 
 	globals.ListaIOsMutex.Lock()
 	io := globals.MapaIOs[desconexionIO.NombreIO]
+	globals.ListaIOsMutex.Unlock()
 
 	pidProceso := desconexionIO.PID
 
 	// Saco la instancia de la cola de instancias
+	globals.ListaIOsMutex.Lock()
 	posInstancia := buscarPosInstanciaIO(desconexionIO.NombreIO, desconexionIO.Ip, desconexionIO.Puerto)
+	globals.ListaIOsMutex.Unlock()
+
 	if posInstancia == -2 {
 		log.Printf("Error buscando la instancia de IO de IP: %s, puerto: %d, que tendría el proceso: %d", desconexionIO.Ip, desconexionIO.Puerto, pidProceso)
 	}
@@ -273,6 +277,7 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	globals.ListaIOsMutex.Lock()
 	globals.MapaIOs[desconexionIO.NombreIO] = io
 	globals.ListaIOsMutex.Unlock()
 

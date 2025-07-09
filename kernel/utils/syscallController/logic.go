@@ -83,6 +83,10 @@ func manejarDUMP_MEMORY(syscallDUMP globals.SyscallDump) {
 
 	if general.EnviarDumpMemory(syscallDUMP.PID) {
 		// Se desbloquea normalmente
+		general.ActualizarPC(syscallDUMP.PID, syscallDUMP.PC)
+		globals.MapaProcesosMutex.Lock()
+		proceso := globals.MapaProcesos[syscallDUMP.PID]
+		globals.MapaProcesosMutex.Unlock()
 		estados.BlockedAReady(proceso)
 	} else {
 		general.FinalizarProceso(syscallDUMP.PID)

@@ -250,7 +250,7 @@ func eliminarMarcosFisicos(pid int) []globals_memoria.PaginaDTO {
 func generarMemoryDump(pid int) int {
 	var marcos []globals_memoria.Pagina = globals_memoria.Procesos[pid].MarcosAsignados
 	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
-	var directorio string = globals_memoria.MemoriaConfig.Dump_path
+	var directorio string = globals_memoria.MemoriaConfig.Dump_path + globals_memoria.Prueba
 
 	if marcos == nil || len(marcos) == 0 {
 		log.Printf("No hay marcos asignados para el proceso %d. No se genera dump.", pid)
@@ -259,6 +259,13 @@ func generarMemoryDump(pid int) int {
 
 	var timestamp string = time.Now().Format("20060102-150405") // YYYYMMDD-HHMMSS
 	var nombreArchivo string = fmt.Sprintf("%s/%d-%s.dmp", directorio, pid, timestamp)
+
+	// Crear la carpeta si no existe
+	err := os.MkdirAll(directorio, os.ModePerm)
+	if err != nil {
+		log.Printf("Error al crear el directorio de dump: %v", err)
+		return -1
+	}
 
 	archivo, err := os.Create(nombreArchivo)
 	if err != nil {

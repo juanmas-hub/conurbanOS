@@ -443,7 +443,7 @@ func EnviarDUMPAKernel(syscallData globals_cpu.SyscallDump) error {
 		return fmt.Errorf("error codificando struct SYSCALL: %w", err)
 	}
 
-	url := fmt.Sprintf("http://%s:%d/syscallEXIT", globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel)
+	url := fmt.Sprintf("http://%s:%d/syscallDUMP_MEMORY", globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel)
 
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
@@ -457,7 +457,7 @@ func EnviarDUMPAKernel(syscallData globals_cpu.SyscallDump) error {
 		return fmt.Errorf("kernel respondió con error al recibir SYSCALL (%d %s): %s", resp.StatusCode, resp.Status, respBody.String())
 	}
 
-	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "EXIT", resp.Status)
+	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "DUMP", resp.Status)
 	return nil
 }
 

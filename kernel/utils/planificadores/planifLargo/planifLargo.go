@@ -44,8 +44,6 @@ func pasarProcesosAReady() {
 
 		log.Print("Intentando pasar procesos a ready porque llego un proceso a: ", globals.DeDondeSeLlamaPasarProcesosAReady)
 
-		globals.EstadosMutex.Lock()
-
 		var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
 		for lenghtSUSP_READY > 0 {
 			pid := globals.ESTADOS.SUSP_READY[0]
@@ -66,8 +64,13 @@ func pasarProcesosAReady() {
 		if lenghtSUSP_READY == 0 {
 
 			for len(globals.ESTADOS.NEW) > 0 {
+				//log.Print("Se quiere bloquear en pasarProcesosAReady")
+				globals.EstadosMutex.Lock()
+				//log.Print("Se bloqueo en pasarProcesosAReady")
 				procesoNuevo := globals.ESTADOS.NEW[0]
-
+				//log.Print("Se quiere desbloquear en pasarProcesosAReady")
+				globals.EstadosMutex.Unlock()
+				//log.Print("Se desbloqueo en pasarProcesosAReady")
 				if general.SolicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
 					break
 				}
@@ -76,8 +79,6 @@ func pasarProcesosAReady() {
 
 			}
 		}
-
-		globals.EstadosMutex.Unlock()
 	}
 }
 

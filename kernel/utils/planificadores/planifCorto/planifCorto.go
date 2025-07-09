@@ -32,11 +32,15 @@ func planificadorFIFO() {
 		general.Wait(globals.Sem_Cpus)            // Espero a que haya Cpus libres
 		general.Wait(globals.Sem_ProcesosEnReady) // Espero a que haya procesos en Ready
 
+		//log.Print("Se quiere bloquear en planificadorFIFO")
 		globals.EstadosMutex.Lock()
+		//log.Print("Se bloqueo en planificadorFIFO")
 
 		ejecutarUnProceso()
 
+		//log.Print("Se quiere desbloquear en planificadorFIFO")
 		globals.EstadosMutex.Unlock()
+		//log.Print("Se desbloqueo en planificadorFIFO")
 	}
 }
 

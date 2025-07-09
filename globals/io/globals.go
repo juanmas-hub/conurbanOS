@@ -12,7 +12,7 @@ var IoConfig *Io_Config
 
 var NombreIO string
 
-var PidProcesoActual int64
+var PidProcesoActual int64 = -1
 
 type Mensaje struct {
 	Mensaje string `json:"mensaje"`
