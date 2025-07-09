@@ -55,17 +55,19 @@ func escribirPaginas(paginasDTO []globals_memoria.PaginaDTO, marcos []int) {
 			return
 		}
 		paginasDTO[i].Entrada.Marco = marcos[i]
+		paginasDTO[i].Entrada.Modificado = 0
+		paginasDTO[i].Entrada.Presencia = 1
+		paginasDTO[i].Entrada.Uso = 0
 		globals_memoria.MemoriaMarcosOcupados[marcos[i]] = true
-
 	}
 }
 
 func actualizarPagina(indicePagina int, dato string) {
-	// INDICE PAGINA DEBE SER MULTIPLO DEL TAMAÑO DE PAGINA
 	// Se sobrescribe el dato
 	for i := 0; i < len(dato); i++ {
 		globals_memoria.Memoria[indicePagina+i] = dato[i]
 	}
+
 }
 
 func crearTabla(entradasPorPagina int64) *globals_memoria.TablaDePaginas {
@@ -92,7 +94,7 @@ func buscarMarcosDisponibles(cantidad int) []int {
 
 func actualizarTablaPaginas(pid int, indices []int) {
 
-	(*globals_memoria.Metricas)[pid].AccesosTablas++
+	IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
 
 	var ENTRIES_PER_PAGE int64 = globals_memoria.MemoriaConfig.Entries_per_page
 	var tablaActual *globals_memoria.TablaDePaginas = (*globals_memoria.ProcessManager)[pid]
@@ -115,8 +117,10 @@ func actualizarTablaPaginas(pid int, indices []int) {
 		tablaActual.Entradas[indiceActual].Pagina = indiceActual
 		tablaActual.Entradas[indiceActual].Marco = indiceSiguiente
 
-		log.Printf("Nivel %d: pagina %d y marco %d", i+1, tablaActual.Entradas[indiceActual].Pagina, tablaActual.Entradas[indiceActual].Marco)
+		tablaActual.Entradas[indiceActual].Nivel = i + 1
 
+		log.Printf("Nivel %d: pagina %d y marco %d", i+1, tablaActual.Entradas[indiceActual].Pagina, tablaActual.Entradas[indiceActual].Marco)
+		IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
 		tablaActual = tablaActual.Entradas[indiceActual].SiguienteNivel
 
 	}

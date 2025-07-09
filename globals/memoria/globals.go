@@ -36,8 +36,12 @@ var Metricas *MetricasMap
 
 // Entrada de una tabla de páginas
 type EntradaTablaPagina struct {
+	Nivel		   int
 	Pagina         int
 	Marco          int
+	Presencia	   int
+	Uso 		   int	
+	Modificado	   int	
 	SiguienteNivel *TablaDePaginas // Ya se inicializa por defecto como null
 }
 
