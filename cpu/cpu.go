@@ -32,13 +32,6 @@ func main() {
 
 	slog.Info(globals_cpu.CpuConfig.Log_level)
 
-	// Ahora hay que recibir la petición del Kernel para que el modulo hago un usleep (no esta hecho)
-
-	// Cliente (manda mensaje a kernel y memoria)
-	mensaje := "Mensaje desde CPU"
-	utils_cpu.EnviarMensaje(globals_cpu.CpuConfig.Ip_kernel, globals_cpu.CpuConfig.Port_kernel, mensaje)
-	utils_cpu.EnviarMensaje(globals_cpu.CpuConfig.Ip_memory, globals_cpu.CpuConfig.Port_memory, mensaje)
-
 	utils_cpu.HandshakeAKernel(
 		globals_cpu.CpuConfig.Ip_kernel,
 		globals_cpu.CpuConfig.Port_kernel,
@@ -101,7 +94,6 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/dispatchProceso", utils_cpu.RecibirProcesoAEjecutar)
-	mux.HandleFunc("/mensajeDeKernel", utils_cpu.RecibirMensajeDeKernel)
 	mux.HandleFunc("/recibirPCB", utils_cpu.RecibirPCBDeKernel)
 	//mux.HandleFunc("/interrumpir", utils_cpu.Interrupcion)
 

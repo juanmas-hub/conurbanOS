@@ -59,14 +59,14 @@ func manejarIO(syscallIO globals.SyscallIO) {
 
 func manejarInit_Proc(syscallINIT globals.SyscallInit) {
 	logSyscalls(syscallINIT.Pid_proceso, "INIT_PROC")
-	go utils_pl.CrearProcesoNuevo(syscallINIT.Archivo, syscallINIT.Tamanio)
+	utils_pl.CrearProcesoNuevo(syscallINIT.Archivo, syscallINIT.Tamanio)
 
 	// El proceso vuelve a ejecutar
 	globals.ListaCPUsMutex.Lock()
 	posCpu := general.BuscarCpu(syscallINIT.Nombre_CPU)
 	cpu := globals.ListaCPUs[posCpu]
 	globals.ListaCPUsMutex.Unlock()
-	general.EnviarProcesoAEjecutar_ACPU(cpu.Handshake.IP, cpu.Handshake.Puerto, syscallINIT.Pid_proceso, syscallINIT.Pc)
+	general.EnviarProcesoAEjecutar_ACPU(cpu.Handshake.IP, cpu.Handshake.Puerto, syscallINIT.Pid_proceso, syscallINIT.Pc, cpu.Handshake.Nombre)
 }
 
 func manejarDUMP_MEMORY(syscallDUMP globals.SyscallDump) {

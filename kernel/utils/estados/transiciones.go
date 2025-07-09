@@ -147,6 +147,9 @@ func ProcesoAExit(proceso globals.Proceso) {
 
 func NewAReady(proceso globals.Proceso_Nuevo) {
 
+	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
+	slog.Info(fmt.Sprintf("## (%d) Pasa del estado NEW al estado READY", proceso.Proceso.Pcb.Pid))
+
 	procesoEnReady := globals.Proceso{
 		Pcb:                  proceso.Proceso.Pcb,
 		Estado_Actual:        globals.READY,
@@ -159,11 +162,10 @@ func NewAReady(proceso globals.Proceso_Nuevo) {
 	globals.MapaProcesos[procesoEnReady.Pcb.Pid] = procesoEnReady
 	globals.MapaProcesosMutex.Unlock()
 	globals.EstadosMutex.Lock()
-	globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, procesoEnReady.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
 
-	log.Printf("cantidad de procesos en READY: %+v", len(globals.ESTADOS.READY))
+	//log.Printf("cantidad de procesos en READY: %+v", len(globals.ESTADOS.READY))
 
 	switch globals.KernelConfig.Scheduler_algorithm {
 	case "FIFO", "SJF":
@@ -171,9 +173,6 @@ func NewAReady(proceso globals.Proceso_Nuevo) {
 	case "SRT":
 		general.NotificarReplanifSRT()
 	}
-
-	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
-	slog.Info(fmt.Sprintf("## (%d) Pasa del estado NEW al estado READY", procesoEnReady.Pcb.Pid))
 }
 
 func SuspReadyAReady(proceso globals.Proceso) {
@@ -190,13 +189,13 @@ func SuspReadyAReady(proceso globals.Proceso) {
 	globals.EstadosMutex.Unlock()
 	//log.Print("Se unloquea MapaProcesos en suspReadyAReady")
 
+	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
+	slog.Info(fmt.Sprintf("## (%d) Pasa del estado SUSP_READY al estado READY", proceso.Pcb.Pid))
+
 	switch globals.KernelConfig.Scheduler_algorithm {
 	case "FIFO", "SJF":
 		general.Signal(globals.Sem_ProcesosEnReady)
 	case "SRT":
 		general.NotificarReplanifSRT()
 	}
-
-	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
-	slog.Info(fmt.Sprintf("## (%d) Pasa del estado SUSP_READY al estado READY", proceso.Pcb.Pid))
 }

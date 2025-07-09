@@ -28,10 +28,6 @@ func main() {
 
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.IoConfig.LogLevel))
 
-	// Cliente (mando mensaje a kernel)
-	mensaje := "Mensaje desde IO"
-	utils_io.EnviarMensajeAKernel(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel, mensaje)
-
 	// Canal para indicar que hemos terminado
 	done := make(chan bool, 1)
 
@@ -67,8 +63,6 @@ func main() {
 	// Servidor
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/mensajeDeKernel", utils_io.RecibirMensajeDeKernel)
-	// Todavia no se usa
 	mux.HandleFunc("/solicitudDeIo", utils_io.RecibirSolicitudDeKernel)
 
 	puerto := globals.IoConfig.PortIO

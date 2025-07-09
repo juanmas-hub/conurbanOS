@@ -30,10 +30,6 @@ func main() {
 	// Multiplexor de servidor HTTP
 	mux := http.NewServeMux()
 
-	// Maneja funciones segun URL de la solicitud
-	mux.HandleFunc("/mensajeDeKernel", utils_memoria.RecibirMensajeDeKernel)
-	mux.HandleFunc("/mensajeDeCpu", utils_memoria.RecibirMensajeDeCpu)
-
 	// General¿?
 	mux.HandleFunc("/consultarMock", utils_memoria.ConsultarMock)
 

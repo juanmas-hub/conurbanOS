@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	//"fmt"
 	"log"
-	"net/http"
 	"os"
 
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
-func Prueba () {
+func Prueba() {
 	log.Printf("Prueba utilB")
 }
 
@@ -36,7 +35,7 @@ func InicializarMemoria() {
 	globals_memoria.Memoria = make([]byte, tamanio)
 	globals_memoria.MemoriaMarcosOcupados = make([]bool, cantidadMarcos)
 
-	var manager globals_memoria.Manager= make(globals_memoria.Manager)
+	var manager globals_memoria.Manager = make(globals_memoria.Manager)
 	globals_memoria.ProcessManager = &manager
 
 	globals_memoria.Procesos = make(globals_memoria.ProcesosMap)
@@ -48,40 +47,4 @@ func InicializarMemoria() {
 	globals_memoria.ListaPaginasSwapDisponibles = make([]globals_memoria.Pagina, 0)
 
 	globals_memoria.ProximoIndiceSwap = 0
-}
-
-func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var mensaje globals_memoria.Mensaje
-	err := decoder.Decode(&mensaje)
-	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Error al decodificar mensaje"))
-		return
-	}
-
-	log.Println("Me llego un mensaje de Kernel")
-	log.Printf("%+v\n", mensaje)
-
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
-}
-
-func RecibirMensajeDeCpu(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var mensaje globals_memoria.Mensaje
-	err := decoder.Decode(&mensaje)
-	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Error al decodificar mensaje"))
-		return
-	}
-
-	log.Println("Me llego un mensaje de CPU")
-	log.Printf("%+v\n", mensaje)
-
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
 }

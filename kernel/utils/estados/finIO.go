@@ -24,9 +24,6 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Finalizo el IO del PID: %d", finalizacionIo.PID)
-	log.Printf("%+v\n", finalizacionIo)
-
 	go func() {
 		manejarFinIO(finalizacionIo)
 	}()
@@ -54,25 +51,6 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 	globals.ListaIOsMutex.Lock()
 	globals.MapaIOs[finalizacionIo.NombreIO] = io
 
-	// Si hay procesos esperando IO, envio solicitud
-	if len(globals.MapaIOs[finalizacionIo.NombreIO].ColaProcesosEsperando) > 0 {
-		procesoAIO := globals.MapaIOs[finalizacionIo.NombreIO].ColaProcesosEsperando[0]
-		instanciaIo.PidProcesoActual = procesoAIO.PID
-		general.EnviarSolicitudIO(
-			instanciaIo.Handshake.IP,
-			instanciaIo.Handshake.Puerto,
-			procesoAIO.PID,
-			procesoAIO.Tiempo,
-		)
-
-		// Saco al nuevo proceso de la cola de procesos esperando
-		io.ColaProcesosEsperando = io.ColaProcesosEsperando[1:]
-	}
-
-	io.Instancias[posInstanciaIo] = instanciaIo
-	globals.MapaIOs[finalizacionIo.NombreIO] = io
-	globals.ListaIOsMutex.Unlock()
-
 	//log.Print("Se quiere loquear MapaProcesos en manejarFinIO")
 	globals.MapaProcesosMutex.Lock()
 	proceso := globals.MapaProcesos[finalizacionIo.PID]
@@ -95,4 +73,24 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 
 	// LOG : Fin de IO: ## (<PID>) finalizó IO y pasa a READY
 	slog.Info(fmt.Sprintf("## (%d) finalizó IO y pasa a %s", finalizacionIo.PID, nuevo_estado))
+
+	// Si hay procesos esperando IO, envio solicitud
+	if len(globals.MapaIOs[finalizacionIo.NombreIO].ColaProcesosEsperando) > 0 {
+		procesoAIO := globals.MapaIOs[finalizacionIo.NombreIO].ColaProcesosEsperando[0]
+		instanciaIo.PidProcesoActual = procesoAIO.PID
+		general.EnviarSolicitudIO(
+			instanciaIo.Handshake.IP,
+			instanciaIo.Handshake.Puerto,
+			procesoAIO.PID,
+			procesoAIO.Tiempo,
+		)
+
+		// Saco al nuevo proceso de la cola de procesos esperando
+		io.ColaProcesosEsperando = io.ColaProcesosEsperando[1:]
+	}
+
+	io.Instancias[posInstanciaIo] = instanciaIo
+	globals.MapaIOs[finalizacionIo.NombreIO] = io
+	globals.ListaIOsMutex.Unlock()
+
 }

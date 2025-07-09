@@ -54,16 +54,16 @@ func BuscarCpu(nombre string) int {
 	}
 }
 
-func BuscarCpuPorPID(pid int64) (string, int64, bool) {
+func BuscarCpuPorPID(pid int64) (string, int64, string, bool) {
 	globals.ListaCPUsMutex.Lock()
 	defer globals.ListaCPUsMutex.Unlock()
 
 	for _, cpu := range globals.ListaCPUs {
 		if !cpu.EstaLibre && cpu.PIDActual == pid {
-			return cpu.Handshake.IP, cpu.Handshake.Puerto, true
+			return cpu.Handshake.IP, cpu.Handshake.Puerto, cpu.Handshake.Nombre, true
 		}
 	}
-	return "", 0, false
+	return "", 0, "", false
 }
 
 // Dado el nombre del IO y una IP y Puerto, busca la instancia de IO que tiene ese IP, y devuelve su posicion en la cola. Se llama con Lista IOs muteada.

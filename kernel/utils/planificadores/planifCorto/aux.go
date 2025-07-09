@@ -11,7 +11,7 @@ import (
 	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
 )
 
-func elegirCPUlibre() (string, int64) {
+func elegirCPUlibre() (string, int64, string) {
 	globals.ListaCPUsMutex.Lock()
 	encontrado := false
 	var cpu globals.ListaCpu
@@ -30,11 +30,11 @@ func elegirCPUlibre() (string, int64) {
 	globals.ListaCPUsMutex.Unlock()
 	// Devolvemos IP y PUERTO
 	if encontrado {
-		return cpu.Handshake.IP, cpu.Handshake.Puerto
+		return cpu.Handshake.IP, cpu.Handshake.Puerto, cpu.Handshake.Nombre
 	} else {
 		// Si devuelve esto hay un error, porque esta funcion se tiene que ejecutar cuando el semaforo lo permita
 		log.Println("No se encontro CPU libre")
-		return "", -1
+		return "", -1, ""
 	}
 }
 
@@ -52,7 +52,7 @@ func aExecute(proceso globals.Proceso) {
 	globals.ESTADOS.READY = globals.ESTADOS.READY[1:]
 	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE, proceso.Pcb.Pid)
 
-	log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
+	//log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
 
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado %s al estado EXECUTE", proceso.Pcb.Pid, estado_anterior))
@@ -127,18 +127,17 @@ func ordenarReadyPorRafaga() {
 func ejecutarUnProceso() {
 	//log.Print("Se quiere loquear MapaProcesos en ejecutarUnProceso")
 	procesoAEjecutar := globals.ESTADOS.READY[0]
-	log.Print("Proceso a ejecutar: ", procesoAEjecutar)
-	ip, port := elegirCPUlibre()
+	ip, port, nombre := elegirCPUlibre()
 	globals.MapaProcesosMutex.Lock()
 	proceso := globals.MapaProcesos[procesoAEjecutar]
 	globals.MapaProcesosMutex.Unlock()
-	general.EnviarProcesoAEjecutar_ACPU(ip, port, proceso.Pcb.Pid, proceso.Pcb.PC)
+	general.EnviarProcesoAEjecutar_ACPU(ip, port, proceso.Pcb.Pid, proceso.Pcb.PC, nombre)
 	aExecute(proceso)
 	//log.Print("Se unloquea MapaProcesos en ejecutarUnProceso")
 }
 
 func desalojarYEnviarProceso(pidEnExec int64) {
-	ipCPU, puertoCPU, ok := general.BuscarCpuPorPID(pidEnExec)
+	ipCPU, puertoCPU, nombreCPU, ok := general.BuscarCpuPorPID(pidEnExec)
 	if ok {
 		globals.EstadosMutex.Lock()
 		globals.MapaProcesosMutex.Lock()
@@ -148,12 +147,12 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 		globals.MapaProcesosMutex.Unlock()
 		globals.EstadosMutex.Unlock()
 
-		respuestaInterrupcion, err := general.EnviarInterrupcionACPU(ipCPU, puertoCPU, pidEnExec)
+		respuestaInterrupcion, err := general.EnviarInterrupcionACPU(ipCPU, puertoCPU, nombreCPU, pidEnExec)
 		if err != nil {
 			log.Fatal("Error en interrupción:", err)
 		}
 		general.ActualizarPC(pidEnExec, respuestaInterrupcion.PC)
-		general.EnviarProcesoAEjecutar_ACPU(ipCPU, puertoCPU, pidProcesoAEjecutar, pcProcesoAEjecutar)
+		general.EnviarProcesoAEjecutar_ACPU(ipCPU, puertoCPU, pidProcesoAEjecutar, pcProcesoAEjecutar, nombreCPU)
 		log.Printf("Se desalojo el proceso %d", pidEnExec)
 
 		// LOG Desalojo: ## (<PID>) - Desalojado por algoritmo SJF/SRT

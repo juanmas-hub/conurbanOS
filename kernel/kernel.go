@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	utils_estados "github.com/sisoputnfrba/tp-golang/kernel/utils/estados"
@@ -29,13 +28,6 @@ func main() {
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.KernelConfig.Log_level))
 	// INIT
 
-	go func() {
-		ahora := time.Now()
-		time.Sleep(time.Millisecond * 2000)
-		slog.Warn(strconv.Itoa(int(time.Now().Sub(ahora).Milliseconds())))
-
-	}()
-
 	if len(os.Args) != 4 {
 		log.Fatal("Uso: go run . archivo tamaño prueba")
 	}
@@ -50,15 +42,9 @@ func main() {
 
 	go utils_lp.IniciarPlanificadorLargoPlazo(archivo, tamanioProceso)
 
-	// Cliente (mandar mensaje a memoria)
-	mensaje := "Mensaje desde Kernel"
-	utils_general.EnviarMensajeAMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, mensaje)
-
 	// Servidor (recibir mensaje de CPU y IO)
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/mensajeDeCpu", utils_general.RecibirMensajeDeCpu)
-	mux.HandleFunc("/mensajeDeIo", utils_general.RecibirMensajeDeIo)
 	mux.HandleFunc("/handshakeIO", utils_general.RecibirHandshakeIO)
 	mux.HandleFunc("/handshakeCPU", utils_general.RecibirHandshakeCPU)
 

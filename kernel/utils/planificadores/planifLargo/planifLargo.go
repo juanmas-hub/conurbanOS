@@ -2,7 +2,9 @@ package utils_planifLargo
 
 import (
 	"bufio"
+	"fmt"
 	"log"
+	"log/slog"
 	"os"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
@@ -14,7 +16,7 @@ import (
 func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 	// Espera el Enter en otra rutina asi se puede abrir el servidor
 	reader := bufio.NewReader(os.Stdin)
-	log.Println("Planificador de largo plazo en STOP, presionar ENTER: ")
+	slog.Info(" ---- Planificador de largo plazo en STOP, presionar ENTER: ")
 	for {
 		text, _ := reader.ReadString('\n')
 		log.Print(text)
@@ -43,7 +45,7 @@ func pasarProcesosAReady() {
 		//general.Wait(globals.Sem_PasarProcesoAReady)
 		globals.WaitPasarProcesoAReady()
 		if globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED == false {
-			log.Print("Intentando pasar procesos a ready porque llego un proceso a: ", globals.DeDondeSeLlamaPasarProcesosAReady)
+			slog.Debug(fmt.Sprintf("Intentando pasar procesos a ready porque llego un proceso a:  %s", globals.DeDondeSeLlamaPasarProcesosAReady))
 
 			var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
 			for lenghtSUSP_READY > 0 {
@@ -69,17 +71,20 @@ func pasarProcesosAReady() {
 					globals.EstadosMutex.Lock()
 					//log.Print("Se bloqueo en pasarProcesosAReady")
 					procesoNuevo := globals.ESTADOS.NEW[0]
+					globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
 					//log.Print("Se quiere desbloquear en pasarProcesosAReady")
 					globals.EstadosMutex.Unlock()
 					//log.Print("Se desbloqueo en pasarProcesosAReady")
-					log.Print("Solicito iniciar proceso: ", procesoNuevo.Proceso.Pcb.Pid)
+					//slog.Debug(fmt.Sprintf("Solicito iniciar proceso: %d", procesoNuevo.Proceso.Pcb.Pid))
 					if general.SolicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
 						break
 					}
 
-					estados.NewAReady(procesoNuevo)
+					go estados.NewAReady(procesoNuevo)
 
 				}
+
+				//slog.Debug(fmt.Sprint("Recien sale del for de pasarProcesosAReady"))
 			}
 		}
 	}

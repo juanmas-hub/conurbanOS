@@ -5,27 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 )
-
-func EnviarMensajeAMemoria(ip string, puerto int64, mensajeTxt string) {
-	mensaje := globals.Mensaje{Mensaje: mensajeTxt}
-	body, err := json.Marshal(mensaje)
-	if err != nil {
-		log.Printf("error codificando mensaje: %s", err.Error())
-	}
-
-	// Posible problema con el int64 del puerto
-	url := fmt.Sprintf("http://%s:%d/mensajeDeKernel", ip, puerto)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
-	if err != nil {
-		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
-	}
-
-	log.Printf("respuesta del servidor: %s", resp.Status)
-}
 
 func EnviarFinalizacionDeProceso_AMemoria(ip string, puerto int64, pid int64) bool {
 	mensaje := globals.PidJSON{PID: pid}
@@ -41,20 +25,21 @@ func EnviarFinalizacionDeProceso_AMemoria(ip string, puerto int64, pid int64) bo
 		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
 	}
 
-	log.Printf("respuesta del servidor: %s", resp.Status)
+	slog.Debug(fmt.Sprintf("Finalizacion PID %d enviada a memoria, respuesta: %s", pid, resp.Status))
+
 	if resp.StatusCode == http.StatusOK {
 		return true
 	}
 	return false
 }
 
-func EnviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64, pc int64) {
+func EnviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64, pc int64, nombre string) {
 	proc := globals.ProcesoAExecutar{
 		PID: pid,
 		PC:  pc,
 	}
 
-	log.Printf("cpu libre elegida ip: %s, port: %d, pid: %d, pc: %d", ip, puerto, pid, pc)
+	//log.Printf("cpu libre elegida ip: %s, port: %d, pid: %d, pc: %d", ip, puerto, pid, pc)
 	body, err := json.Marshal(proc)
 	if err != nil {
 		log.Printf("error codificando proceso a ejecutar: %s", err.Error())
@@ -67,7 +52,7 @@ func EnviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64, pc int64) {
 		log.Printf("error enviando mensaje a ip:%s puerto:%d, error: %v", ip, puerto, err)
 	}
 
-	log.Printf("respuesta del servidor: %s", resp.Status)
+	slog.Debug(fmt.Sprintf("Proceso PID %d enviado a %s, respuesta: %s", pid, nombre, resp.Status))
 
 	// Guardar PID en la CPU correspondiente
 	globals.ListaCPUsMutex.Lock()
@@ -80,7 +65,7 @@ func EnviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64, pc int64) {
 	globals.ListaCPUsMutex.Unlock()
 }
 
-func EnviarInterrupcionACPU(ip string, puerto int64, pid int64) (*globals.RespuestaInterrupcion, error) {
+func EnviarInterrupcionACPU(ip string, puerto int64, nombre string, pid int64) (*globals.RespuestaInterrupcion, error) {
 	mensaje := globals.PidJSON{PID: pid}
 	body, err := json.Marshal(mensaje)
 	if err != nil {
@@ -93,8 +78,8 @@ func EnviarInterrupcionACPU(ip string, puerto int64, pid int64) (*globals.Respue
 	if err != nil {
 		log.Printf("error enviando interrupción a ip:%s puerto:%d", ip, puerto)
 	}
-	log.Printf("Interrupción enviada a CPU - PID: %d", pid)
-	log.Printf("respuesta de la CPU: %s", resp.Status)
+
+	slog.Debug(fmt.Sprintf("Interrupcion enviada a CPU: %s, resp: %s", nombre, resp.Status))
 
 	// Respuesta de CPU
 	var respuesta globals.RespuestaInterrupcion
@@ -103,42 +88,6 @@ func EnviarInterrupcionACPU(ip string, puerto int64, pid int64) (*globals.Respue
 		return nil, err
 	}
 	return &respuesta, nil
-}
-
-func RecibirMensajeDeCpu(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var mensaje globals.Mensaje
-	err := decoder.Decode(&mensaje)
-	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Error al decodificar mensaje"))
-		return
-	}
-
-	log.Println("Me llego un mensaje de CPU")
-	log.Printf("%+v\n", mensaje)
-
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
-}
-
-func RecibirMensajeDeIo(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var mensaje globals.Mensaje
-	err := decoder.Decode(&mensaje)
-	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Error al decodificar mensaje"))
-		return
-	}
-
-	log.Println("Me llego un mensaje de IO")
-	log.Printf("%+v\n", mensaje)
-
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
 }
 
 func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
@@ -152,10 +101,8 @@ func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Me llego un handshake de IO")
-	log.Printf("%+v\n", handshake)
-
 	globals.ListaIOsMutex.Lock()
+	slog.Debug(fmt.Sprintf("Se levantó una nueva IO: %s", handshake.Nombre))
 	agregarAInstanciasIOs(handshake)
 	globals.ListaIOsMutex.Unlock()
 
@@ -174,10 +121,8 @@ func RecibirHandshakeCPU(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Me llego un handshake de CPU")
-	log.Printf("%+v\n", handshake)
-
 	globals.ListaCPUsMutex.Lock()
+	slog.Debug(fmt.Sprintf("Se levantó una nueva CPU: %s, IP: %s, Puerto: %d", handshake.Nombre, handshake.IP, handshake.Puerto))
 	agregarAListaCPUs(handshake)
 	globals.ListaCPUsMutex.Unlock()
 
@@ -199,17 +144,18 @@ func EnviarSolicitudIO(ipIO string, puertoIO int64, pid int64, tiempo int64) {
 
 	url := fmt.Sprintf("http://%s:%d/solicitudDeIo", ipIO, puertoIO)
 
+	slog.Debug(fmt.Sprintf("Solicitud IO enviada al modulo IO - PID: %d, Tiempo: %dms", pid, tiempo))
+
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		log.Printf("Error enviando solicitud IO a ipIO:%s puertoIO:%d", ipIO, puertoIO)
 	}
 
+	slog.Debug(fmt.Sprintf("Solicitud IO enviada al modulo IO - PID: %d, Tiempo: %dms, respuesta: %s", pid, tiempo, resp.Status))
+
 	globals.CantidadSesionesIOMutex.Lock()
 	globals.CantidadSesionesIO[pid]++
 	globals.CantidadSesionesIOMutex.Unlock()
-
-	log.Printf("Solicitud IO enviada al modulo IO - PID: %d, Tiempo: %dms", pid, tiempo)
-	log.Printf("Respuesta del modulo IO: %s", resp.Status)
 }
 
 func EnviarDumpMemory(pid int64) bool {
@@ -226,7 +172,8 @@ func EnviarDumpMemory(pid int64) bool {
 		log.Printf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
 	}
 
-	log.Printf("respuesta del servidor: %s", resp.Status)
+	slog.Debug(fmt.Sprintf("Enviado DUMP MEMORY a memoria, resp: %s", resp.Status))
+
 	if resp.StatusCode == http.StatusOK {
 		return true
 	}
@@ -251,6 +198,8 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	globals.ListaIOsMutex.Unlock()
 
 	pidProceso := desconexionIO.PID
+
+	slog.Debug(fmt.Sprintf("Se desconecto el IO: %s, que tenia el proceso de PID: %d", desconexionIO.NombreIO, pidProceso))
 
 	// Saco la instancia de la cola de instancias
 	globals.ListaIOsMutex.Lock()
@@ -281,8 +230,6 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	globals.MapaIOs[desconexionIO.NombreIO] = io
 	globals.ListaIOsMutex.Unlock()
 
-	log.Printf("Se desconecto el IO: %s, que tenia el proceso de PID: %d", desconexionIO.NombreIO, pidProceso)
-
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
@@ -301,7 +248,7 @@ func AvisarSwappeo(pid int64) {
 		log.Printf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
 	}
 
-	log.Printf("respuesta del servidor: %s", resp.Status)
+	slog.Debug(fmt.Sprintf("Enviado aviso de swappeo de PID %d a memoria, resp: %s", pid, resp.Status))
 }
 
 func SolicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo) bool {

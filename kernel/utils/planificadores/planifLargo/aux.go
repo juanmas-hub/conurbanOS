@@ -41,8 +41,8 @@ func finalizarProceso(pid int64) {
 	}
 
 	// Elimino de la cola y mando a exit
-	estados.EliminarProcesoDeSuCola(pid, proceso.Estado_Actual)
 	estados.ProcesoAExit(proceso)
+	estados.EliminarProcesoDeSuCola(pid, proceso.Estado_Actual)
 
 	// Elimino del mapa procesos
 	//log.Print("Se quiere loquear MapaProcesos en finalizarProceso x2")
@@ -50,7 +50,6 @@ func finalizarProceso(pid int64) {
 	delete(globals.MapaProcesos, pid)
 	globals.MapaProcesosMutex.Unlock()
 	//log.Print("Se unloquea MapaProcesos en finalizarProceso x2")
-	log.Printf("El PCB del proceso con PID %d fue liberado", pid)
 
 	// Iniciar nuevos procesos
 	globals.DeDondeSeLlamaMutex.Lock()
@@ -69,7 +68,6 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 
 	globals.PIDCounterMutex.Unlock()
 
-	log.Printf("Creando nuevo proceso con PID %d y tamaño %d\n", pid, tamanio)
 	proceso := globals.Proceso{
 		Pcb: globals.PCB{
 			Pid: pid,
@@ -101,13 +99,18 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 	globals.EstadosMutex.Lock()
 	//log.Print("Se bloqueo en CrearProcesoNuevo")
 
-	log.Printf("Agregando proceso a NEW. Cantidad actual: %d", len(globals.ESTADOS.NEW))
+	//log.Printf("Agregando proceso a NEW. Cantidad actual: %d", len(globals.ESTADOS.NEW))
 
 	// Aca no hay metricas que actualizar
 	globals.ESTADOS.NEW = append(globals.ESTADOS.NEW, procesoNuevo)
-	log.Printf("Después de agregar, NEW tiene %d procesos", len(globals.ESTADOS.NEW))
+
+	// LOG Creación de Proceso: “## (<PID>) Se crea el proceso - Estado: NEW”
+	slog.Info(fmt.Sprintf("## (%d) Se crea el proceso - Estado: NEW", pid))
+
+	//log.Printf("Después de agregar, NEW tiene %d procesos", len(globals.ESTADOS.NEW))
 	if globals.KernelConfig.New_algorithm == "PMCP" {
 		ordenarNewPorTamanio()
+		log.Print("NEW despues de ordenarlo: ", globals.ESTADOS.NEW)
 	}
 
 	//log.Print("Se quiere desbloquear en CrearProcesoNuevo")
@@ -120,6 +123,4 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 	//general.Signal(globals.Sem_PasarProcesoAReady)
 	globals.SignalPasarProcesoAReady()
 
-	// LOG Creación de Proceso: “## (<PID>) Se crea el proceso - Estado: NEW”
-	slog.Info(fmt.Sprintf("## (%d) Se crea el proceso - Estado: NEW", pid))
 }

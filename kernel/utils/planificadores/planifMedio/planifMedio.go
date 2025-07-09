@@ -1,7 +1,6 @@
 package utils_planifMedio
 
 import (
-	"log"
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
@@ -43,7 +42,7 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 	//		- Son distintas: distintas sesiones => no hago nada
 
 	globals.CantidadSesionesIOMutex.Lock()
-	log.Printf("Cantidad sesiones actual: %d, previa: %d", globals.CantidadSesionesIO[procesoActualmente.Pcb.Pid], cantidadSesionesPrevia)
+	//log.Printf("Cantidad sesiones actual: %d, previa: %d", globals.CantidadSesionesIO[procesoActualmente.Pcb.Pid], cantidadSesionesPrevia)
 	if globals.CantidadSesionesIO[procesoActualmente.Pcb.Pid] == cantidadSesionesPrevia {
 		if procesoActualmente.Estado_Actual == globals.BLOCKED {
 			// Aviso a memoria que hay que swappear
