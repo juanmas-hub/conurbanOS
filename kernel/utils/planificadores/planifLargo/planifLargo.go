@@ -40,43 +40,46 @@ func pasarProcesosAReady() {
 	// Voy a intentar pasar la mayor cantidad de procesos que pueda mientras memoria tenga espacio
 
 	for {
-		general.Wait(globals.Sem_PasarProcesoAReady)
+		//general.Wait(globals.Sem_PasarProcesoAReady)
+		globals.WaitPasarProcesoAReady()
+		if globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED == false {
+			log.Print("Intentando pasar procesos a ready porque llego un proceso a: ", globals.DeDondeSeLlamaPasarProcesosAReady)
 
-		log.Print("Intentando pasar procesos a ready porque llego un proceso a: ", globals.DeDondeSeLlamaPasarProcesosAReady)
-
-		var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
-		for lenghtSUSP_READY > 0 {
-			pid := globals.ESTADOS.SUSP_READY[0]
-			if general.SolicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid) == false {
-				break
-			}
-
-			//log.Print("Se quiere loquear MapaProcesos en PasarProcesosAReady x1")
-			globals.MapaProcesosMutex.Lock()
-			//log.Print("Se loquea MapaProcesos en PasarProcesosAReady x1")
-			proceso := globals.MapaProcesos[pid]
-			globals.MapaProcesosMutex.Unlock()
-			//log.Print("Se unloquea MapaProcesos en PasarProcesosAReady x1")
-			estados.SuspReadyAReady(proceso)
-			lenghtSUSP_READY--
-		}
-
-		if lenghtSUSP_READY == 0 {
-
-			for len(globals.ESTADOS.NEW) > 0 {
-				//log.Print("Se quiere bloquear en pasarProcesosAReady")
-				globals.EstadosMutex.Lock()
-				//log.Print("Se bloqueo en pasarProcesosAReady")
-				procesoNuevo := globals.ESTADOS.NEW[0]
-				//log.Print("Se quiere desbloquear en pasarProcesosAReady")
-				globals.EstadosMutex.Unlock()
-				//log.Print("Se desbloqueo en pasarProcesosAReady")
-				if general.SolicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
+			var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
+			for lenghtSUSP_READY > 0 {
+				pid := globals.ESTADOS.SUSP_READY[0]
+				if general.SolicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid) == false {
 					break
 				}
 
-				estados.NewAReady(procesoNuevo)
+				//log.Print("Se quiere loquear MapaProcesos en PasarProcesosAReady x1")
+				globals.MapaProcesosMutex.Lock()
+				//log.Print("Se loquea MapaProcesos en PasarProcesosAReady x1")
+				proceso := globals.MapaProcesos[pid]
+				globals.MapaProcesosMutex.Unlock()
+				//log.Print("Se unloquea MapaProcesos en PasarProcesosAReady x1")
+				estados.SuspReadyAReady(proceso)
+				lenghtSUSP_READY--
+			}
 
+			if lenghtSUSP_READY == 0 {
+
+				for len(globals.ESTADOS.NEW) > 0 {
+					//log.Print("Se quiere bloquear en pasarProcesosAReady")
+					globals.EstadosMutex.Lock()
+					//log.Print("Se bloqueo en pasarProcesosAReady")
+					procesoNuevo := globals.ESTADOS.NEW[0]
+					//log.Print("Se quiere desbloquear en pasarProcesosAReady")
+					globals.EstadosMutex.Unlock()
+					//log.Print("Se desbloqueo en pasarProcesosAReady")
+					log.Print("Solicito iniciar proceso: ", procesoNuevo.Proceso.Pcb.Pid)
+					if general.SolicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
+						break
+					}
+
+					estados.NewAReady(procesoNuevo)
+
+				}
 			}
 		}
 	}

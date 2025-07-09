@@ -30,7 +30,8 @@ func SuspBlockedASuspReady(proceso globals.Proceso) {
 	globals.DeDondeSeLlamaMutex.Lock()
 	globals.DeDondeSeLlamaPasarProcesosAReady = "SUSP READY"
 	globals.DeDondeSeLlamaMutex.Unlock()
-	general.Signal(globals.Sem_PasarProcesoAReady)
+	//general.Signal(globals.Sem_PasarProcesoAReady)
+	globals.SignalPasarProcesoAReady()
 
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado SUSP_BLOCKED al estado SUSP_READY", proceso.Pcb.Pid))
