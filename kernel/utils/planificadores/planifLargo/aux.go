@@ -89,6 +89,10 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		proceso.Rafaga = &rafaga
 	}
 
+	globals.MapaProcesosMutex.Lock()
+	globals.MapaProcesos[pid] = proceso
+	globals.MapaProcesosMutex.Unlock()
+
 	procesoNuevo := globals.Proceso_Nuevo{
 		Archivo_Pseudocodigo: archivo,
 		Tamaño:               tamanio,
@@ -97,7 +101,7 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 
 	//log.Print("Se quiere bloquear en CrearProcesoNuevo")
 	globals.EstadosMutex.Lock()
-	//log.Print("Se bloqueo en CrearProcesoNuevo")
+	log.Print("Se bloqueo en CrearProcesoNuevo")
 
 	//log.Printf("Agregando proceso a NEW. Cantidad actual: %d", len(globals.ESTADOS.NEW))
 
@@ -115,7 +119,7 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 
 	//log.Print("Se quiere desbloquear en CrearProcesoNuevo")
 	globals.EstadosMutex.Unlock()
-	//log.Print("Se desbloqueo en CrearProcesoNuevo")
+	log.Print("Se desbloqueo en CrearProcesoNuevo")
 
 	globals.DeDondeSeLlamaMutex.Lock()
 	globals.DeDondeSeLlamaPasarProcesosAReady = "New"

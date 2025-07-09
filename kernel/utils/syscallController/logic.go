@@ -16,6 +16,7 @@ func manejarIO(syscallIO globals.SyscallIO) {
 	globals.ListaIOsMutex.Lock()
 	existe := general.VerificarExistenciaIO(syscallIO.NombreIO)
 	nombreIO := syscallIO.NombreIO
+	globals.ListaIOsMutex.Unlock()
 
 	//log.Print("Vino una syscall IO a ManejarIO:", syscallIO)
 
@@ -36,8 +37,10 @@ func manejarIO(syscallIO globals.SyscallIO) {
 		general.LiberarCPU(syscallIO.NombreCPU)
 
 		// Si hay instancias libres, envio solicitud, sino agrego a la cola
+		globals.ListaIOsMutex.Lock()
 		io := globals.MapaIOs[nombreIO]
 		instanciaIo, pos, hayLibre := general.BuscarInstanciaIOLibre(syscallIO.NombreIO)
+		globals.ListaIOsMutex.Unlock()
 		if hayLibre {
 			log.Print("Seleccionada IO libre: ", instanciaIo)
 			instanciaIo.PidProcesoActual = syscallIO.PID
@@ -47,11 +50,11 @@ func manejarIO(syscallIO globals.SyscallIO) {
 			io.ColaProcesosEsperando = append(io.ColaProcesosEsperando, syscallIO)
 		}
 		utils_pm.EjecutarPlanificadorMedioPlazo(proceso, "Syscall IO")
+		globals.ListaIOsMutex.Lock()
 		globals.MapaIOs[nombreIO] = io
+		globals.ListaIOsMutex.Unlock()
 
 	}
-
-	globals.ListaIOsMutex.Unlock()
 	// Motivo de Bloqueo: ## (<PID>) - Bloqueado por IO: <DISPOSITIVO_IO>
 	slog.Info(fmt.Sprintf("## (%d) - Bloqueado por IO: %s", syscallIO.PID, syscallIO.NombreIO))
 

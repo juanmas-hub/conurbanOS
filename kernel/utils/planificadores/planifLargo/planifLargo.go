@@ -69,12 +69,12 @@ func pasarProcesosAReady() {
 				for len(globals.ESTADOS.NEW) > 0 {
 					//log.Print("Se quiere bloquear en pasarProcesosAReady")
 					globals.EstadosMutex.Lock()
-					//log.Print("Se bloqueo en pasarProcesosAReady")
+					log.Print("Se bloqueo en pasarProcesosAReady")
 					procesoNuevo := globals.ESTADOS.NEW[0]
 					globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
 					//log.Print("Se quiere desbloquear en pasarProcesosAReady")
 					globals.EstadosMutex.Unlock()
-					//log.Print("Se desbloqueo en pasarProcesosAReady")
+					log.Print("Se desbloqueo en pasarProcesosAReady")
 					//slog.Debug(fmt.Sprintf("Solicito iniciar proceso: %d", procesoNuevo.Proceso.Pcb.Pid))
 					if general.SolicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
 						break

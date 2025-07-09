@@ -75,6 +75,7 @@ func hayCpusLibres() bool {
 
 // Chequea si hay que desalojar. Si hay que desalojar, devuelve el PID que esta ejecutando
 func verificarDesalojo() (int64, bool) {
+	log.Print("Se loqueo en buscarProcesoEnExecute")
 	globals.EstadosMutex.Lock()
 	defer globals.EstadosMutex.Unlock()
 	globals.MapaProcesosMutex.Lock()
@@ -140,12 +141,14 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 	ipCPU, puertoCPU, nombreCPU, ok := general.BuscarCpuPorPID(pidEnExec)
 	if ok {
 		globals.EstadosMutex.Lock()
+		log.Print("Se loqueo en desalojarYEnviarProceso")
 		globals.MapaProcesosMutex.Lock()
 		pidProcesoAEjecutar := globals.ESTADOS.READY[0]
 		proceso := globals.MapaProcesos[pidProcesoAEjecutar]
 		pcProcesoAEjecutar := proceso.Pcb.PC
 		globals.MapaProcesosMutex.Unlock()
 		globals.EstadosMutex.Unlock()
+		log.Print("Se desloqueo en desalojarYEnviarProceso")
 
 		respuestaInterrupcion, err := general.EnviarInterrupcionACPU(ipCPU, puertoCPU, nombreCPU, pidEnExec)
 		if err != nil {
@@ -160,9 +163,54 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 
 		globals.MapaProcesosMutex.Lock()
 		aExecute(proceso)
+
+		procesoDesalojado := globals.MapaProcesos[pidEnExec]
 		globals.MapaProcesosMutex.Unlock()
+
+		ExecuteAReady(procesoDesalojado, "")
 
 	} else {
 		log.Printf("No se encontró la CPU que ejecuta el PID %d", pidEnExec)
 	}
+}
+
+func ExecuteAReady(proceso globals.Proceso, razon string) {
+	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
+	ahora := time.Now()
+	tiempoEnEstado := ahora.Sub(proceso.UltimoCambioDeEstado)
+	ActualizarEstimado(proceso.Pcb.Pid, int64(tiempoEnEstado))
+
+	proceso.Estado_Actual = globals.READY
+	globals.MapaProcesosMutex.Lock()
+	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
+	globals.MapaProcesosMutex.Unlock()
+
+	//log.Print("Se quiere bloquear en ExecuteABlocked")
+	globals.EstadosMutex.Lock()
+	log.Print("Se bloqueo en ExecuteABlocked")
+	pos := buscarProcesoEnExecute(proceso.Pcb.Pid)
+	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE[:pos], globals.ESTADOS.EXECUTE[pos+1:]...)
+	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
+	//log.Print("Se quiere desbloquear en ExecuteABlocked")
+	globals.EstadosMutex.Unlock()
+	log.Print("Se desbloqueo en ExecuteABlocked")
+
+	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
+	slog.Info(fmt.Sprintf("## (%d) Pasa del estado EXECUTE al estado READY", proceso.Pcb.Pid))
+}
+
+// Se llama con estados mutex lockeado
+func buscarProcesoEnExecute(pid int64) int64 {
+	colaExecute := globals.ESTADOS.EXECUTE
+
+	var posicion int64
+
+	for indice, valor := range colaExecute {
+		if valor == pid {
+			posicion = int64(indice)
+			break
+		}
+	}
+
+	return posicion
 }
