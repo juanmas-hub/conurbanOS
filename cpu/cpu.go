@@ -15,9 +15,15 @@ import (
 
 func main() {
 
+	if len(os.Args) != 3 {
+		log.Fatal("No se paso como argumento el nombre de CPU") //por ej:  go run . nombreIO
+	}
+	nombreCPU := os.Args[1]
+	prueba := os.Args[2]
+
 	utils_logger.ConfigurarLogger("cpu.log")
 
-	globals_cpu.CpuConfig = utils_cpu.IniciarConfiguracion("config.json")
+	globals_cpu.CpuConfig = utils_cpu.IniciarConfiguracion(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + nombreCPU + ".config")
 	if globals_cpu.CpuConfig == nil {
 		log.Fatal("No se pudo iniciar el config")
 	}
@@ -32,12 +38,6 @@ func main() {
 	mensaje := "Mensaje desde CPU"
 	utils_cpu.EnviarMensaje(globals_cpu.CpuConfig.Ip_kernel, globals_cpu.CpuConfig.Port_kernel, mensaje)
 	utils_cpu.EnviarMensaje(globals_cpu.CpuConfig.Ip_memory, globals_cpu.CpuConfig.Port_memory, mensaje)
-
-	// Handshake al kernel
-	if len(os.Args) != 2 {
-		log.Fatal("No se paso como argumento el nombre de CPU") //por ej:  go run . nombreIO
-	}
-	nombreCPU := os.Args[1]
 
 	utils_cpu.HandshakeAKernel(
 		globals_cpu.CpuConfig.Ip_kernel,

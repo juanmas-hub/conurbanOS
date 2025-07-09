@@ -21,7 +21,7 @@ func main() {
 
 	// Configuración
 	utils_logger.ConfigurarLogger("io.log")
-	globals.IoConfig = utils_io.IniciarConfiguracion("config.json")
+	globals.IoConfig = utils_io.IniciarConfiguracion("io.config")
 	if globals.IoConfig == nil {
 		log.Fatal("No se pudo iniciar el config")
 	}

@@ -18,9 +18,11 @@ import (
 
 func main() {
 
+	prueba := os.Args[3]
+
 	// CONFIG
 	utils_logger.ConfigurarLogger("kernel.log")
-	globals.KernelConfig = utils_general.IniciarConfiguracion("config.json")
+	globals.KernelConfig = utils_general.IniciarConfiguracion(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/Kernel.config")
 	if globals.KernelConfig == nil {
 		log.Fatal("No se pudo iniciar el config")
 	}
@@ -34,8 +36,8 @@ func main() {
 
 	}()
 
-	if len(os.Args) != 3 {
-		log.Fatal("Uso: go run . archivo tamaño")
+	if len(os.Args) != 4 {
+		log.Fatal("Uso: go run . archivo tamaño prueba")
 	}
 
 	archivo := os.Args[1]

@@ -4,6 +4,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/memoria"
@@ -15,7 +16,9 @@ func main() {
 
 	utils_logger.ConfigurarLogger("memoria.log")
 
-	globals.MemoriaConfig = utils_memoria.IniciarConfiguracion("config.json")
+	prueba := os.Args[1]
+
+	globals.MemoriaConfig = utils_memoria.IniciarConfiguracion(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + "Memoria.config")
 	if globals.MemoriaConfig == nil {
 		log.Fatal("No se pudo iniciar el config")
 	}
