@@ -25,7 +25,6 @@ func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
 	globals.ListaIOsMutex.Lock()
 	slog.Debug(fmt.Sprintf("Se levantó una nueva instancia: %s, de IO: %s", handshake.NombreInstancia, handshake.NombreIO))
 	agregarAInstanciasIOs(handshake)
-	log.Print(globals.MapaIOs)
 	globals.ListaIOsMutex.Unlock()
 
 	w.WriteHeader(http.StatusOK)

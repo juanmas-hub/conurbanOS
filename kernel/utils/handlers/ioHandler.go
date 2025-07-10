@@ -36,7 +36,6 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 	globals.ListaIOsMutex.Lock()
 	io := globals.MapaIOs[finalizacionIo.NombreIO]
 	posInstanciaIo := BuscarInstanciaIO(finalizacionIo.NombreIO, finalizacionIo.NombreInstancia)
-	log.Print(globals.MapaIOs)
 
 	if posInstanciaIo == -1 {
 		log.Printf("Error buscando instancia de IO de nombre: %s, con el proceso: %d", finalizacionIo.NombreIO, finalizacionIo.PID)
@@ -107,21 +106,22 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	}
 
 	globals.ListaIOsMutex.Lock()
+	defer globals.ListaIOsMutex.Unlock()
+
 	io := globals.MapaIOs[desconexionIO.NombreIO]
-	globals.ListaIOsMutex.Unlock()
 
 	pidProceso := desconexionIO.PID
 
 	slog.Debug(fmt.Sprintf("Se desconecto el IO: %s, que tenia el proceso de PID: %d", desconexionIO.NombreIO, pidProceso))
 
 	// Saco la instancia de la cola de instancias
-	globals.ListaIOsMutex.Lock()
 	posInstanciaIo := BuscarInstanciaIO(desconexionIO.NombreIO, desconexionIO.NombreInstancia)
 	if posInstanciaIo == -2 {
 		log.Printf("Error buscando la instancia de IO de IP: %s, puerto: %d, que tendría el proceso: %d", desconexionIO.Ip, desconexionIO.Puerto, pidProceso)
 	}
 	io.Instancias = append(io.Instancias[:posInstanciaIo], io.Instancias[posInstanciaIo+1:]...)
-	globals.ListaIOsMutex.Unlock()
+
+	slog.Debug(fmt.Sprint("Se saco la instancia de la cola de instancias: ", io.Instancias))
 
 	// Si habia proceso ejecutando
 	if pidProceso != -1 {
@@ -136,11 +136,11 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 		for i := range io.ColaProcesosEsperando {
 			planificadores.FinalizarProceso(io.ColaProcesosEsperando[i].PID)
 		}
-	}
 
-	globals.ListaIOsMutex.Lock()
+		// Elimino la entrada del mapa
+		delete(globals.MapaIOs, desconexionIO.NombreIO)
+	}
 	globals.MapaIOs[desconexionIO.NombreIO] = io
-	globals.ListaIOsMutex.Unlock()
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
@@ -164,8 +164,14 @@ func BuscarInstanciaIOLibre(nombreIO string) (globals.InstanciaIO, int, bool) {
 
 // Dado un nombre de IO, devuelve si existe. Se llama con Lista IO muteada.
 func VerificarExistenciaIO(nombreIO string) bool {
-	_, existe := globals.MapaIOs[nombreIO]
-	return existe
+	_, existeEntrada := globals.MapaIOs[nombreIO]
+	if !existeEntrada {
+		return false
+	}
+	if len(globals.MapaIOs[nombreIO].Instancias) <= 0 {
+		return false
+	}
+	return true
 }
 
 // Dado un nombre IO e instancia, retorna posicion en cola de instancias. Se llama con Lista IO muteada

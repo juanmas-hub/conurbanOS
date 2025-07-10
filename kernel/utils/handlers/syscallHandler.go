@@ -95,13 +95,10 @@ func manejarIO(syscallIO globals.SyscallIO) {
 	nombreIO := syscallIO.NombreIO
 	globals.ListaIOsMutex.Unlock()
 
-	//log.Print("Vino una syscall IO a ManejarIO:", syscallIO)
-
 	logSyscalls(syscallIO.PID, "IO")
 
 	// Motivo de Bloqueo: ## (<PID>) - Bloqueado por IO: <DISPOSITIVO_IO>
 	slog.Info(fmt.Sprintf("## (%d) - Bloqueado por IO: %s", syscallIO.PID, syscallIO.NombreIO))
-
 	if !existe {
 		planificadores.FinalizarProceso(syscallIO.PID)
 	} else {

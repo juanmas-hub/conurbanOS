@@ -5,6 +5,7 @@ import (
 	//"fmt"
 	"bufio"
 	"log"
+
 	//"net/http"
 	"os"
 	"strings"
@@ -27,7 +28,7 @@ func CalcularMock() int {
 
 func abrirArchivo(filename string) *os.File {
 
-	var rutaArchivo string = globals_memoria.MemoriaConfig.Scripts_path + filename + ".txt"
+	var rutaArchivo string = globals_memoria.MemoriaConfig.Scripts_path + filename
 
 	log.Println("Intentando acceder a la direccion: ", rutaArchivo)
 
@@ -39,7 +40,7 @@ func abrirArchivo(filename string) *os.File {
 	return file
 }
 
-func abrirArchivoBinario() *os.File{
+func abrirArchivoBinario() *os.File {
 	var ruta string = globals_memoria.MemoriaConfig.Swapfile_path
 
 	archivo, err := os.OpenFile(ruta, os.O_RDWR|os.O_CREATE, 0644)
