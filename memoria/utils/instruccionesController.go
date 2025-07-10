@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+
 	//"fmt"
 	//"bufio"
 	"log"
@@ -53,7 +54,9 @@ func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%+v\n", mensaje.Pid)
 
 	var instruccion string = globals_memoria.Procesos[int(mensaje.Pid)].Pseudocodigo[mensaje.Pc]
+	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
+	//time.Sleep(time.Duration(delayMem) * time.Second)
 	if (*globals_memoria.Metricas)[int(mensaje.Pid)] == nil {
 		(*globals_memoria.Metricas)[int(mensaje.Pid)] = &globals_memoria.Memoria_Metrica{
 			AccesosTablas:            0,
@@ -100,7 +103,9 @@ func AccederEspacioUsuarioLectura(w http.ResponseWriter, r *http.Request) {
 	var pid int = int(mensaje.Pid)
 	var posicion int = int(mensaje.Posicion)
 	var tamanio int = int(mensaje.Tamanio)
+	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
+	//time.Sleep(time.Duration(delayMem) * time.Second)
 	(*globals_memoria.Metricas)[pid].LecturasMemoria++
 	var leido string = leer(posicion, tamanio)
 
@@ -137,7 +142,9 @@ func AccederEspacioUsuarioEscritura(w http.ResponseWriter, r *http.Request) {
 	var pid int = int(mensaje.Pid)
 	var posicion int = int(mensaje.Posicion)
 	var dato string = mensaje.Dato
+	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
+	//time.Sleep(time.Duration(delayMem) * time.Second)
 	if escribir(posicion, dato) < 0 {
 		log.Printf("Error al escribir en la posicion %v", int(mensaje.Posicion))
 		w.WriteHeader(http.StatusServiceUnavailable)

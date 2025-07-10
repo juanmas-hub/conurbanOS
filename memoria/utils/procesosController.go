@@ -2,7 +2,7 @@ package utils
 
 import (
 	"encoding/json"
-	"time"
+
 	//"fmt"
 	//"bufio"
 	"log"
@@ -32,6 +32,10 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 	var pid int = int(mensaje.Pid)
 	var tamanio int = int(mensaje.Tamanio)
 
+	//var delay int64 = globals_memoria.MemoriaConfig.Memory_delay
+
+	//time.Sleep(time.Duration(delay) * time.Second)
+
 	if AlmacenarProceso(pid, tamanio, mensaje.ArchivoPseudocodigo) < 0 {
 		w.WriteHeader(http.StatusNotImplemented)
 		w.Write([]byte("notImplemented"))
@@ -56,22 +60,20 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Me llego para suspender el proceso de pid: %d", mensaje.Pid)
 
-	
-
 	// Aca empieza la logica
 
 	var pid int = int(mensaje.Pid)
-	var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
+	//var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
+	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-	time.Sleep(time.Duration(delay) * time.Second)
+	//time.Sleep(time.Duration(delay+delayMem) * time.Second)
 
 	(*globals_memoria.Metricas)[pid].BajadasSwap++
 
 	var paginas []globals_memoria.PaginaDTO
-	
+
 	paginas = eliminarMarcosFisicos(pid)
 
-	
 	if escribirEnSWAP(pid, paginas) < 0 {
 		log.Printf("Proceso %d no se pudo suspender por falo al escribir en SWAP", mensaje.Pid)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -102,14 +104,19 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 	var pid int = int(mensaje.Pid)
 
 	if globals_memoria.Procesos[pid].Suspendido {
-		var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
+		//var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
+		//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-		time.Sleep(time.Duration(delay) * time.Second)
+		//time.Sleep(time.Duration(delay+delayMem) * time.Second)
 		eliminarPaginasSWAP(pid)
-	}else {
+	} else {
+
+		//var delay int64 = globals_memoria.MemoriaConfig.Memory_delay
+
+		//time.Sleep(time.Duration(delay) * time.Second)
 		eliminarMarcosFisicos(pid)
 	}
-	
+
 	delete(globals_memoria.Procesos, pid)
 
 	var ATP int = (*globals_memoria.Metricas)[pid].AccesosTablas
@@ -119,7 +126,7 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 	var LecMem int = (*globals_memoria.Metricas)[pid].LecturasMemoria
 	var EscMem int = (*globals_memoria.Metricas)[pid].EscriturasMemoria
 
-	log.Printf("## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: <%d; Esc.Mem.: %d", pid, ATP,InstSol, SWAP, MemPrin,LecMem, EscMem)
+	log.Printf("## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: <%d; Esc.Mem.: %d", pid, ATP, InstSol, SWAP, MemPrin, LecMem, EscMem)
 
 	delete((*globals_memoria.Metricas), pid)
 	w.WriteHeader(http.StatusOK)
@@ -142,22 +149,24 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 
 	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
-	var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
 
-	time.Sleep(time.Duration(delay) * time.Second)
+	//var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
+	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
+
+	//time.Sleep(time.Duration(delay+delayMem) * time.Second)
 	var paginasNecesarias int = len(globals_memoria.Procesos[pid].PaginasSWAP)
 
 	if paginasNecesarias != 0 {
 		var paginasDTO []globals_memoria.PaginaDTO
 		var marcosDisponibles []int = buscarMarcosDisponibles(paginasNecesarias)
-		if marcosDisponibles == nil{
+		if marcosDisponibles == nil {
 			log.Printf("Proceso %d no se renaudo por falta de espacio", mensaje.Pid)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("Proceso no se renaudo por falta de espacio"))
 			return
-		} 
+		}
 		paginasDTO = eliminarPaginasSWAP(pid)
-		if paginasDTO == nil{
+		if paginasDTO == nil {
 			log.Printf("Proceso %d no se renaudo por error al eliminar paginas swap", mensaje.Pid)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("No se renaudo por error al eliminar paginas swap"))
@@ -184,6 +193,10 @@ func MemoryDump(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("PID: %d - Memory Dump solicitado", mensaje.Pid)
+
+	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
+
+	//time.Sleep(time.Duration(delayMem) * time.Second)
 
 	if generarMemoryDump(int(mensaje.Pid)) < 0 {
 		log.Printf("Proceso %d no hizo memory dump", mensaje.Pid)

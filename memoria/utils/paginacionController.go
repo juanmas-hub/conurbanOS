@@ -2,10 +2,12 @@ package utils
 
 import (
 	"encoding/json"
+
 	//"fmt"
 	//"bufio"
 	"log"
 	"net/http"
+
 	//"os"
 	//"strings"
 
@@ -13,8 +15,7 @@ import (
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
-
-func ActualizarTablaDePaginas(w http.ResponseWriter, r *http.Request){
+func ActualizarTablaDePaginas(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.TablaDTO
 	err := decoder.Decode(&mensaje)
@@ -24,16 +25,17 @@ func ActualizarTablaDePaginas(w http.ResponseWriter, r *http.Request){
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
 	}
-	
-	actualizarTablaPaginas(int(mensaje.Pid), mensaje.Indices)
+	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
+	//time.Sleep(time.Duration(delayMem) * time.Second)
+	actualizarTablaPaginas(int(mensaje.Pid), mensaje.Indices)
 
 	log.Printf("Proceso %d actualizo tabla correctamente", mensaje.Pid)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
 
-func ObtenerMarcoProceso(w http.ResponseWriter, r *http.Request){
+func ObtenerMarcoProceso(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.ConsultaPaginaDTO
 	err := decoder.Decode(&mensaje)
@@ -46,8 +48,10 @@ func ObtenerMarcoProceso(w http.ResponseWriter, r *http.Request){
 
 	var pid int = int(mensaje.Pid)
 	var primerIndice int = int(mensaje.PrimerIndice)
-	var marco int 
+	var marco int
+	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
+	//time.Sleep(time.Duration(delayMem) * time.Second)
 	marco = obtenerMarcoDesdeTabla(pid, primerIndice)
 
 	if marco < 0 {
@@ -56,7 +60,7 @@ func ObtenerMarcoProceso(w http.ResponseWriter, r *http.Request){
 		w.Write([]byte("Error al obtener marco"))
 		return
 	}
-	
+
 	var enviado struct {
 		Dato int `json:"dato"`
 	}
@@ -72,10 +76,10 @@ func ObtenerMarcoProceso(w http.ResponseWriter, r *http.Request){
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonData)
-	
+
 }
 
-func LeerPagina(w http.ResponseWriter, r *http.Request){
+func LeerPagina(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.LeerPaginaDTO
 	err := decoder.Decode(&mensaje)
@@ -89,8 +93,10 @@ func LeerPagina(w http.ResponseWriter, r *http.Request){
 	var indicePagina int = int(mensaje.IndicePagina)
 	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
 	var dato string
+	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-	if indicePagina % pageSize != 0{
+	//time.Sleep(time.Duration(delayMem) * time.Second)
+	if indicePagina%pageSize != 0 {
 		log.Printf("Error, el indice enviado (%v) no es multiplo de %v", indicePagina, pageSize)
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error indice no es multiplo del tamaño de pagina"))
@@ -116,7 +122,7 @@ func LeerPagina(w http.ResponseWriter, r *http.Request){
 	w.Write(jsonData)
 }
 
-func ActualizarPagina(w http.ResponseWriter, r *http.Request){
+func ActualizarPagina(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.ActualizarPaginaDTO
 	err := decoder.Decode(&mensaje)
@@ -130,14 +136,16 @@ func ActualizarPagina(w http.ResponseWriter, r *http.Request){
 	var indicePagina int = int(mensaje.IndicePagina)
 	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
 	var dato string = string(mensaje.Dato)
+	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-	if indicePagina % pageSize != 0{
+	//time.Sleep(time.Duration(delayMem) * time.Second)
+	if indicePagina%pageSize != 0 {
 		log.Printf("Error, el indice enviado (%v) no es multiplo de %v", indicePagina, pageSize)
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error indice no es multiplo del tamaño de pagina"))
 		return
 	}
-	
+
 	actualizarPagina(indicePagina, dato)
 
 	log.Printf("Pagina %v actualizada correctamente", mensaje.IndicePagina)

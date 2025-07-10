@@ -127,10 +127,9 @@ func manejarIO(syscallIO globals.SyscallIO) {
 		globals.MapaIOs[nombreIO] = io
 		globals.ListaIOsMutex.Unlock()
 
-		general.LiberarCPU(syscallIO.NombreCPU)
-
 	}
 
+	general.LiberarCPU(syscallIO.NombreCPU)
 }
 
 func manejarInit_Proc(syscallINIT globals.SyscallInit) {
