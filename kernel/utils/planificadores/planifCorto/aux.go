@@ -186,7 +186,9 @@ func ExecuteAReady(proceso globals.Proceso, razon string) {
 	ahora := time.Now()
 	tiempoEnEstado := ahora.Sub(proceso.UltimoCambioDeEstado)
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
-	ActualizarEstimado(proceso.Pcb.Pid, float64(tiempoEnEstado.Milliseconds()))
+	if globals.KernelConfig.Scheduler_algorithm != "FIFO" {
+		ActualizarEstimado(proceso.Pcb.Pid, float64(tiempoEnEstado.Milliseconds()))
+	}
 
 	proceso.Estado_Actual = globals.READY
 	globals.MapaProcesosMutex.Lock()
