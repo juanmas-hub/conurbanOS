@@ -8,10 +8,9 @@ import (
 	"strconv"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
-	utils_estados "github.com/sisoputnfrba/tp-golang/kernel/utils/estados"
 	utils_general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
-	utils_lp "github.com/sisoputnfrba/tp-golang/kernel/utils/planificadores/planifLargo"
-	utils_syscallController "github.com/sisoputnfrba/tp-golang/kernel/utils/syscallController"
+	handlers "github.com/sisoputnfrba/tp-golang/kernel/utils/handlers"
+	planificadores "github.com/sisoputnfrba/tp-golang/kernel/utils/planificadores"
 	utils_logger "github.com/sisoputnfrba/tp-golang/utils/loggers"
 )
 
@@ -44,21 +43,21 @@ func main() {
 		log.Fatalf("Error al convertir el tamaño a int64: %v", err)
 	}
 
-	go utils_lp.IniciarPlanificadorLargoPlazo(archivo, tamanioProceso)
+	go planificadores.IniciarPlanificadorLargoPlazo(archivo, tamanioProceso)
 
 	// Servidor (recibir mensaje de CPU y IO)
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/handshakeIO", utils_general.RecibirHandshakeIO)
-	mux.HandleFunc("/handshakeCPU", utils_general.RecibirHandshakeCPU)
+	mux.HandleFunc("/handshakeIO", handlers.RecibirHandshakeIO)
+	mux.HandleFunc("/handshakeCPU", handlers.RecibirHandshakeCPU)
 
-	mux.HandleFunc("/finalizacionIO", utils_estados.FinalizacionIO)
-	mux.HandleFunc("/desconexionIO", utils_general.DesconexionIO)
+	mux.HandleFunc("/finalizacionIO", handlers.FinalizacionIO)
+	mux.HandleFunc("/desconexionIO", handlers.DesconexionIO)
 
-	mux.HandleFunc("/syscallIO", utils_syscallController.RecibirIO)
-	mux.HandleFunc("/syscallDUMP_MEMORY", utils_syscallController.RecibirDUMP_MEMORY)
-	mux.HandleFunc("/syscallEXIT", utils_syscallController.RecibirEXIT)
-	mux.HandleFunc("/syscallINIT_PROC", utils_syscallController.RecibirINIT_PROC)
+	mux.HandleFunc("/syscallIO", handlers.RecibirIO)
+	mux.HandleFunc("/syscallDUMP_MEMORY", handlers.RecibirDUMP_MEMORY)
+	mux.HandleFunc("/syscallEXIT", handlers.RecibirEXIT)
+	mux.HandleFunc("/syscallINIT_PROC", handlers.RecibirINIT_PROC)
 
 	puerto := globals.KernelConfig.Port_kernel
 	err = http.ListenAndServe(":"+strconv.Itoa(int(puerto)), mux)

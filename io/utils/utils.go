@@ -17,6 +17,7 @@ func IniciarConfiguracion(filePath string) *globals.Io_Config {
 	var config *globals.Io_Config
 	configFile, err := os.Open(filePath)
 	if err != nil {
+		log.Print("error: ", err)
 		log.Fatal(err.Error())
 	}
 	defer configFile.Close()
@@ -30,9 +31,10 @@ func IniciarConfiguracion(filePath string) *globals.Io_Config {
 func HandshakeAKernel(ip string, puerto int64, nombreIO string, ipIO string, puertoIO int64) {
 
 	handshake := globals.HandshakeIO{
-		Nombre: nombreIO,
-		IP:     ipIO,
-		Puerto: puertoIO,
+		NombreIO:        nombreIO,
+		NombreInstancia: globals.NombreInstancia,
+		IP:              ipIO,
+		Puerto:          puertoIO,
 	}
 	body, err := json.Marshal(handshake)
 	if err != nil {
@@ -83,8 +85,9 @@ func USleep(tiempo int64, pid int64) {
 func EnviarFinalizacionIOAKernel(ip string, puerto int64, pid int64) {
 
 	mensaje := globals.FinalizacionIO{
-		PID:      pid,
-		NombreIO: globals.NombreIO,
+		PID:             pid,
+		NombreIO:        globals.IoConfig.NombreIO,
+		NombreInstancia: globals.NombreInstancia,
 	}
 	body, err := json.Marshal(mensaje)
 	if err != nil {
@@ -109,10 +112,11 @@ func EnviarFinalizacionIOAKernel(ip string, puerto int64, pid int64) {
 func Desconectar(ip string, puerto int64, pid int64) {
 
 	mensaje := globals.DesconexionIO{
-		NombreIO: globals.NombreIO,
-		PID:      pid,
-		Ip:       globals.IoConfig.IpIO,
-		Puerto:   globals.IoConfig.PortIO,
+		NombreInstancia: globals.NombreInstancia,
+		NombreIO:        globals.IoConfig.NombreIO,
+		PID:             pid,
+		Ip:              globals.IoConfig.IpIO,
+		Puerto:          globals.IoConfig.PortIO,
 	}
 	body, err := json.Marshal(mensaje)
 	if err != nil {

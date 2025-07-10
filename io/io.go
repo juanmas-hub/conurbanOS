@@ -18,10 +18,17 @@ import (
 )
 
 func main() {
+	// Handshake al kernel
+	if len(os.Args) != 3 {
+		log.Fatal("Error. El formato es: nombreInstanciaIO, prueba")
+	}
+	globals.NombreInstancia = os.Args[1]
+	prueba := os.Args[2]
 
 	// Configuración
-	utils_logger.ConfigurarLogger("io.log")
-	globals.IoConfig = utils_io.IniciarConfiguracion("io.config")
+	utils_logger.ConfigurarLogger(globals.NombreInstancia + ".log")
+	log.Print(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + globals.NombreInstancia + ".config")
+	globals.IoConfig = utils_io.IniciarConfiguracion(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + globals.NombreInstancia + ".config")
 	if globals.IoConfig == nil {
 		log.Fatal("No se pudo iniciar el config")
 	}
@@ -31,16 +38,10 @@ func main() {
 	// Canal para indicar que hemos terminado
 	done := make(chan bool, 1)
 
-	// Handshake al kernel
-	if len(os.Args) != 2 {
-		log.Fatal("No se paso como argumento el nombre de IO") //por ej:  go run . nombreIO
-	}
-	globals.NombreIO = os.Args[1]
-
 	utils_io.HandshakeAKernel(
 		globals.IoConfig.IpKernel,
 		globals.IoConfig.PortKernel,
-		globals.NombreIO,
+		globals.IoConfig.NombreIO,
 		globals.IoConfig.IpIO,
 		globals.IoConfig.PortIO,
 	)

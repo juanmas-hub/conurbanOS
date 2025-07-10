@@ -22,7 +22,6 @@ func main() {
 	prueba := os.Args[2]
 
 	utils_logger.ConfigurarLogger("cpu.log")
-
 	globals_cpu.CpuConfig = utils_cpu.IniciarConfiguracion(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + nombreCPU + ".config")
 	if globals_cpu.CpuConfig == nil {
 		log.Fatal("No se pudo iniciar el config")

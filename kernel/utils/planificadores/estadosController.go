@@ -1,13 +1,13 @@
-package estados
+package planificadores
 
 import (
 	"fmt"
+	"log"
 	"log/slog"
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
-	planifCorto "github.com/sisoputnfrba/tp-golang/kernel/utils/planificadores/planifCorto"
 )
 
 func SuspBlockedASuspReady(proceso globals.Proceso) {
@@ -82,7 +82,7 @@ func ExecuteABlocked(proceso globals.Proceso, razon string) {
 	tiempoEnEstado := ahora.Sub(proceso.UltimoCambioDeEstado)
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	if globals.KernelConfig.Scheduler_algorithm != "FIFO" {
-		planifCorto.ActualizarEstimado(proceso.Pcb.Pid, float64(tiempoEnEstado.Milliseconds()))
+		ActualizarEstimado(proceso.Pcb.Pid, float64(tiempoEnEstado.Milliseconds()))
 	}
 
 	proceso.Estado_Actual = globals.BLOCKED
@@ -183,5 +183,108 @@ func SuspReadyAReady(proceso globals.Proceso) {
 		general.Signal(globals.Sem_ProcesosEnReady)
 	case "SRT":
 		general.NotificarReplanifSRT()
+	}
+}
+
+// Se llama con estados mutex lockeado
+func buscarProcesoEnBlocked(pid int64) int64 {
+
+	colaBlocked := globals.ESTADOS.BLOCKED
+
+	var posicion int64
+
+	for indice, valor := range colaBlocked {
+		if valor == pid {
+			posicion = int64(indice)
+			break
+		}
+	}
+
+	return posicion
+}
+
+// Se llama con estados mutex lockeado
+
+func buscarProcesoEnNew(pid int64) int64 {
+	colaNew := globals.ESTADOS.NEW
+
+	var posicion int64
+
+	for indice, valor := range colaNew {
+		if valor.Proceso.Pcb.Pid == pid {
+			posicion = int64(indice)
+			break
+		}
+	}
+
+	return posicion
+}
+
+func buscarProcesoEnSuspBlocked(pid int64) int64 {
+	colaSuspBlocked := globals.ESTADOS.SUSP_BLOCKED
+
+	var posicion int64
+
+	for indice, valor := range colaSuspBlocked {
+		if valor == pid {
+			posicion = int64(indice)
+			break
+		}
+	}
+
+	return posicion
+}
+
+func buscarProcesoEnSuspReady(pid int64) int64 {
+	colaSuspReady := globals.ESTADOS.SUSP_READY
+	var posicion int64
+
+	for indice, valor := range colaSuspReady {
+		if valor == pid {
+			posicion = int64(indice)
+			break
+		}
+	}
+
+	return posicion
+}
+
+func buscarProcesoEnReady(pid int64) int64 {
+	colaReady := globals.ESTADOS.READY
+	var posicion int64
+
+	for indice, valor := range colaReady {
+		if valor == pid {
+			posicion = int64(indice)
+			break
+		}
+	}
+
+	return posicion
+}
+
+// Busco la cola correspondiente y elimino el proceso
+func EliminarProcesoDeSuCola(pid int64, estadoActual string) {
+	switch estadoActual {
+	case globals.BLOCKED:
+		pos := buscarProcesoEnBlocked(pid)
+		globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED[:pos], globals.ESTADOS.BLOCKED[pos+1:]...)
+	case globals.EXECUTE:
+		pos := buscarProcesoEnExecute(pid)
+		globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE[:pos], globals.ESTADOS.EXECUTE[pos+1:]...)
+	case globals.NEW:
+		pos := buscarProcesoEnNew(pid)
+		globals.ESTADOS.NEW = append(globals.ESTADOS.NEW[:pos], globals.ESTADOS.NEW[pos+1:]...)
+	case globals.SUSP_BLOCKED:
+		pos := buscarProcesoEnSuspBlocked(pid)
+		globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED[:pos], globals.ESTADOS.SUSP_BLOCKED[pos+1:]...)
+	case globals.SUSP_READY:
+		pos := buscarProcesoEnSuspReady(pid)
+		globals.ESTADOS.SUSP_READY = append(globals.ESTADOS.SUSP_READY[:pos], globals.ESTADOS.SUSP_READY[pos+1:]...)
+	case globals.READY:
+		pos := buscarProcesoEnReady(pid)
+		globals.ESTADOS.READY = append(globals.ESTADOS.READY[:pos], globals.ESTADOS.READY[pos+1:]...)
+	default:
+		log.Printf("Error eliminando proceso PID: %d de su cola en EliminarDeSuCola", pid)
 	}
 }
