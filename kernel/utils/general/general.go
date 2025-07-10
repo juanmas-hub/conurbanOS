@@ -38,7 +38,9 @@ func FinalizarProceso(pid int64) {
 	globals.ProcesosAFinalizarMutex.Lock()
 	globals.ProcesosAFinalizar = append(globals.ProcesosAFinalizar, pid)
 	globals.ProcesosAFinalizarMutex.Unlock()
+
 	Signal(globals.Sem_ProcesoAFinalizar)
+
 }
 
 // Mandando nombre del CPU, se libera. Aumenta el semaforo de Semaforos de CPU, entonces el planificador corto replanifica.

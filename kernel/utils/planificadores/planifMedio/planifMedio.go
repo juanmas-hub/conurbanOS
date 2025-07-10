@@ -55,7 +55,6 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 			globals.DeDondeSeLlamaMutex.Lock()
 			globals.DeDondeSeLlamaPasarProcesosAReady = "Susp Blocked"
 			globals.DeDondeSeLlamaMutex.Unlock()
-			//general.Signal(globals.Sem_PasarProcesoAReady)
 			globals.SignalPasarProcesoAReady()
 		}
 	}

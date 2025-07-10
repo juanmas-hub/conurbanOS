@@ -52,8 +52,6 @@ func aExecute(proceso globals.Proceso) {
 	globals.ESTADOS.READY = globals.ESTADOS.READY[1:]
 	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE, proceso.Pcb.Pid)
 
-	//log.Printf("Proceso agregado a EXEC. Ahora tiene %d procesos", len(globals.ESTADOS.EXECUTE))
-
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado %s al estado EXECUTE", proceso.Pcb.Pid, estado_anterior))
 }
@@ -75,7 +73,6 @@ func hayCpusLibres() bool {
 
 // Chequea si hay que desalojar. Si hay que desalojar, devuelve el PID que esta ejecutando
 func verificarDesalojo() (int64, bool) {
-	log.Print("Se loqueo en buscarProcesoEnExecute")
 	globals.EstadosMutex.Lock()
 	defer globals.EstadosMutex.Unlock()
 	globals.MapaProcesosMutex.Lock()
@@ -93,7 +90,7 @@ func verificarDesalojo() (int64, bool) {
 
 }
 
-func buscarProcesoEnExecuteDeMenorRafagaRestante() (int64, int64) {
+func buscarProcesoEnExecuteDeMenorRafagaRestante() (int64, float64) {
 	var pidMenorRafaga int64
 	pidMenorRafaga = globals.ESTADOS.EXECUTE[0]
 	for i := range globals.ESTADOS.EXECUTE {
@@ -107,8 +104,13 @@ func buscarProcesoEnExecuteDeMenorRafagaRestante() (int64, int64) {
 	return pidMenorRafaga, rafagaRestante(pidMenorRafaga)
 }
 
-func rafagaRestante(pid int64) int64 {
-	return globals.MapaProcesos[pid].Rafaga.Est_Sgte - int64(time.Now().Sub(globals.MapaProcesos[pid].UltimoCambioDeEstado))
+func rafagaRestante(pid int64) float64 {
+
+	proceso := globals.MapaProcesos[pid]
+	rafaga := proceso.Rafaga.Est_Sgte                                                // float64
+	tiempoPasado := float64(time.Since(proceso.UltimoCambioDeEstado).Milliseconds()) // tiempo en ms
+
+	return rafaga - tiempoPasado
 }
 
 func ordenarReadyPorRafaga() {
@@ -123,10 +125,18 @@ func ordenarReadyPorRafaga() {
 		// Si la rafagaI es menor, la ponemos antes
 		return rafagaI.Est_Sgte < rafagaJ.Est_Sgte
 	})
+
+	var rafagasReady []float64
+	for i := range globals.ESTADOS.READY {
+		// Si la posicion i esta libre
+		pidActual := globals.ESTADOS.READY[i]
+		rafagasReady = append(rafagasReady, globals.MapaProcesos[pidActual].Rafaga.Est_Sgte)
+	}
+	slog.Debug(fmt.Sprintf("Ready ordenado por rafaga: %d, %f", globals.ESTADOS.READY, rafagasReady))
+
 }
 
 func ejecutarUnProceso() {
-	//log.Print("Se quiere loquear MapaProcesos en ejecutarUnProceso")
 	procesoAEjecutar := globals.ESTADOS.READY[0]
 	ip, port, nombre := elegirCPUlibre()
 	globals.MapaProcesosMutex.Lock()
@@ -134,21 +144,18 @@ func ejecutarUnProceso() {
 	globals.MapaProcesosMutex.Unlock()
 	general.EnviarProcesoAEjecutar_ACPU(ip, port, proceso.Pcb.Pid, proceso.Pcb.PC, nombre)
 	aExecute(proceso)
-	//log.Print("Se unloquea MapaProcesos en ejecutarUnProceso")
 }
 
 func desalojarYEnviarProceso(pidEnExec int64) {
 	ipCPU, puertoCPU, nombreCPU, ok := general.BuscarCpuPorPID(pidEnExec)
 	if ok {
 		globals.EstadosMutex.Lock()
-		log.Print("Se loqueo en desalojarYEnviarProceso")
 		globals.MapaProcesosMutex.Lock()
 		pidProcesoAEjecutar := globals.ESTADOS.READY[0]
 		proceso := globals.MapaProcesos[pidProcesoAEjecutar]
 		pcProcesoAEjecutar := proceso.Pcb.PC
 		globals.MapaProcesosMutex.Unlock()
 		globals.EstadosMutex.Unlock()
-		log.Print("Se desloqueo en desalojarYEnviarProceso")
 
 		respuestaInterrupcion, err := general.EnviarInterrupcionACPU(ipCPU, puertoCPU, nombreCPU, pidEnExec)
 		if err != nil {
@@ -156,13 +163,14 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 		}
 		general.ActualizarPC(pidEnExec, respuestaInterrupcion.PC)
 		general.EnviarProcesoAEjecutar_ACPU(ipCPU, puertoCPU, pidProcesoAEjecutar, pcProcesoAEjecutar, nombreCPU)
-		log.Printf("Se desalojo el proceso %d", pidEnExec)
 
 		// LOG Desalojo: ## (<PID>) - Desalojado por algoritmo SJF/SRT
 		slog.Info(fmt.Sprintf("## (%d) - Desalojado por algoritmo SJF/SRT", proceso.Pcb.Pid))
 
 		globals.MapaProcesosMutex.Lock()
+		globals.EstadosMutex.Lock()
 		aExecute(proceso)
+		globals.EstadosMutex.Unlock()
 
 		procesoDesalojado := globals.MapaProcesos[pidEnExec]
 		globals.MapaProcesosMutex.Unlock()
@@ -175,25 +183,21 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 }
 
 func ExecuteAReady(proceso globals.Proceso, razon string) {
-	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	ahora := time.Now()
 	tiempoEnEstado := ahora.Sub(proceso.UltimoCambioDeEstado)
-	ActualizarEstimado(proceso.Pcb.Pid, int64(tiempoEnEstado))
+	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
+	ActualizarEstimado(proceso.Pcb.Pid, float64(tiempoEnEstado.Milliseconds()))
 
 	proceso.Estado_Actual = globals.READY
 	globals.MapaProcesosMutex.Lock()
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
 
-	//log.Print("Se quiere bloquear en ExecuteABlocked")
 	globals.EstadosMutex.Lock()
-	log.Print("Se bloqueo en ExecuteABlocked")
 	pos := buscarProcesoEnExecute(proceso.Pcb.Pid)
 	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE[:pos], globals.ESTADOS.EXECUTE[pos+1:]...)
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
-	//log.Print("Se quiere desbloquear en ExecuteABlocked")
 	globals.EstadosMutex.Unlock()
-	log.Print("Se desbloqueo en ExecuteABlocked")
 
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado EXECUTE al estado READY", proceso.Pcb.Pid))

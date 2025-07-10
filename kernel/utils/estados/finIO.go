@@ -34,20 +34,10 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 
 func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 
-	log.Print("FIn io 1 ")
-
-	log.Print("Se quiere lockear en manejarFinIO")
 	globals.ListaIOsMutex.Lock()
-	log.Print("Lockeada en manejarFinIO")
-
 	io := globals.MapaIOs[finalizacionIo.NombreIO]
-	log.Print(io)
 	posInstanciaIo := general.BuscarInstanciaIO(finalizacionIo.NombreIO, finalizacionIo.PID)
-	log.Print("Se quiere deslockear en manejarFinIO")
 	globals.ListaIOsMutex.Unlock()
-	log.Print("Deslockeada en manejarFinIO")
-
-	log.Print("FIn io 2")
 
 	if posInstanciaIo == -1 {
 		log.Printf("Error buscando instancia de IO de nombre: %s, con el proceso: %d", finalizacionIo.NombreIO, finalizacionIo.PID)
@@ -60,8 +50,6 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 
 	globals.ListaIOsMutex.Lock()
 	globals.MapaIOs[finalizacionIo.NombreIO] = io
-
-	log.Print("FIn io 3")
 
 	//log.Print("Se quiere loquear MapaProcesos en manejarFinIO")
 	globals.MapaProcesosMutex.Lock()
@@ -82,9 +70,6 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 		nuevo_estado = globals.READY
 		BlockedAReady(proceso)
 	}
-	log.Print("FIn io 3.5")
-
-	log.Print("FIn io 4")
 
 	// LOG : Fin de IO: ## (<PID>) finalizó IO y pasa a READY
 	slog.Info(fmt.Sprintf("## (%d) finalizó IO y pasa a %s", finalizacionIo.PID, nuevo_estado))
@@ -108,5 +93,4 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 	globals.MapaIOs[finalizacionIo.NombreIO] = io
 	globals.ListaIOsMutex.Unlock()
 
-	log.Print("FIn io 5")
 }

@@ -2,7 +2,6 @@ package estados
 
 import (
 	"fmt"
-	"log"
 	"log/slog"
 	"time"
 
@@ -12,29 +11,22 @@ import (
 )
 
 func SuspBlockedASuspReady(proceso globals.Proceso) {
-	//log.Print("Se quiere loquear MapaProcesos en SuspBlockedASuspReady")
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.SUSP_READY
 	globals.MapaProcesosMutex.Lock()
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
-	//log.Print("Se unloquea MapaProcesos en SuspBlockedASuspReady")
 
 	pos := buscarProcesoEnSuspBlocked(proceso.Pcb.Pid)
 
 	globals.EstadosMutex.Lock()
-	log.Print("Se loqueo en SuspBlockedASuspReady")
 	globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED[:pos], globals.ESTADOS.SUSP_BLOCKED[pos+1:]...)
 	globals.ESTADOS.SUSP_READY = append(globals.ESTADOS.SUSP_READY, proceso.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
-	log.Print("Se unloqueo en SuspBlockedASuspReady")
-
-	log.Printf("Proceso de PID %d fue movido de Susp Blocked a Susp Ready", proceso.Pcb.Pid)
 
 	globals.DeDondeSeLlamaMutex.Lock()
 	globals.DeDondeSeLlamaPasarProcesosAReady = "SUSP READY"
 	globals.DeDondeSeLlamaMutex.Unlock()
-	//general.Signal(globals.Sem_PasarProcesoAReady)
 	globals.SignalPasarProcesoAReady()
 
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
@@ -42,30 +34,18 @@ func SuspBlockedASuspReady(proceso globals.Proceso) {
 }
 
 func BlockedAReady(proceso globals.Proceso) {
-	//log.Print("Se quiere loquear MapaProcesos en BlockedAReady")
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.READY
 	globals.MapaProcesosMutex.Lock()
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
-	//log.Print("Se unloquea MapaProcesos en BlockedAReady")
 
-	log.Print("Antes de Entro")
 	pos := buscarProcesoEnBlocked(proceso.Pcb.Pid)
-	log.Print("Entro")
 
-	//log.Print("Se quiere bloquear en BlockedAReady")
 	globals.EstadosMutex.Lock()
-	log.Print("Se bloqueo en BlockedAReady")
 	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED[:pos], globals.ESTADOS.BLOCKED[pos+1:]...)
-	globals.ESTADOS.READY = append(globals.ESTADOS.SUSP_READY, proceso.Pcb.Pid)
-	//log.Print("Se quiere desbloquear en BlockedAReady")
+	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
-	log.Print("Se desbloqueo en BlockedAReady")
-
-	log.Printf("Proceso de PID %d fue movido de Blocked a Ready", proceso.Pcb.Pid)
-
-	log.Printf("cantidad de procesos en READY: %+v", len(globals.ESTADOS.READY))
 
 	switch globals.KernelConfig.Scheduler_algorithm {
 	case "FIFO", "SJF":
@@ -80,21 +60,17 @@ func BlockedAReady(proceso globals.Proceso) {
 
 func BlockedASuspBlocked(proceso globals.Proceso) {
 	// Muevo el proceso en la colas
-	//log.Print("Se quiere loquear MapaProcesos en blockedASuspBlocked")
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.SUSP_BLOCKED
 	globals.MapaProcesosMutex.Lock()
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
-	//log.Print("Se unloquea MapaProcesos en blockedASuspBlocked")
 
 	globals.EstadosMutex.Lock()
-	log.Print("Se loqueo en BlockedASuspBlocked")
 	pos := buscarProcesoEnBlocked(proceso.Pcb.Pid)
 	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED[:pos], globals.ESTADOS.BLOCKED[pos+1:]...)
 	globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED, proceso.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
-	log.Print("Se unloqueo en BlockedASuspBlocked")
 
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado BLOCKED al estado SUSP_BLOCKED", proceso.Pcb.Pid))
@@ -102,25 +78,21 @@ func BlockedASuspBlocked(proceso globals.Proceso) {
 }
 
 func ExecuteABlocked(proceso globals.Proceso, razon string) {
-	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	ahora := time.Now()
 	tiempoEnEstado := ahora.Sub(proceso.UltimoCambioDeEstado)
-	planifCorto.ActualizarEstimado(proceso.Pcb.Pid, int64(tiempoEnEstado))
+	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
+	planifCorto.ActualizarEstimado(proceso.Pcb.Pid, float64(tiempoEnEstado.Milliseconds()))
 
 	proceso.Estado_Actual = globals.BLOCKED
 	globals.MapaProcesosMutex.Lock()
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
 
-	//log.Print("Se quiere bloquear en ExecuteABlocked")
 	globals.EstadosMutex.Lock()
-	log.Print("Se bloqueo en ExecuteABlocked")
 	pos := buscarProcesoEnExecute(proceso.Pcb.Pid)
 	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE[:pos], globals.ESTADOS.EXECUTE[pos+1:]...)
 	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED, proceso.Pcb.Pid)
-	//log.Print("Se quiere desbloquear en ExecuteABlocked")
 	globals.EstadosMutex.Unlock()
-	log.Print("Se desbloqueo en ExecuteABlocked")
 
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado EXECUTE al estado BLOCKED", proceso.Pcb.Pid))
@@ -174,10 +146,8 @@ func NewAReady(proceso globals.Proceso_Nuevo) {
 	globals.MapaProcesos[procesoEnReady.Pcb.Pid] = procesoEnReady
 	globals.MapaProcesosMutex.Unlock()
 	globals.EstadosMutex.Lock()
-	log.Print("Se bloqueo en NewAReady")
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, procesoEnReady.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
-	log.Print("Se desbloqueo en NewAReady")
 
 	//log.Printf("cantidad de procesos en READY: %+v", len(globals.ESTADOS.READY))
 
@@ -198,11 +168,9 @@ func SuspReadyAReady(proceso globals.Proceso) {
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
 	globals.EstadosMutex.Lock()
-	log.Print("Se bloqueo en SuspReadyAReady")
 	globals.ESTADOS.SUSP_READY = globals.ESTADOS.SUSP_READY[1:]
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
-	log.Print("Se desbloqueo en SuspReadyAReady")
 	//log.Print("Se unloquea MapaProcesos en suspReadyAReady")
 
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>

@@ -40,11 +40,7 @@ func buscarProcesoEnExecute(pid int64) int64 {
 }
 
 func buscarProcesoEnNew(pid int64) int64 {
-	globals.EstadosMutex.Lock()
-	log.Print("Se loqueo en buscarProcesoEnNew")
 	colaNew := globals.ESTADOS.NEW
-	globals.EstadosMutex.Unlock()
-	log.Print("Se unloqueo en buscarProcesoEnNew")
 
 	var posicion int64
 
@@ -59,11 +55,7 @@ func buscarProcesoEnNew(pid int64) int64 {
 }
 
 func buscarProcesoEnSuspBlocked(pid int64) int64 {
-	globals.EstadosMutex.Lock()
-	log.Print("Se loqueo en buscarProcesoEnSuspBlocked")
 	colaSuspBlocked := globals.ESTADOS.SUSP_BLOCKED
-	globals.EstadosMutex.Unlock()
-	log.Print("Se unloqueo en buscarProcesoEnSuspBlocked")
 
 	var posicion int64
 
@@ -78,12 +70,7 @@ func buscarProcesoEnSuspBlocked(pid int64) int64 {
 }
 
 func buscarProcesoEnSuspReady(pid int64) int64 {
-	globals.EstadosMutex.Lock()
-	log.Print("Se loqueo en buscarProcesoEnSuspReady")
 	colaSuspReady := globals.ESTADOS.SUSP_READY
-	globals.EstadosMutex.Unlock()
-	log.Print("Se unloqueo en buscarProcesoEnSuspReady")
-
 	var posicion int64
 
 	for indice, valor := range colaSuspReady {
@@ -97,12 +84,7 @@ func buscarProcesoEnSuspReady(pid int64) int64 {
 }
 
 func buscarProcesoEnReady(pid int64) int64 {
-	globals.EstadosMutex.Lock()
-	log.Print("Se loqueo en buscarProcesoEnReady")
 	colaReady := globals.ESTADOS.READY
-	globals.EstadosMutex.Unlock()
-	log.Print("Se unloqueo en buscarProcesoEnReady")
-
 	var posicion int64
 
 	for indice, valor := range colaReady {

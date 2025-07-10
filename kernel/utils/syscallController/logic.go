@@ -10,6 +10,7 @@ import (
 	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
 	utils_pl "github.com/sisoputnfrba/tp-golang/kernel/utils/planificadores/planifLargo"
 	utils_pm "github.com/sisoputnfrba/tp-golang/kernel/utils/planificadores/planifMedio"
+	procesos "github.com/sisoputnfrba/tp-golang/kernel/utils/procesos"
 )
 
 func manejarIO(syscallIO globals.SyscallIO) {
@@ -22,6 +23,9 @@ func manejarIO(syscallIO globals.SyscallIO) {
 
 	logSyscalls(syscallIO.PID, "IO")
 
+	// Motivo de Bloqueo: ## (<PID>) - Bloqueado por IO: <DISPOSITIVO_IO>
+	slog.Info(fmt.Sprintf("## (%d) - Bloqueado por IO: %s", syscallIO.PID, syscallIO.NombreIO))
+
 	if !existe {
 		general.FinalizarProceso(syscallIO.PID)
 	} else {
@@ -33,8 +37,6 @@ func manejarIO(syscallIO globals.SyscallIO) {
 		proceso := globals.MapaProcesos[syscallIO.PID]
 		globals.MapaProcesosMutex.Unlock()
 		//log.Print("Se unloquea MapaProcesos en ManejarIO")
-
-		general.LiberarCPU(syscallIO.NombreCPU)
 
 		// Si hay instancias libres, envio solicitud, sino agrego a la cola
 		globals.ListaIOsMutex.Lock()
@@ -54,9 +56,9 @@ func manejarIO(syscallIO globals.SyscallIO) {
 		globals.MapaIOs[nombreIO] = io
 		globals.ListaIOsMutex.Unlock()
 
+		general.LiberarCPU(syscallIO.NombreCPU)
+
 	}
-	// Motivo de Bloqueo: ## (<PID>) - Bloqueado por IO: <DISPOSITIVO_IO>
-	slog.Info(fmt.Sprintf("## (%d) - Bloqueado por IO: %s", syscallIO.PID, syscallIO.NombreIO))
 
 }
 
@@ -99,7 +101,8 @@ func manejarDUMP_MEMORY(syscallDUMP globals.SyscallDump) {
 func manejarEXIT(syscallEXIT globals.SyscallExit) {
 	logSyscalls(syscallEXIT.PID, "EXIT")
 
-	general.FinalizarProceso(syscallEXIT.PID)
+	//general.FinalizarProceso(syscallEXIT.PID)
+	procesos.FinalizarProceso(syscallEXIT.PID)
 	general.LiberarCPU(syscallEXIT.NombreCPU)
 
 }

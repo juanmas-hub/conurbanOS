@@ -30,7 +30,6 @@ func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 	go cp.EjecutarPlanificadorCortoPlazo()
 
 	// El planif largo tiene dos partes:
-	go escucharFinalizacionesDeProcesos()
 	go pasarProcesosAReady()
 
 	CrearProcesoNuevo(archivo, tamanio) // Primer proceso
@@ -54,12 +53,9 @@ func pasarProcesosAReady() {
 					break
 				}
 
-				//log.Print("Se quiere loquear MapaProcesos en PasarProcesosAReady x1")
 				globals.MapaProcesosMutex.Lock()
-				//log.Print("Se loquea MapaProcesos en PasarProcesosAReady x1")
 				proceso := globals.MapaProcesos[pid]
 				globals.MapaProcesosMutex.Unlock()
-				//log.Print("Se unloquea MapaProcesos en PasarProcesosAReady x1")
 				estados.SuspReadyAReady(proceso)
 				lenghtSUSP_READY--
 			}
@@ -67,37 +63,21 @@ func pasarProcesosAReady() {
 			if lenghtSUSP_READY == 0 {
 
 				for len(globals.ESTADOS.NEW) > 0 {
-					//log.Print("Se quiere bloquear en pasarProcesosAReady")
 					globals.EstadosMutex.Lock()
-					log.Print("Se bloqueo en pasarProcesosAReady")
 					procesoNuevo := globals.ESTADOS.NEW[0]
-					globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
-					//log.Print("Se quiere desbloquear en pasarProcesosAReady")
 					globals.EstadosMutex.Unlock()
-					log.Print("Se desbloqueo en pasarProcesosAReady")
 					//slog.Debug(fmt.Sprintf("Solicito iniciar proceso: %d", procesoNuevo.Proceso.Pcb.Pid))
 					if general.SolicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
 						break
 					}
 
+					globals.EstadosMutex.Lock()
+					globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
+					globals.EstadosMutex.Unlock()
 					go estados.NewAReady(procesoNuevo)
 
 				}
-
-				//slog.Debug(fmt.Sprint("Recien sale del for de pasarProcesosAReady"))
 			}
 		}
-	}
-}
-
-func escucharFinalizacionesDeProcesos() {
-	// Queda escuchando en un hilo los procesos que terminan
-	for {
-		general.Wait(globals.Sem_ProcesoAFinalizar)
-		globals.ProcesosAFinalizarMutex.Lock()
-		pid := globals.ProcesosAFinalizar[0]
-		globals.ProcesosAFinalizar = globals.ProcesosAFinalizar[1:]
-		globals.ProcesosAFinalizarMutex.Unlock()
-		go finalizarProceso(pid)
 	}
 }

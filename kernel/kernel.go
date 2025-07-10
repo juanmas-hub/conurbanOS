@@ -32,6 +32,10 @@ func main() {
 		log.Fatal("Uso: go run . archivo tamaño prueba")
 	}
 
+	slog.Debug("    ")
+	slog.Debug("    ")
+	slog.Debug("    ")
+
 	archivo := os.Args[1]
 	tamanioStr := os.Args[2]
 	tamanioProceso, err := strconv.ParseInt(tamanioStr, 10, 64)
