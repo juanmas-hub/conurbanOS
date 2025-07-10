@@ -167,3 +167,8 @@ var Sem = CrearSemaforo(0)
 type RespuestaInterrupcion struct {
 	PC int64 `json:"pc"`
 }
+
+// Interrupcion
+type Interrupcion struct {
+	PID int64 `json:"pid"`
+}

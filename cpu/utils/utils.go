@@ -844,3 +844,20 @@ func Wait(semaforo globals.Semaforo) {
 func Signal(semaforo globals.Semaforo) {
 	semaforo <- struct{}{}
 }
+
+// Interrupcion
+func RecibirInterrupcion(w http.ResponseWriter, r *http.Request) {
+	var pid int64
+	err := json.NewDecoder(r.Body).Decode(&pid)
+	if err != nil {
+		log.Printf("Error al decodificar PID: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar PID"))
+		return
+	}
+
+	log.Printf("PID recibido para interrumpir: %d\n", pid)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
