@@ -158,7 +158,9 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 
 	pageSize = int(globals_memoria.MemoriaConfig.Page_size)
 	indicesNecesarios = (tamanio + pageSize - 1) / pageSize // antes estaba tamanio / pagesize que puede dar mal
+	log.Print("Indices necesarios: ", indicesNecesarios)
 	indicesDisponibles = buscarMarcosDisponibles(indicesNecesarios)
+	log.Print("Indices disponibles: ", indicesDisponibles)
 
 	if indicesDisponibles == nil {
 		log.Printf("Error no hay suficiente espacio para almacenar el proceso %d", pid)
@@ -182,6 +184,9 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	log.Print(instrucciones)
 
 	(*globals_memoria.ProcessManager)[pid] = crearTabla(ENTRIES_PER_PAGE)
+
+	log.Print("Proceso: ", globals_memoria.Procesos[pid])
+	log.Print("Tabla de paginas: ", (*globals_memoria.ProcessManager)[pid])
 
 	return 0
 }
@@ -213,8 +218,10 @@ func eliminarMarcosFisicos(pid int) []globals_memoria.PaginaDTO {
 	if globals_memoria.Procesos[pid].MarcosAsignados == nil {
 		return nil
 	}
+
+	log.Print("El proceso en eliminarMArcosFisicos: ", globals_memoria.Procesos[pid])
 	var marcos *[]globals_memoria.Pagina = &globals_memoria.Procesos[pid].MarcosAsignados
-	log.Print(marcos)
+	log.Print("Marcos en eliminarMArcosFisicos: ", marcos)
 	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
 	var paginasDTO []globals_memoria.PaginaDTO = []globals_memoria.PaginaDTO{}
 
