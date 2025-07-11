@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"time"
 
 	//"fmt"
 	//"bufio"
@@ -32,9 +33,10 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 	var pid int = int(mensaje.Pid)
 	var tamanio int = int(mensaje.Tamanio)
 
-	//var delay int64 = globals_memoria.MemoriaConfig.Memory_delay
-
-	//time.Sleep(time.Duration(delay) * time.Second)
+	var delay int64 = globals_memoria.MemoriaConfig.Memory_delay
+	log.Println("Antes del delay, delay: ", globals_memoria.MemoriaConfig.Memory_delay)
+	time.Sleep(time.Duration(delay) * time.Millisecond)
+	log.Println("Despues del delay")
 
 	if AlmacenarProceso(pid, tamanio, mensaje.ArchivoPseudocodigo) < 0 {
 		w.WriteHeader(http.StatusNotImplemented)
@@ -63,10 +65,10 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 	// Aca empieza la logica
 
 	var pid int = int(mensaje.Pid)
-	//var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
-	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
+	var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
+	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-	//time.Sleep(time.Duration(delay+delayMem) * time.Second)
+	time.Sleep(time.Duration(delay+delayMem) * time.Millisecond)
 
 	(*globals_memoria.Metricas)[pid].BajadasSwap++
 
@@ -104,16 +106,16 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 	var pid int = int(mensaje.Pid)
 
 	if globals_memoria.Procesos[pid].Suspendido {
-		//var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
-		//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
+		var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
+		var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-		//time.Sleep(time.Duration(delay+delayMem) * time.Second)
+		time.Sleep(time.Duration(delay+delayMem) * time.Millisecond)
 		eliminarPaginasSWAP(pid)
 	} else {
 
-		//var delay int64 = globals_memoria.MemoriaConfig.Memory_delay
+		var delay int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-		//time.Sleep(time.Duration(delay) * time.Second)
+		time.Sleep(time.Duration(delay) * time.Millisecond)
 		eliminarMarcosFisicos(pid)
 	}
 
@@ -150,10 +152,10 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
 
-	//var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
-	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
+	var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
+	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-	//time.Sleep(time.Duration(delay+delayMem) * time.Second)
+	time.Sleep(time.Duration(delay+delayMem) * time.Millisecond)
 	var paginasNecesarias int = len(globals_memoria.Procesos[pid].PaginasSWAP)
 
 	if paginasNecesarias != 0 {
@@ -194,9 +196,9 @@ func MemoryDump(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("PID: %d - Memory Dump solicitado", mensaje.Pid)
 
-	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
+	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-	//time.Sleep(time.Duration(delayMem) * time.Second)
+	time.Sleep(time.Duration(delayMem) * time.Millisecond)
 
 	if generarMemoryDump(int(mensaje.Pid)) < 0 {
 		log.Printf("Proceso %d no hizo memory dump", mensaje.Pid)

@@ -116,7 +116,7 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 
 	// Saco la instancia de la cola de instancias
 	posInstanciaIo := BuscarInstanciaIO(desconexionIO.NombreIO, desconexionIO.NombreInstancia)
-	if posInstanciaIo == -2 {
+	if posInstanciaIo < 0 {
 		log.Printf("Error buscando la instancia de IO de IP: %s, puerto: %d, que tendría el proceso: %d", desconexionIO.Ip, desconexionIO.Puerto, pidProceso)
 	}
 	io.Instancias = append(io.Instancias[:posInstanciaIo], io.Instancias[posInstanciaIo+1:]...)

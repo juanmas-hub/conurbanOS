@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"time"
 
 	//"fmt"
 	//"bufio"
@@ -25,9 +26,9 @@ func ActualizarTablaDePaginas(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
 	}
-	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
+	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-	//time.Sleep(time.Duration(delayMem) * time.Second)
+	time.Sleep(time.Duration(delayMem) * time.Millisecond)
 	actualizarTablaPaginas(int(mensaje.Pid), mensaje.Indices)
 
 	log.Printf("Proceso %d actualizo tabla correctamente", mensaje.Pid)
@@ -49,9 +50,9 @@ func ObtenerMarcoProceso(w http.ResponseWriter, r *http.Request) {
 	var pid int = int(mensaje.Pid)
 	var primerIndice int = int(mensaje.PrimerIndice)
 	var marco int
-	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
+	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-	//time.Sleep(time.Duration(delayMem) * time.Second)
+	time.Sleep(time.Duration(delayMem) * time.Millisecond)
 	marco = obtenerMarcoDesdeTabla(pid, primerIndice)
 
 	if marco < 0 {
@@ -93,9 +94,9 @@ func LeerPagina(w http.ResponseWriter, r *http.Request) {
 	var indicePagina int = int(mensaje.IndicePagina)
 	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
 	var dato string
-	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
+	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-	//time.Sleep(time.Duration(delayMem) * time.Second)
+	time.Sleep(time.Duration(delayMem) * time.Millisecond)
 	if indicePagina%pageSize != 0 {
 		log.Printf("Error, el indice enviado (%v) no es multiplo de %v", indicePagina, pageSize)
 		w.WriteHeader(http.StatusBadRequest)
@@ -136,9 +137,9 @@ func ActualizarPagina(w http.ResponseWriter, r *http.Request) {
 	var indicePagina int = int(mensaje.IndicePagina)
 	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
 	var dato string = string(mensaje.Dato)
-	//var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
+	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-	//time.Sleep(time.Duration(delayMem) * time.Second)
+	time.Sleep(time.Duration(delayMem) * time.Millisecond)
 	if indicePagina%pageSize != 0 {
 		log.Printf("Error, el indice enviado (%v) no es multiplo de %v", indicePagina, pageSize)
 		w.WriteHeader(http.StatusBadRequest)
