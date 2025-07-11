@@ -34,10 +34,7 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 	var tamanio int = int(mensaje.Tamanio)
 
 	var delay int64 = globals_memoria.MemoriaConfig.Memory_delay
-	log.Println("Antes del delay, delay: ", globals_memoria.MemoriaConfig.Memory_delay)
 	time.Sleep(time.Duration(delay) * time.Millisecond)
-	log.Println("Despues del delay")
-
 	if AlmacenarProceso(pid, tamanio, mensaje.ArchivoPseudocodigo) < 0 {
 		w.WriteHeader(http.StatusNotImplemented)
 		w.Write([]byte("notImplemented"))
@@ -174,7 +171,7 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("No se renaudo por error al eliminar paginas swap"))
 			return
 		}
-		log.Print(paginasDTO)
+		log.Print("Paginas en ReanudarProceso", paginasDTO)
 		escribirPaginas(paginasDTO, marcosDisponibles)
 	}
 	globals_memoria.Procesos[pid].Suspendido = false
