@@ -5,6 +5,7 @@ import (
 	//"fmt"
 	"bufio"
 	"log"
+
 	//"net/http"
 	"os"
 	"strings"
@@ -27,7 +28,7 @@ func CalcularMock() int {
 
 func abrirArchivo(filename string) *os.File {
 
-	var rutaArchivo string = globals_memoria.MemoriaConfig.Scripts_path + filename + ".txt"
+	var rutaArchivo string = globals_memoria.MemoriaConfig.Scripts_path + filename
 
 	log.Println("Intentando acceder a la direccion: ", rutaArchivo)
 
@@ -39,7 +40,7 @@ func abrirArchivo(filename string) *os.File {
 	return file
 }
 
-func abrirArchivoBinario() *os.File{
+func abrirArchivoBinario() *os.File {
 	var ruta string = globals_memoria.MemoriaConfig.Swapfile_path
 
 	archivo, err := os.OpenFile(ruta, os.O_RDWR|os.O_CREATE, 0644)
@@ -83,4 +84,23 @@ func verificarPIDUnico(pid int) int {
 		return 1
 	}
 	return 0
+}
+
+func IncrementarMetrica(metrica string, pid int, cantidad int) {
+	switch metrica {
+	case "ACCESOS_TABLAS":
+		(*globals_memoria.Metricas)[pid].AccesosTablas += cantidad
+	case "INSTRUCCIONES_SOLICITADAS":
+		(*globals_memoria.Metricas)[pid].InstruccionesSolicitadas += cantidad
+	case "BAJADAS_SWAP":
+		(*globals_memoria.Metricas)[pid].BajadasSwap += cantidad
+	case "SUBIDAS_MEMORIA":
+		(*globals_memoria.Metricas)[pid].SubidasMemoria += cantidad
+	case "LECTURAS_MEMORIA":
+		(*globals_memoria.Metricas)[pid].LecturasMemoria += cantidad
+	case "ESCRITURAS_MEMORIA":
+		(*globals_memoria.Metricas)[pid].EscriturasMemoria += cantidad
+	default:
+		log.Printf("Métrica desconocida: %s\n", metrica)
+	}
 }

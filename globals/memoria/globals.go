@@ -36,8 +36,12 @@ var Metricas *MetricasMap
 
 // Entrada de una tabla de páginas
 type EntradaTablaPagina struct {
+	Nivel		   int
 	Pagina         int
 	Marco          int
+	Presencia	   int
+	Uso 		   int	
+	Modificado	   int	
 	SiguienteNivel *TablaDePaginas // Ya se inicializa por defecto como null
 }
 
@@ -53,23 +57,22 @@ var Memoria []byte
 
 var MemoriaMarcosOcupados []bool
 
-
-type PaginaDTO struct{
+type PaginaDTO struct {
 	Contenido string
-	Entrada *EntradaTablaPagina
-} 
+	Entrada   *EntradaTablaPagina
+}
 
-type Pagina struct{
-	IndiceAsignado int
+type Pagina struct {
+	IndiceAsignado     int
 	IndiceSwapAsignado int
-	EntradaAsignada *EntradaTablaPagina
+	EntradaAsignada    *EntradaTablaPagina
 }
 
 type Proceso struct {
-	Pseudocodigo []string
+	Pseudocodigo    []string
 	MarcosAsignados []Pagina
-	Suspendido bool
-	PaginasSWAP []Pagina
+	Suspendido      bool
+	PaginasSWAP     []Pagina
 }
 
 type ProcesosMap map[int]*Proceso
@@ -78,8 +81,8 @@ var Procesos ProcesosMap
 
 type IniciarProcesoDTO struct {
 	ArchivoPseudocodigo string `json:"archivo_pseudocodigo"`
-	Tamanio              int64 `json:"tamanio"`
-	Pid                  int64 `json:"pid"`
+	Tamanio             int64  `json:"tamanio"`
+	Pid                 int64  `json:"pid"`
 }
 
 type PidDTO struct {
@@ -92,23 +95,23 @@ type InstruccionDTO struct {
 }
 
 type LecturaDTO struct {
-	Pid int64 `json:"pid"`
+	Pid      int64 `json:"pid"`
 	Posicion int64 `json:"posicion"`
-	Tamanio int64 `json:"tamanio"`
+	Tamanio  int64 `json:"tamanio"`
 }
 
 type EscrituraDTO struct {
-	Pid int64 `json:"pid"`
-	Posicion int64 `json:"posicion"`
-	Dato string `json:"dato"`
+	Pid      int64  `json:"pid"`
+	Posicion int64  `json:"posicion"`
+	Dato     string `json:"dato"`
 }
 type TablaDTO struct {
-	Pid int64 `json:"pid"`
+	Pid     int64 `json:"pid"`
 	Indices []int `json:"indices"`
 }
 
 type ConsultaPaginaDTO struct {
-	Pid int64 `json:"pid"`
+	Pid          int64 `json:"pid"`
 	PrimerIndice int64 `json:"primer_indice"`
 }
 
@@ -117,9 +120,11 @@ type LeerPaginaDTO struct {
 }
 
 type ActualizarPaginaDTO struct {
-	IndicePagina int64 `json:"indice_pagina"`
-	Dato []byte `json:"dato"`
+	IndicePagina int64  `json:"indice_pagina"`
+	Dato         []byte `json:"dato"`
 }
+
+var Prueba string
 
 var ListaPaginasSwapDisponibles []Pagina
 

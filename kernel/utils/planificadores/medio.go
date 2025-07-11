@@ -1,18 +1,17 @@
-package utils_planifMedio
+package planificadores
 
 import (
 	"log"
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
-	estados "github.com/sisoputnfrba/tp-golang/kernel/utils/estados"
 	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
 )
 
 // Se llama cuando un proceso de execute se bloquea (IO o DUMP)
 func EjecutarPlanificadorMedioPlazo(proceso globals.Proceso, razon string) {
 
-	estados.ExecuteABlocked(proceso, razon)
+	ExecuteABlocked(proceso, razon)
 
 	globals.CantidadSesionesIOMutex.Lock()
 	cantidadSesiones := globals.CantidadSesionesIO[proceso.Pcb.Pid]
@@ -36,7 +35,6 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 
 	globals.MapaProcesosMutex.Lock()
 	procesoActualmente := globals.MapaProcesos[proceso.Pcb.Pid]
-	globals.MapaProcesosMutex.Unlock()
 
 	// Comparo cantidad de sesiones:
 	// 		- Son iguales: es la misma sesion => me fijo si swappeo
@@ -50,14 +48,15 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 			general.AvisarSwappeo(procesoActualmente.Pcb.Pid)
 
 			// Cambio de estado
-			estados.BlockedASuspBlocked(proceso)
+			BlockedASuspBlocked(proceso)
 
 			// Libere espacio => llamo a nuevos procesos
 			globals.DeDondeSeLlamaMutex.Lock()
 			globals.DeDondeSeLlamaPasarProcesosAReady = "Susp Blocked"
 			globals.DeDondeSeLlamaMutex.Unlock()
-			general.Signal(globals.Sem_PasarProcesoAReady)
+			globals.SignalPasarProcesoAReady()
 		}
 	}
 	globals.CantidadSesionesIOMutex.Unlock()
+	globals.MapaProcesosMutex.Unlock()
 }

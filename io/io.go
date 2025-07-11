@@ -18,33 +18,30 @@ import (
 )
 
 func main() {
+	// Handshake al kernel
+	if len(os.Args) != 3 {
+		log.Fatal("Error. El formato es: nombreInstanciaIO, prueba")
+	}
+	globals.NombreInstancia = os.Args[1]
+	prueba := os.Args[2]
 
 	// Configuración
-	utils_logger.ConfigurarLogger("io.log")
-	globals.IoConfig = utils_io.IniciarConfiguracion("config.json")
+	utils_logger.ConfigurarLogger(globals.NombreInstancia + ".log")
+	log.Print(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + globals.NombreInstancia + ".config")
+	globals.IoConfig = utils_io.IniciarConfiguracion(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + globals.NombreInstancia + ".config")
 	if globals.IoConfig == nil {
 		log.Fatal("No se pudo iniciar el config")
 	}
 
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.IoConfig.LogLevel))
 
-	// Cliente (mando mensaje a kernel)
-	mensaje := "Mensaje desde IO"
-	utils_io.EnviarMensajeAKernel(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel, mensaje)
-
 	// Canal para indicar que hemos terminado
 	done := make(chan bool, 1)
-
-	// Handshake al kernel
-	if len(os.Args) != 2 {
-		log.Fatal("No se paso como argumento el nombre de IO") //por ej:  go run . nombreIO
-	}
-	globals.NombreIO = os.Args[1]
 
 	utils_io.HandshakeAKernel(
 		globals.IoConfig.IpKernel,
 		globals.IoConfig.PortKernel,
-		globals.NombreIO,
+		globals.IoConfig.NombreIO,
 		globals.IoConfig.IpIO,
 		globals.IoConfig.PortIO,
 	)
@@ -67,8 +64,6 @@ func main() {
 	// Servidor
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/mensajeDeKernel", utils_io.RecibirMensajeDeKernel)
-	// Todavia no se usa
 	mux.HandleFunc("/solicitudDeIo", utils_io.RecibirSolicitudDeKernel)
 
 	puerto := globals.IoConfig.PortIO

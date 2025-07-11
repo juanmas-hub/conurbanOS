@@ -46,7 +46,6 @@ func escribir(direccion int, dato string) int {
 
 func escribirPaginas(paginasDTO []globals_memoria.PaginaDTO, marcos []int) {
 	var direccion int
-
 	for i := 0; i < len(marcos); i++ {
 		direccion = marcos[i] * int(globals_memoria.MemoriaConfig.Page_size)
 
@@ -54,18 +53,21 @@ func escribirPaginas(paginasDTO []globals_memoria.PaginaDTO, marcos []int) {
 			log.Println("No se pudo escribir la pagina")
 			return
 		}
+		log.Print(paginasDTO[i])
 		paginasDTO[i].Entrada.Marco = marcos[i]
+		paginasDTO[i].Entrada.Modificado = 0
+		paginasDTO[i].Entrada.Presencia = 1
+		paginasDTO[i].Entrada.Uso = 0
 		globals_memoria.MemoriaMarcosOcupados[marcos[i]] = true
-
 	}
 }
 
 func actualizarPagina(indicePagina int, dato string) {
-	// INDICE PAGINA DEBE SER MULTIPLO DEL TAMAÑO DE PAGINA
 	// Se sobrescribe el dato
 	for i := 0; i < len(dato); i++ {
 		globals_memoria.Memoria[indicePagina+i] = dato[i]
 	}
+
 }
 
 func crearTabla(entradasPorPagina int64) *globals_memoria.TablaDePaginas {
@@ -92,7 +94,7 @@ func buscarMarcosDisponibles(cantidad int) []int {
 
 func actualizarTablaPaginas(pid int, indices []int) {
 
-	(*globals_memoria.Metricas)[pid].AccesosTablas++
+	IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
 
 	var ENTRIES_PER_PAGE int64 = globals_memoria.MemoriaConfig.Entries_per_page
 	var tablaActual *globals_memoria.TablaDePaginas = (*globals_memoria.ProcessManager)[pid]
@@ -115,8 +117,10 @@ func actualizarTablaPaginas(pid int, indices []int) {
 		tablaActual.Entradas[indiceActual].Pagina = indiceActual
 		tablaActual.Entradas[indiceActual].Marco = indiceSiguiente
 
-		log.Printf("Nivel %d: pagina %d y marco %d", i+1, tablaActual.Entradas[indiceActual].Pagina, tablaActual.Entradas[indiceActual].Marco)
+		tablaActual.Entradas[indiceActual].Nivel = i + 1
 
+		log.Printf("Nivel %d: pagina %d y marco %d", i+1, tablaActual.Entradas[indiceActual].Pagina, tablaActual.Entradas[indiceActual].Marco)
+		IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
 		tablaActual = tablaActual.Entradas[indiceActual].SiguienteNivel
 
 	}
@@ -153,7 +157,7 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	var indicesDisponibles []int
 
 	pageSize = int(globals_memoria.MemoriaConfig.Page_size)
-	indicesNecesarios = tamanio / pageSize
+	indicesNecesarios = (tamanio + pageSize - 1) / pageSize // antes estaba tamanio / pagesize que puede dar mal
 	indicesDisponibles = buscarMarcosDisponibles(indicesNecesarios)
 
 	if indicesDisponibles == nil {
@@ -250,7 +254,7 @@ func eliminarMarcosFisicos(pid int) []globals_memoria.PaginaDTO {
 func generarMemoryDump(pid int) int {
 	var marcos []globals_memoria.Pagina = globals_memoria.Procesos[pid].MarcosAsignados
 	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
-	var directorio string = globals_memoria.MemoriaConfig.Dump_path
+	var directorio string = globals_memoria.MemoriaConfig.Dump_path + globals_memoria.Prueba
 
 	if marcos == nil || len(marcos) == 0 {
 		log.Printf("No hay marcos asignados para el proceso %d. No se genera dump.", pid)
@@ -259,6 +263,13 @@ func generarMemoryDump(pid int) int {
 
 	var timestamp string = time.Now().Format("20060102-150405") // YYYYMMDD-HHMMSS
 	var nombreArchivo string = fmt.Sprintf("%s/%d-%s.dmp", directorio, pid, timestamp)
+
+	// Crear la carpeta si no existe
+	err := os.MkdirAll(directorio, os.ModePerm)
+	if err != nil {
+		log.Printf("Error al crear el directorio de dump: %v", err)
+		return -1
+	}
 
 	archivo, err := os.Create(nombreArchivo)
 	if err != nil {

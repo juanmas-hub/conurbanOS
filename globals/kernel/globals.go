@@ -6,16 +6,16 @@ import (
 )
 
 type Kernel_Config struct {
-	Ip_memory           string `json:"ip_memory"`
-	Port_memory         int64  `json:"port_memory"`
-	Ip_kernel           string `json:"ip_kernel"`
-	Port_kernel         int64  `json:"port_kernel"`
-	Scheduler_algorithm string `json:"scheduler_algorithm"`
-	New_algorithm       string `json:"ready_ingress_algorithm"`
-	Alpha               int64  `json:"alpha"`
-	Suspension_time     int64  `json:"suspension_time"`
-	Log_level           string `json:"log_level"`
-	Initial_estimate    int64  `json:"initial_estimate"`
+	Ip_memory           string  `json:"ip_memory"`
+	Port_memory         int64   `json:"port_memory"`
+	Ip_kernel           string  `json:"ip_kernel"`
+	Port_kernel         int64   `json:"port_kernel"`
+	Scheduler_algorithm string  `json:"scheduler_algorithm"`
+	New_algorithm       string  `json:"ready_ingress_algorithm"`
+	Alpha               float64 `json:"alpha"`
+	Suspension_time     int64   `json:"suspension_time"`
+	Log_level           string  `json:"log_level"`
+	Initial_estimate    int64   `json:"initial_estimate"`
 }
 
 var KernelConfig *Kernel_Config
@@ -51,6 +51,13 @@ type Handshake struct {
 	Puerto int64  `json:"puerto"`
 }
 
+type HandshakeIO struct {
+	NombreIO        string `json:"nombre_io"`
+	NombreInstancia string `json:"nombre_instancia"`
+	IP              string `json:"ip"`
+	Puerto          int64  `json:"puerto"`
+}
+
 type ListaCpu struct {
 	Handshake Handshake
 	EstaLibre bool
@@ -63,7 +70,7 @@ type EntradaMapaIO struct {
 }
 
 type InstanciaIO struct {
-	Handshake        Handshake
+	Handshake        HandshakeIO
 	PidProcesoActual int64 // PID del proceso actual que esta en esta IO | Si es -1 no hay procesos
 }
 
@@ -86,14 +93,10 @@ var PLANIFICADOR_LARGO_PLAZO_BLOCKED bool = true
 // Semaforos
 type Semaforo chan struct{} // es un tipo que ocupa 0 bytes, entonces puedo hacer los semaforos mas eficientes
 func CrearSemaforo(maxTareas int) Semaforo {
-	semaforo := make(Semaforo, maxTareas)
-	for i := 0; i < maxTareas; i++ {
-		semaforo <- struct{}{}
-	}
-	return semaforo
+	return make(Semaforo, maxTareas) // canal buffered, pero vacío inicialmente
 }
 
-var Sem_Cpus = CrearSemaforo(0)
+var Sem_Cpus = CrearSemaforo(1000)
 
 // Empieza en 0:
 //		+ Aumenta cuando sea conecta una CPU, o un proceso sale de CPU (hay cpus libres para usar)
@@ -101,14 +104,22 @@ var Sem_Cpus = CrearSemaforo(0)
 
 // Estructuras para manejo de procesos
 
-var Sem_ProcesosEnReady = CrearSemaforo(0)
+var Sem_ProcesosEnReady = CrearSemaforo(1000)
 
 // Es un contador de los procesos que hay en Ready: sirve para que no loopee infinito en el planificador de corto plazo
 
 var Sem_ProcesoAFinalizar = CrearSemaforo(0)
 var ProcesosAFinalizar []int64
 
-var Sem_PasarProcesoAReady = CrearSemaforo(0)
+// var Sem_PasarProcesoAReady = CrearSemaforo(0)
+var Sem_PasarProcesoAReady chan struct{} = make(chan struct{}, 1000) // buffer grande = acumulador de signals
+func SignalPasarProcesoAReady() {
+	Sem_PasarProcesoAReady <- struct{}{}
+}
+
+func WaitPasarProcesoAReady() {
+	<-Sem_PasarProcesoAReady
+}
 
 // Con el semaforo le aviso al planificador de largo plazo que hay un proceso para finalizar
 // En el slice le pongo el PID
@@ -148,9 +159,9 @@ type PCB struct {
 }
 
 type Rafagas struct {
-	Est_Ant  int64
-	Raf_Ant  int64
-	Est_Sgte int64
+	Est_Ant  float64
+	Raf_Ant  float64
+	Est_Sgte float64
 }
 
 type Proceso struct {
@@ -192,15 +203,17 @@ type SolicitudIO struct {
 }
 
 type FinalizacionIO struct {
-	PID      int64  `json:"pid"`
-	NombreIO string `json:"nombre"`
+	PID             int64  `json:"pid"`
+	NombreIO        string `json:"nombre_io"`
+	NombreInstancia string `json:"nombre_instancia"`
 }
 
 type DesconexionIO struct {
-	NombreIO string `json:"nombre"`
-	PID      int64  `json:"pid"`
-	Ip       string `json:"ip"`
-	Puerto   int64  `json:"port"`
+	NombreIO        string `json:"nombre"`
+	NombreInstancia string `json:"nombre_instancia"`
+	PID             int64  `json:"pid"`
+	Ip              string `json:"ip"`
+	Puerto          int64  `json:"port"`
 }
 
 // Sycalls

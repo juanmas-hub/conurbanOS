@@ -14,6 +14,7 @@ import (
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/cpu"
 	globals_cpu "github.com/sisoputnfrba/tp-golang/globals/cpu"
+	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
 func IniciarConfiguracion(filePath string) *globals.Cpu_Config {
@@ -28,41 +29,6 @@ func IniciarConfiguracion(filePath string) *globals.Cpu_Config {
 	jsonParser.Decode(&config)
 
 	return config
-}
-
-func EnviarMensaje(ip string, puerto int64, mensajeTxt string) {
-	mensaje := globals.Mensaje{Mensaje: mensajeTxt}
-	body, err := json.Marshal(mensaje)
-	if err != nil {
-		log.Printf("error codificando mensaje: %s", err.Error())
-	}
-
-	// Posible problema con el int64 del puerto
-	url := fmt.Sprintf("http://%s:%d/mensajeDeCpu", ip, puerto)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
-	if err != nil {
-		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
-	}
-
-	log.Printf("respuesta del servidor: %s", resp.Status)
-}
-
-func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var mensaje globals.Mensaje
-	err := decoder.Decode(&mensaje)
-	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Error al decodificar mensaje"))
-		return
-	}
-
-	log.Println("Me llego un mensaje de Kernel")
-	log.Printf("%+v\n", mensaje)
-
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
 }
 
 func HandshakeAKernel(ip string, puerto int64, nombreCPU string, ipCPU string, puertoCPU int64) {
@@ -276,6 +242,8 @@ const (
 	ERROR_EJECUCION
 )
 
+var Tamañopag = 0
+
 func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (ResultadoEjecucion, error) {
 	switch instDeco.Nombre { //En cada caso habria que extraer los parametros del string y pasarlos a una variable de su tipo de dato, luego ejecutar la logica correspondiente
 	// Tambien hay que actualizar el PC, hacerle ++ o actualizarlo al valor del GOTO
@@ -284,7 +252,24 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 		pcb.PC++
 		return CONTINUAR_EJECUCION, nil
 	case "WRITE":
-		//pasar direccion logica por mmu y mandarle la fisica a memoria junto el dato a escribir
+		direccionLog, err := strconv.ParseInt(instDeco.Parametros[0], 10, 64)
+		if err != nil {
+			fmt.Printf("Error al convertir '%s': %v\n", instDeco.Parametros[0], err)
+		} else {
+			fmt.Printf("'%s' convertido a int64: %d\n", instDeco.Parametros[0], direccionLog)
+		}
+		entradas, desplazamiento, paginaVirtual := ExtraerEntradasYDesplazamiento(direccionLog, globals_memoria.MemoriaConfig.Page_size, globals.CpuConfig.Tlb_entries, globals_memoria.MemoriaConfig.Number_of_levels)
+		entradaCache, encontrado, err := BuscarPaginaEnCache(paginaVirtual, pcb.Pid)
+		if err != nil {
+			fmt.Printf("Error al buscar pagina en cache: %s\n", err)
+		} else {
+			fmt.Printf("entradaCache encontrada para pagina: %d\n", entradaCache.Pagina)
+		}
+
+		if !encontrado {
+			ConseguirDireccionFisica(paginaVirtual, desplazamiento, pcb.Pid, entradas)
+		}
+
 		pcb.PC++
 		return CONTINUAR_EJECUCION, nil
 	case "READ":
@@ -359,6 +344,32 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 		return PONERSE_ESPERA, nil
 	}
 	return PONERSE_ESPERA, fmt.Errorf("instruccion desconocida: %s", instDeco.Nombre)
+}
+
+func ConseguirDireccionFisica(paginaVirtual int64, desplazamiento int64, pid int64, entradas []int64) (int64, error) {
+	if globals.CpuConfig.Tlb_entries > 0 {
+		marco, encontrado := BuscarMarcoEnTLB(paginaVirtual, pid)
+		if encontrado {
+			direccionFisica := TraducirLogicaAFisica(marco, desplazamiento, globals_memoria.MemoriaConfig.Page_size)
+			return direccionFisica, nil
+		} else { //si hay tlb pero no esta el marco pide marco a memoria
+			marco, err := PedirMarcoDePagina(pid, entradas)
+			if err != nil {
+				return -1, fmt.Errorf("Error pidiendo marco")
+			}
+			direccionFisica := TraducirLogicaAFisica(marco, desplazamiento, globals_memoria.MemoriaConfig.Page_size)
+			CargarTLB(paginaVirtual, marco, pid, globals.Tlb)
+			return direccionFisica, nil
+		}
+	} else { //si no hay tlb pide marco a memoria
+		marco, err := PedirMarcoDePagina(pid, entradas)
+		if err != nil {
+			return -1, fmt.Errorf("Error pidiendo marco")
+		}
+		direccionFisica := TraducirLogicaAFisica(marco, desplazamiento, globals_memoria.MemoriaConfig.Page_size)
+		return direccionFisica, nil
+	}
+
 }
 
 func RecibirProcesoAEjecutar(w http.ResponseWriter, r *http.Request) {
@@ -443,7 +454,7 @@ func EnviarDUMPAKernel(syscallData globals_cpu.SyscallDump) error {
 		return fmt.Errorf("error codificando struct SYSCALL: %w", err)
 	}
 
-	url := fmt.Sprintf("http://%s:%d/syscallEXIT", globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel)
+	url := fmt.Sprintf("http://%s:%d/syscallDUMP_MEMORY", globals.CpuConfig.Ip_kernel, globals.CpuConfig.Port_kernel)
 
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
@@ -457,7 +468,7 @@ func EnviarDUMPAKernel(syscallData globals_cpu.SyscallDump) error {
 		return fmt.Errorf("kernel respondió con error al recibir SYSCALL (%d %s): %s", resp.StatusCode, resp.Status, respBody.String())
 	}
 
-	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "EXIT", resp.Status)
+	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "DUMP", resp.Status)
 	return nil
 }
 
@@ -485,8 +496,8 @@ func EnviarINITAKernel(syscallData globals_cpu.SyscallInit) error {
 	return nil
 }
 
-func NuevaCache(capacidad int64, algoritmo string) *globals.Cache { //CREA EL CACHE
-	return &globals.Cache{
+func NuevaCache(capacidad int64, algoritmo string) { //INICIALIZA EL CACHE
+	globals.ElCache = &globals.Cache{
 		Entries:            make([]globals.CacheEntry, 0, capacidad), //crea lista de paginas con capacidad de paginas de cache definida (capacidad viene en config)
 		PaginaIndex:        make(map[int64]int),                      //genera el map
 		Capacidad:          capacidad,
@@ -495,22 +506,85 @@ func NuevaCache(capacidad int64, algoritmo string) *globals.Cache { //CREA EL CA
 	}
 }
 
-func NuevaTLB(capacidad int64, algoritmo string) *globals.TLB { //CREA LA TLB
-	return &globals.TLB{
+func NuevaTLB(capacidad int64, algoritmo string) { //CREA LA TLB
+	globals_cpu.Tlb = &globals.TLB{
 		Entries:            make([]globals.TLBentry, 0, capacidad), //crea lista de paginas con capacidad de la TLB (capacidad viene en config)
 		PaginaIndex:        make(map[int64]int),
 		Capacidad:          capacidad,
 		AlgoritmoReemplazo: algoritmo,
+		FIFOindex:          0,
 	}
 }
 
 //FUNCIONES QUE NOS FALTAN
 
+func BuscarPaginaEnCache(paginaVirtual int64, pid int64) (*globals.CacheEntry, bool, error) {
+
+	// 1. Intentar encontrar la página virtual en el mapa auxiliar
+	index, found := globals.ElCache.PaginaIndex[paginaVirtual]
+
+	if found {
+		// ¡Cache Hit! La página fue encontrada.
+		// AHORA, ¡VERIFICAR EL PID! Esto es CRÍTICO para el aislamiento entre procesos.
+		// Una página virtual con el mismo número pero de un PID diferente NO es un hit.
+		if globals.ElCache.Entries[index].PID != pid {
+			log.Printf("PID %d: Cache Miss por PID mismatch para Pagina %d (Encontró PID %d en caché)",
+				pid, paginaVirtual, globals.ElCache.Entries[index].PID)
+			return nil, false, nil // Es un miss para este PID
+		}
+
+		// Si llegamos aquí, la página y el PID coinciden: ¡Es un verdadero Cache Hit!
+		entradaCache := &globals.ElCache.Entries[index] // Obtenemos una referencia a la entrada
+
+		// 2. Actualizar el bit de referencia para algoritmos de reemplazo (CLOCK/CLOCK-M)
+		entradaCache.R = true // Se ha accedido a esta página
+
+		log.Printf("PID %d: Cache Hit para Pagina %d(Referenced bit actualizado)",
+			pid, paginaVirtual) // Asumiendo que Marco es parte de PageCacheEntry
+
+		return entradaCache, true, nil // Devolvemos la entrada y true (indicando hit)
+
+	} else {
+		// Cache Miss: La página no fue encontrada en la caché.
+		log.Printf("PID %d: Cache Miss para Pagina %d", pid, paginaVirtual)
+		return nil, false, nil // Devolvemos nil, false (indicando miss) y sin error
+	}
+}
+
+func BuscarMarcoEnTLB(paginaVirtual int64, pid int64) (int64, bool) {
+	index, found := globals.Tlb.PaginaIndex[paginaVirtual]
+	if found {
+
+		if globals.Tlb.Entries[index].PID != pid {
+			log.Printf("PID %d: TLB Miss por PID mismatch para Pagina %d (Encontró PID %d)",
+				pid, paginaVirtual, globals.Tlb.Entries[index].PID)
+			return -1, false // No es un hit para este PID
+		}
+
+		marco := globals.Tlb.Entries[index].Marco
+
+		// Si el algoritmo es LRU, actualizamos el Timestamp para marcarla como "usada recientemente"
+		if globals.Tlb.AlgoritmoReemplazo == "LRU" {
+			globals.Tlb.Entries[index].Timestamp = time.Now().UnixNano()
+			log.Printf("PID %d: TLB Hit para Pagina %d, Marco %d (LRU: Timestamp actualizado)", paginaVirtual, marco, pid)
+		} else {
+			log.Printf("PID %d: TLB Hit para Pagina %d, Marco %d", pid, paginaVirtual, marco)
+		}
+
+		return marco, true // Devolvemos el marco encontrado y true (indicando hit)
+
+	} else {
+		// TLB Miss: La traducción no fue encontrada en la TLB.
+		log.Printf("PID %d: TLB Miss para Pagina %d", pid, paginaVirtual)
+		return -1, false // Devolvemos -1 y false (indicando miss)
+	}
+}
+
 // (1) funcion que extraiga Entrada, Indice y Desplazamiento de la direccion logica
 // Devuelve:
 // entradas: slice con la entrada correspondiente a cada nivel (de 1 a N),
 // desplazamiento: el desplazamiento dentro de la página.
-func ExtraerEntradasYDesplazamiento(direccionLogica, tamanioPagina, cantEntradasTabla, niveles int64) ([]int64, int64) {
+func ExtraerEntradasYDesplazamiento(direccionLogica, tamanioPagina, cantEntradasTabla, niveles int64) ([]int64, int64, int64) {
 	nroPagina := direccionLogica / tamanioPagina
 	entradas := make([]int64, niveles)
 	for x := int64(1); x <= niveles; x++ {
@@ -522,7 +596,7 @@ func ExtraerEntradasYDesplazamiento(direccionLogica, tamanioPagina, cantEntradas
 		entradas[x-1] = entradaX
 	}
 	desplazamiento := direccionLogica % tamanioPagina
-	return entradas, desplazamiento
+	return entradas, desplazamiento, nroPagina
 }
 
 // (2) funcion que traduzca funcion logica a fisica teniendo el marco
@@ -608,14 +682,63 @@ func buscarVictimaCLOCKM(c *globals.Cache) int {
 }
 
 // (4) funcion que inserte o reemplace en TLB cuando esta llena, con el algoritmo elegido
+func ReemplazarEnTLB(nuevaEntrada globals.TLBentry, tlb *globals.TLB) error {
+
+	if len(tlb.Entries) < int(tlb.Capacidad) {
+		return fmt.Errorf("error interno: la TLB no está llena, no se debería llamar a ReemplazarEnTLB")
+	}
+
+	var indiceVictima int
+
+	switch tlb.AlgoritmoReemplazo {
+	case "FIFO":
+		indiceVictima = tlb.FIFOindex
+
+	case "LRU":
+		minTimestamp := int64(-1)
+		foundVictim := false
+
+		for i, entry := range tlb.Entries {
+			if !foundVictim || entry.Timestamp < minTimestamp {
+				minTimestamp = entry.Timestamp
+				indiceVictima = i
+				foundVictim = true
+			}
+		}
+
+		if !foundVictim {
+			return fmt.Errorf("error LRU: no se encontró una víctima para reemplazar")
+		}
+
+	default:
+		return fmt.Errorf("algoritmo de reemplazo TLB '%s' no reconocido", tlb.AlgoritmoReemplazo)
+	}
+
+	// Eliminar la entrada de la víctima del map auxiliar
+	delete(tlb.PaginaIndex, tlb.Entries[indiceVictima].Pagina)
+
+	// Reemplazar la entrada en el slice
+	tlb.Entries[indiceVictima] = nuevaEntrada
+
+	// Actualizar el map auxiliar con la nueva entrada y su índice
+	tlb.PaginaIndex[nuevaEntrada.Pagina] = indiceVictima
+
+	// Avanzar el puntero si es FIFO
+	if tlb.AlgoritmoReemplazo == "FIFO" {
+		tlb.FIFOindex = (tlb.FIFOindex + 1) % int(tlb.Capacidad)
+	}
+
+	return nil
+}
+
 // (5) funcion que pida a memoria el marco de una pagina
-func PedirMarcoDePagina(pid int64, pagina int64) (int64, error) {
+func PedirMarcoDePagina(pid int64, entradas []int64) (int64, error) {
 	solicitud := struct {
-		Pid    int64 `json:"pid"`
-		Pagina int64 `json:"pagina"`
+		Pid      int64   `json:"pid"`
+		Entradas []int64 `json:"pagina"`
 	}{
-		Pid:    pid,
-		Pagina: pagina,
+		Pid:      pid,
+		Entradas: entradas,
 	}
 
 	body, err := json.Marshal(solicitud)
@@ -750,8 +873,76 @@ func ActualizarPaginaMemoria(pid int64, pagina int64, contenido [64]byte) error 
 	return nil
 }
 
-//(10) funcion que escriba en cache
-//(11) funcion que lea en cache
+// (10) funcion que escriba en cache
+func EscribirCache(pagina int64, desplazamiento int64, dato string, cache *globals.Cache) error {
+	index, found := cache.PaginaIndex[pagina]
+	if !found {
+		return fmt.Errorf("error interno: la página %d no se encontró en la caché para el desplazamiento %d", pagina, desplazamiento)
+	}
+	entradaCache := &cache.Entries[index]
+	bytesAEscribir := []byte(dato)
+	tamanio := int64(len(bytesAEscribir))
+	if desplazamiento+tamanio > 64 {
+		return fmt.Errorf("intento de lectura excede los límites de la página en caché")
+	}
+	copy(entradaCache.Contenido[desplazamiento:], bytesAEscribir)
+	entradaCache.R = true
+	entradaCache.D = true
+
+	return nil
+
+}
+
+// (11) funcion que lea en cache
+func LeerDeCache(pagina int64, desplazamiento int64, tamanio int64, cache *globals.Cache) ([]byte, error) {
+	index, found := cache.PaginaIndex[pagina]
+	if !found {
+		return nil, fmt.Errorf("error interno: la página %d no se encontró en la caché para el desplazamiento %d", pagina, desplazamiento)
+	}
+
+	entradaCache := &cache.Entries[index]
+	if desplazamiento+tamanio > 64 {
+		return nil, fmt.Errorf("intento de lectura excede los límites de la página en caché")
+	}
+	bytesLeidos := entradaCache.Contenido[desplazamiento : desplazamiento+tamanio]
+	entradaCache.R = true
+
+	return bytesLeidos, nil
+
+}
+
+// 12 cargar TLB
+func CargarTLB(pV int64, marco int64, pid int64, tlb *globals.TLB) error {
+	nuevaEntrada := globals.TLBentry{
+		Pagina:    pV,
+		Marco:     marco,
+		PID:       pid,
+		Timestamp: time.Now().UnixNano(),
+	}
+	if _, found := tlb.PaginaIndex[pV]; found {
+		log.Printf("ADVERTENCIA TLB: Se intentó cargar página %d (PID %d) que ya está en TLB. Sobrescribiendo.", pV, pid)
+	}
+	if len(tlb.Entries) < int(tlb.Capacidad) {
+		// TLB no está llena: simplemente agrega la nueva entrada al final
+		tlb.Entries = append(tlb.Entries, nuevaEntrada)
+		// Registra la posición de la nueva entrada en el map auxiliar
+		tlb.PaginaIndex[nuevaEntrada.Pagina] = len(tlb.Entries) - 1
+		log.Printf("TLB: Entrada agregada (PID %d, Pag %d, Marco %d). TLB Size: %d/%d",
+			pid, pV, marco, len(tlb.Entries), tlb.Capacidad)
+	} else {
+		// TLB está llena: llama a la lógica de reemplazo
+		log.Printf("TLB: Llena, aplicando algoritmo %s para reemplazar.", tlb.AlgoritmoReemplazo)
+		err := ReemplazarEnTLB(nuevaEntrada, tlb) // Llama a la función de reemplazo que ya hicimos
+		if err != nil {
+			return fmt.Errorf("fallo al reemplazar en TLB: %w", err)
+		}
+		log.Printf("TLB: Reemplazo exitoso (PID %d, Pag %d, Marco %d). Algoritmo: %s",
+			pid, pV, marco, tlb.AlgoritmoReemplazo)
+	}
+
+	return nil
+
+}
 
 // TEMPORAL -- para probar
 func Wait(semaforo globals.Semaforo) {
@@ -760,4 +951,21 @@ func Wait(semaforo globals.Semaforo) {
 
 func Signal(semaforo globals.Semaforo) {
 	semaforo <- struct{}{}
+}
+
+// Interrupcion
+func RecibirInterrupcion(w http.ResponseWriter, r *http.Request) {
+	var pid int64
+	err := json.NewDecoder(r.Body).Decode(&pid)
+	if err != nil {
+		log.Printf("Error al decodificar PID: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar PID"))
+		return
+	}
+
+	log.Printf("PID recibido para interrumpir: %d\n", pid)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
 }

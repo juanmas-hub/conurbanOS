@@ -4,6 +4,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/memoria"
@@ -15,7 +16,9 @@ func main() {
 
 	utils_logger.ConfigurarLogger("memoria.log")
 
-	globals.MemoriaConfig = utils_memoria.IniciarConfiguracion("config.json")
+	globals.Prueba = os.Args[1]
+
+	globals.MemoriaConfig = utils_memoria.IniciarConfiguracion(utils_logger.CONFIGS_DIRECTORY + "/" + globals.Prueba + "/" + "Memoria.config")
 	if globals.MemoriaConfig == nil {
 		log.Fatal("No se pudo iniciar el config")
 	}
@@ -26,10 +29,6 @@ func main() {
 
 	// Multiplexor de servidor HTTP
 	mux := http.NewServeMux()
-
-	// Maneja funciones segun URL de la solicitud
-	mux.HandleFunc("/mensajeDeKernel", utils_memoria.RecibirMensajeDeKernel)
-	mux.HandleFunc("/mensajeDeCpu", utils_memoria.RecibirMensajeDeCpu)
 
 	// General¿?
 	mux.HandleFunc("/consultarMock", utils_memoria.ConsultarMock)

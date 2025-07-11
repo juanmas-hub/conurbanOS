@@ -15,9 +15,14 @@ import (
 
 func main() {
 
-	utils_logger.ConfigurarLogger("cpu.log")
+	if len(os.Args) != 3 {
+		log.Fatal("No se paso como argumento el nombre de CPU") //por ej:  go run . nombreIO
+	}
+	nombreCPU := os.Args[1]
+	prueba := os.Args[2]
 
-	globals_cpu.CpuConfig = utils_cpu.IniciarConfiguracion("config.json")
+	utils_logger.ConfigurarLogger("cpu.log")
+	globals_cpu.CpuConfig = utils_cpu.IniciarConfiguracion(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + nombreCPU + ".config")
 	if globals_cpu.CpuConfig == nil {
 		log.Fatal("No se pudo iniciar el config")
 	}
@@ -26,19 +31,6 @@ func main() {
 
 	slog.Info(globals_cpu.CpuConfig.Log_level)
 
-	// Ahora hay que recibir la petición del Kernel para que el modulo hago un usleep (no esta hecho)
-
-	// Cliente (manda mensaje a kernel y memoria)
-	mensaje := "Mensaje desde CPU"
-	utils_cpu.EnviarMensaje(globals_cpu.CpuConfig.Ip_kernel, globals_cpu.CpuConfig.Port_kernel, mensaje)
-	utils_cpu.EnviarMensaje(globals_cpu.CpuConfig.Ip_memory, globals_cpu.CpuConfig.Port_memory, mensaje)
-
-	// Handshake al kernel
-	if len(os.Args) != 2 {
-		log.Fatal("No se paso como argumento el nombre de CPU") //por ej:  go run . nombreIO
-	}
-	nombreCPU := os.Args[1]
-
 	utils_cpu.HandshakeAKernel(
 		globals_cpu.CpuConfig.Ip_kernel,
 		globals_cpu.CpuConfig.Port_kernel,
@@ -46,6 +38,14 @@ func main() {
 		globals_cpu.CpuConfig.Ip_cpu,
 		globals_cpu.CpuConfig.Port_cpu,
 	)
+
+	if globals.CpuConfig.Cache_entries > 0 {
+		utils_cpu.NuevaCache(globals.CpuConfig.Cache_entries, globals.CpuConfig.Cache_replacement)
+	}
+
+	if globals.CpuConfig.Tlb_entries > 0 {
+		utils_cpu.NuevaTLB(globals.CpuConfig.Tlb_entries, globals.CpuConfig.Cache_replacement)
+	}
 
 	go func() {
 		for {
@@ -101,9 +101,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/dispatchProceso", utils_cpu.RecibirProcesoAEjecutar)
-	mux.HandleFunc("/mensajeDeKernel", utils_cpu.RecibirMensajeDeKernel)
 	mux.HandleFunc("/recibirPCB", utils_cpu.RecibirPCBDeKernel)
-	//mux.HandleFunc("/interrumpir", utils_cpu.Interrupcion)
+	mux.HandleFunc("/interrumpir", utils_cpu.RecibirInterrupcion)
 
 	puerto := globals_cpu.CpuConfig.Port_cpu
 

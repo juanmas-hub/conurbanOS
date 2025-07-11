@@ -17,6 +17,7 @@ func IniciarConfiguracion(filePath string) *globals.Io_Config {
 	var config *globals.Io_Config
 	configFile, err := os.Open(filePath)
 	if err != nil {
+		log.Print("error: ", err)
 		log.Fatal(err.Error())
 	}
 	defer configFile.Close()
@@ -27,33 +28,13 @@ func IniciarConfiguracion(filePath string) *globals.Io_Config {
 	return config
 }
 
-func EnviarMensajeAKernel(ip string, puerto int64, mensajeTxt string) {
-
-	mensaje := globals.Mensaje{Mensaje: mensajeTxt}
-	body, err := json.Marshal(mensaje)
-	if err != nil {
-		log.Printf("error codificando mensaje: %s", err.Error())
-	}
-
-	// Posible problema con el int64 del puerto
-	url := fmt.Sprintf("http://%s:%d/mensajeDeIo", ip, puerto)
-
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
-
-	if err != nil {
-		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
-	}
-
-	log.Printf("respuesta del servidor: %s", resp.Status)
-
-}
-
 func HandshakeAKernel(ip string, puerto int64, nombreIO string, ipIO string, puertoIO int64) {
 
 	handshake := globals.HandshakeIO{
-		Nombre: nombreIO,
-		IP:     ipIO,
-		Puerto: puertoIO,
+		NombreIO:        nombreIO,
+		NombreInstancia: globals.NombreInstancia,
+		IP:              ipIO,
+		Puerto:          puertoIO,
 	}
 	body, err := json.Marshal(handshake)
 	if err != nil {
@@ -70,24 +51,6 @@ func HandshakeAKernel(ip string, puerto int64, nombreIO string, ipIO string, pue
 
 	log.Printf("respuesta del servidor (handshake): %s", resp.Status)
 
-}
-
-func RecibirMensajeDeKernel(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-	var mensaje globals.Mensaje
-	err := decoder.Decode(&mensaje)
-	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Error al decodificar mensaje"))
-		return
-	}
-
-	log.Println("Me llego un mensaje de Kernel")
-	log.Printf("%+v\n", mensaje)
-
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
 }
 
 // Todavia esta funcion no se usa
@@ -122,8 +85,9 @@ func USleep(tiempo int64, pid int64) {
 func EnviarFinalizacionIOAKernel(ip string, puerto int64, pid int64) {
 
 	mensaje := globals.FinalizacionIO{
-		PID:      pid,
-		NombreIO: globals.NombreIO,
+		PID:             pid,
+		NombreIO:        globals.IoConfig.NombreIO,
+		NombreInstancia: globals.NombreInstancia,
 	}
 	body, err := json.Marshal(mensaje)
 	if err != nil {
@@ -148,10 +112,11 @@ func EnviarFinalizacionIOAKernel(ip string, puerto int64, pid int64) {
 func Desconectar(ip string, puerto int64, pid int64) {
 
 	mensaje := globals.DesconexionIO{
-		NombreIO: globals.NombreIO,
-		PID:      pid,
-		Ip:       globals.IoConfig.IpIO,
-		Puerto:   globals.IoConfig.PortIO,
+		NombreInstancia: globals.NombreInstancia,
+		NombreIO:        globals.IoConfig.NombreIO,
+		PID:             pid,
+		Ip:              globals.IoConfig.IpIO,
+		Puerto:          globals.IoConfig.PortIO,
 	}
 	body, err := json.Marshal(mensaje)
 	if err != nil {

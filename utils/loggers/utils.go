@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+var CONFIGS_DIRECTORY string = "../pruebas"
+
 func ConfigurarLogger(filePath string) {
 	logFile, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	if err != nil {
