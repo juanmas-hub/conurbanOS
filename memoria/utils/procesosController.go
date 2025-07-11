@@ -67,16 +67,16 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 
 	time.Sleep(time.Duration(delay+delayMem) * time.Millisecond)
 
-	(*globals_memoria.Metricas)[pid].BajadasSwap++
-
+	IncrementarMetrica("BAJADAS_SWAP", pid, 1)
+	
 	var paginas []globals_memoria.PaginaDTO
 
 	paginas = eliminarMarcosFisicos(pid)
 
 	if escribirEnSWAP(pid, paginas) < 0 {
-		log.Printf("Proceso %d no se pudo suspender por falo al escribir en SWAP", mensaje.Pid)
+		log.Printf("Proceso %d no se pudo suspender por fallo al escribir en SWAP", mensaje.Pid)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Proceso no se pudo suspender por falo al escribir en SWAP"))
+		w.Write([]byte("Proceso no se pudo suspender por fallo al escribir en SWAP"))
 		return
 	}
 

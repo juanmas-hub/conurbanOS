@@ -4,6 +4,7 @@ import (
 	//"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"time"
 
 	//"net/http"
@@ -70,24 +71,35 @@ func actualizarPagina(indicePagina int, dato string) {
 
 }
 
-func crearTabla(entradasPorPagina int64) *globals_memoria.TablaDePaginas {
-	return &globals_memoria.TablaDePaginas{
+func crearTabla(entradasPorPagina int64, nivel int) *globals_memoria.TablaDePaginas {
+	tabla := &globals_memoria.TablaDePaginas{
 		Entradas: make([]globals_memoria.EntradaTablaPagina, entradasPorPagina),
 	}
-}
 
-func construirArbolTablas(nivelActual, cantidadNiveles int, entradasPorTabla int64) *globals_memoria.TablaDePaginas {
-    tabla := crearTabla(entradasPorTabla)
 	if tabla == nil{
-		log.Printf("Fallo al crear la tabla de nivel: %d", nivelActual)
+		log.Printf("Fallo al crear la tabla de nivel: %d", nivel)
 		return nil
 	}
+
+	for i := 0; i<int(entradasPorPagina); i++{
+		tabla.Entradas[i].Nivel = nivel
+	}
+
+	return tabla
+}
+
+/*
+func construirArbolTablas(nivelActual, cantidadNiveles int, entradasPorTabla int64) *globals_memoria.TablaDePaginas {
+    tabla := crearTabla(entradasPorTabla, nivelActual)
+
+	if tabla == nil{
+		log.Printf("Fallo al construir el arbol en el nivel: %d", nivelActual)
+		return nil
+	}
+	
 	log.Printf("Se creo una tabla de nivel: %d", nivelActual)
 
     for i := range tabla.Entradas {
-        // Setear el nivel actual a todas las entradas de la tabla
-        tabla.Entradas[i].Nivel = nivelActual
-
         // Si no es el último nivel, crear recursivamente la siguiente tabla
         if nivelActual < cantidadNiveles {
             tabla.Entradas[i].SiguienteNivel = construirArbolTablas(nivelActual+1, cantidadNiveles, entradasPorTabla)
@@ -96,7 +108,7 @@ func construirArbolTablas(nivelActual, cantidadNiveles int, entradasPorTabla int
 
     return tabla
 }
-
+*/
 
 func buscarMarcosDisponibles(cantidad int) []int {
 	var result []int = make([]int, 0, cantidad)
@@ -116,41 +128,50 @@ func buscarMarcosDisponibles(cantidad int) []int {
 
 func actualizarTablaPaginas(pid int, indices []int) {
 
-	IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
-
 	var ENTRIES_PER_PAGE int64 = globals_memoria.MemoriaConfig.Entries_per_page
-	var tablaActual *globals_memoria.TablaDePaginas = (*globals_memoria.ProcessManager)[pid]
-	var marcoDisponible *globals_memoria.Pagina = &globals_memoria.Procesos[pid].MarcosAsignados[1]
+	var tabla *globals_memoria.TablaDePaginas = (*globals_memoria.Tablas)[pid]
+	var cantidadMarcos int = len(globals_memoria.Procesos[pid].MarcosAsignados)
+	var marco *globals_memoria.Pagina
 
-	// manda el marco recien tomado al final del slice
+	IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
+	slog.Debug(fmt.Sprintf("Me llego para actualizar la tabla de paginas del proceso %d", pid))
+	slog.Debug(fmt.Sprintf("Me llegaron los siguientes indices: %+v", indices))
+
+	// Mueve el primer marco al final del slice
 	globals_memoria.Procesos[pid].MarcosAsignados =
 		append(globals_memoria.Procesos[pid].MarcosAsignados[1:], globals_memoria.Procesos[pid].MarcosAsignados[0])
 
-	var indiceActual int
-	var indiceSiguiente int
-	for i := 0; i < len(indices)-1; i++ {
-		indiceActual = indices[i]
-		indiceSiguiente = indices[i+1]
+	 marco = &globals_memoria.Procesos[pid].MarcosAsignados[cantidadMarcos-1]
 
-		if tablaActual.Entradas[indiceActual].SiguienteNivel == nil {
-			tablaActual.Entradas[indiceActual].SiguienteNivel = crearTabla(ENTRIES_PER_PAGE)
+	slog.Debug(fmt.Sprintf("Marco elegido para actualizar tabla de paginas: %+v", marco))
+
+	var actual int
+	var siguiente int
+	for i := 0; i < len(indices)-1; i++ {
+		actual = indices[i]
+		siguiente = indices[i+1]
+		slog.Debug(fmt.Sprintf("Indice Actual: %+v, Indice Siguiente: %+v", actual, siguiente))
+
+
+		tabla.Entradas[actual].Marco = siguiente
+
+		if tabla.Entradas[actual].SiguienteNivel == nil {
+			tabla.Entradas[actual].SiguienteNivel = crearTabla(ENTRIES_PER_PAGE, i+1)
 		}
 
-		tablaActual.Entradas[indiceActual].Pagina = indiceActual
-		tablaActual.Entradas[indiceActual].Marco = indiceSiguiente
 
-		tablaActual.Entradas[indiceActual].Nivel = i + 1
-
-		log.Printf("Nivel %d: pagina %d y marco %d", i+1, tablaActual.Entradas[indiceActual].Pagina, tablaActual.Entradas[indiceActual].Marco)
+		log.Printf("Nivel %d: pagina %d y marco %d", i+1, i, siguiente)
 		IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
-		tablaActual = tablaActual.Entradas[indiceActual].SiguienteNivel
 
+		tabla = tabla.Entradas[actual].SiguienteNivel
 	}
 
 	// Asignar el marco fisico
-	tablaActual.Entradas[indiceSiguiente].Marco = marcoDisponible.IndiceAsignado
+	tabla.Entradas[siguiente].Marco = marco.IndiceAsignado
 
-	marcoDisponible.EntradaAsignada = &tablaActual.Entradas[indiceSiguiente]
+	marco.EntradaAsignada = &tabla.Entradas[siguiente]
+
+	slog.Debug(fmt.Sprintf("Entrada asignada: %+v", marco.EntradaAsignada))
 
 	fmt.Printf("Ruta de índices: %d->%d->%d->%d->%d\n", indices[0], indices[1], indices[2], indices[3], indices[4])
 }
@@ -201,7 +222,7 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	asignarPaginasAProceso(pid, indicesDisponibles)
 
 	var ENTRIES_PER_PAGE int64 = globals_memoria.MemoriaConfig.Entries_per_page
-	var NUMBER_OF_LEVELS int = int(globals_memoria.MemoriaConfig.Number_of_levels)
+	// var NUMBER_OF_LEVELS int = int(globals_memoria.MemoriaConfig.Number_of_levels)
 	var instrucciones []string
 	var tabla *globals_memoria.TablaDePaginas
 
@@ -209,9 +230,10 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 
 	globals_memoria.Procesos[pid].Pseudocodigo = instrucciones
 
-	tabla = construirArbolTablas(1, NUMBER_OF_LEVELS, ENTRIES_PER_PAGE)
+	//tabla = construirArbolTablas(1, NUMBER_OF_LEVELS, ENTRIES_PER_PAGE)
+	tabla = crearTabla(ENTRIES_PER_PAGE, 1)
 
-	(*globals_memoria.ProcessManager)[pid] = tabla
+	(*globals_memoria.Tablas)[pid] = tabla
 	log.Printf("Se creo la tabla de paginas del proceso %d: %+v", pid, tabla)
 
 	return 0
@@ -221,7 +243,7 @@ func obtenerMarcoDesdeTabla(pid int, primerIndice int) int {
 	(*globals_memoria.Metricas)[pid].AccesosTablas++
 
 	var NUMBER_OF_LEVELS int = int(globals_memoria.MemoriaConfig.Number_of_levels)
-	var tablaActual *globals_memoria.TablaDePaginas = (*globals_memoria.ProcessManager)[pid]
+	var tablaActual *globals_memoria.TablaDePaginas = (*globals_memoria.Tablas)[pid]
 	var indiceActual int = primerIndice
 
 	for i := 0; i < NUMBER_OF_LEVELS-1; i++ {
@@ -245,9 +267,7 @@ func eliminarMarcosFisicos(pid int) []globals_memoria.PaginaDTO {
 		return nil
 	}
 
-	log.Print("El proceso en eliminarMArcosFisicos: ", globals_memoria.Procesos[pid])
 	var marcos *[]globals_memoria.Pagina = &globals_memoria.Procesos[pid].MarcosAsignados
-	log.Print("Marcos en eliminarMArcosFisicos: ", marcos)
 	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
 	var paginasDTO []globals_memoria.PaginaDTO = []globals_memoria.PaginaDTO{}
 
@@ -255,6 +275,8 @@ func eliminarMarcosFisicos(pid int) []globals_memoria.PaginaDTO {
 		var paginaDTO globals_memoria.PaginaDTO
 		var inicio int = (*marcos)[i].IndiceAsignado * pageSize
 		var contenido string
+
+		slog.Debug(fmt.Sprintf("Marco: %+v", (*marcos)[i]))
 
 		// Leer contenido antes de sobrescribir
 		contenido = leer(inicio, pageSize)
@@ -271,6 +293,7 @@ func eliminarMarcosFisicos(pid int) []globals_memoria.PaginaDTO {
 		}
 
 		// Guardar entrada asignada
+		slog.Debug(fmt.Sprintf("Entrada: %+v", (*marcos)[i].EntradaAsignada))
 		paginaDTO.Entrada = (*marcos)[i].EntradaAsignada
 		paginasDTO = append(paginasDTO, paginaDTO)
 

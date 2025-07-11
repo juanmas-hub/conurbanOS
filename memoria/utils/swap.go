@@ -2,8 +2,9 @@ package utils
 
 import (
 	//"encoding/json"
-	//"fmt"
+	"fmt"
 	"log"
+	"log/slog"
 	//"net/http"
 	"os"
 
@@ -119,6 +120,7 @@ func escribirEnSWAP(pid int, paginasDTO []globals_memoria.PaginaDTO) int {
 		var paginaSwapDisponible globals_memoria.Pagina
 
 		paginaDTO = paginasDTO[i]
+		slog.Debug(fmt.Sprintf("Pagina DTO que llega a escribirEnSwap: %+v", paginaDTO))
 
 		// Transferimos los campos
 		paginaSwapDisponible.IndiceSwapAsignado = obtenerIndiceSwapDisponible()
@@ -131,8 +133,10 @@ func escribirEnSWAP(pid int, paginasDTO []globals_memoria.PaginaDTO) int {
 			log.Printf("Error al escribir en página SWAP %d: %v", paginaSwapDisponible.IndiceSwapAsignado, err)
 			return -1
 		}
-		globals_memoria.Procesos[pid].PaginasSWAP = append(globals_memoria.Procesos[pid].PaginasSWAP, paginaSwapDisponible)
 
+		slog.Debug(fmt.Sprintf("Pagina swap que se guarda en slice del proceso %d: %+v", pid, paginaDTO))
+
+		globals_memoria.Procesos[pid].PaginasSWAP = append(globals_memoria.Procesos[pid].PaginasSWAP, paginaSwapDisponible)
 	}
 	return 0
 }

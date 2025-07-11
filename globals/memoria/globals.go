@@ -37,7 +37,6 @@ var Metricas *MetricasMap
 // Entrada de una tabla de páginas
 type EntradaTablaPagina struct {
 	Nivel		   int
-	Pagina         int
 	Marco          int
 	Presencia	   int
 	Uso 		   int	
@@ -51,7 +50,7 @@ type TablaDePaginas struct {
 
 type Manager map[int]*TablaDePaginas
 
-var ProcessManager *Manager
+var Tablas *Manager
 
 var Memoria []byte
 

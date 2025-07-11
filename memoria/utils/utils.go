@@ -81,7 +81,7 @@ func ObtenerInstruccionesDesdeArchivo(filename string) []string {
 }
 
 func verificarPIDUnico(pid int) int {
-	if _, existe := (*globals_memoria.ProcessManager)[pid]; existe {
+	if _, existe := (*globals_memoria.Tablas)[pid]; existe {
 		return 1
 	}
 	return 0

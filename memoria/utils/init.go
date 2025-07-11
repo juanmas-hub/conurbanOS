@@ -36,7 +36,7 @@ func InicializarMemoria() {
 	globals_memoria.MemoriaMarcosOcupados = make([]bool, cantidadMarcos)
 
 	var manager globals_memoria.Manager = make(globals_memoria.Manager)
-	globals_memoria.ProcessManager = &manager
+	globals_memoria.Tablas = &manager
 
 	globals_memoria.Procesos = make(globals_memoria.ProcesosMap)
 
