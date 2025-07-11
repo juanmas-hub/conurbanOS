@@ -174,6 +174,7 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("No se renaudo por error al eliminar paginas swap"))
 			return
 		}
+		log.Print(paginasDTO)
 		escribirPaginas(paginasDTO, marcosDisponibles)
 	}
 	globals_memoria.Procesos[pid].Suspendido = false

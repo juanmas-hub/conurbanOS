@@ -22,10 +22,9 @@ func moverseAPaginaSWAP(pagina globals_memoria.Pagina, archivo *os.File) int {
 	return 0
 }
 
-
 func leerPaginaSWAP(pagina globals_memoria.Pagina, archivo *os.File) string {
 
-	if (moverseAPaginaSWAP(pagina, archivo) == 1) {
+	if moverseAPaginaSWAP(pagina, archivo) == 1 {
 		return ""
 	}
 
@@ -49,10 +48,12 @@ func eliminarPaginasSWAP(pid int) []globals_memoria.PaginaDTO {
 
 	var paginaDTO globals_memoria.PaginaDTO
 
-	for i:=0; i<len(*paginasSwap); i++ {
+	for i := 0; i < len(*paginasSwap); i++ {
 
 		paginaDTO.Contenido = leerPaginaSWAP((*paginasSwap)[i], archivo)
+		log.Print(paginaDTO.Contenido)
 		paginaDTO.Entrada = (*paginasSwap)[i].EntradaAsignada
+		log.Print(paginaDTO.Entrada)
 
 		paginasDTO = append(paginasDTO, paginaDTO)
 
@@ -80,7 +81,7 @@ func eliminarPaginasSWAP(pid int) []globals_memoria.PaginaDTO {
 	return paginasDTO
 }
 
-func obtenerIndiceSwapDisponible()int{
+func obtenerIndiceSwapDisponible() int {
 	var IndiceSwapDisponible int
 
 	if len(globals_memoria.ListaPaginasSwapDisponibles) > 0 {
@@ -94,9 +95,9 @@ func obtenerIndiceSwapDisponible()int{
 	return IndiceSwapDisponible
 }
 
-func escribirPaginaSWAP(dato string, pagina globals_memoria.Pagina, archivo *os.File) int{ // dato de tamanio 64
+func escribirPaginaSWAP(dato string, pagina globals_memoria.Pagina, archivo *os.File) int { // dato de tamanio 64
 
-	if (moverseAPaginaSWAP(pagina, archivo) == 1) {
+	if moverseAPaginaSWAP(pagina, archivo) == 1 {
 		return 1
 	}
 
@@ -114,7 +115,7 @@ func escribirEnSWAP(pid int, paginasDTO []globals_memoria.PaginaDTO) int {
 	var archivo *os.File = abrirArchivoBinario()
 
 	for i := 0; i < len(paginasDTO); i++ {
-		var paginaDTO globals_memoria.PaginaDTO 
+		var paginaDTO globals_memoria.PaginaDTO
 		var paginaSwapDisponible globals_memoria.Pagina
 
 		paginaDTO = paginasDTO[i]
@@ -133,8 +134,5 @@ func escribirEnSWAP(pid int, paginasDTO []globals_memoria.PaginaDTO) int {
 		globals_memoria.Procesos[pid].PaginasSWAP = append(globals_memoria.Procesos[pid].PaginasSWAP, paginaSwapDisponible)
 
 	}
-		return 0
-	}
-
-	
-
+	return 0
+}

@@ -46,7 +46,6 @@ func escribir(direccion int, dato string) int {
 
 func escribirPaginas(paginasDTO []globals_memoria.PaginaDTO, marcos []int) {
 	var direccion int
-
 	for i := 0; i < len(marcos); i++ {
 		direccion = marcos[i] * int(globals_memoria.MemoriaConfig.Page_size)
 
@@ -54,6 +53,7 @@ func escribirPaginas(paginasDTO []globals_memoria.PaginaDTO, marcos []int) {
 			log.Println("No se pudo escribir la pagina")
 			return
 		}
+		log.Print(paginasDTO[i])
 		paginasDTO[i].Entrada.Marco = marcos[i]
 		paginasDTO[i].Entrada.Modificado = 0
 		paginasDTO[i].Entrada.Presencia = 1
@@ -157,7 +157,7 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	var indicesDisponibles []int
 
 	pageSize = int(globals_memoria.MemoriaConfig.Page_size)
-	indicesNecesarios = tamanio / pageSize
+	indicesNecesarios = (tamanio + pageSize - 1) / pageSize // antes estaba tamanio / pagesize que puede dar mal
 	indicesDisponibles = buscarMarcosDisponibles(indicesNecesarios)
 
 	if indicesDisponibles == nil {

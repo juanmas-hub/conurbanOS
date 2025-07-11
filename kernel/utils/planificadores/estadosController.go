@@ -62,9 +62,7 @@ func BlockedASuspBlocked(proceso globals.Proceso) {
 	// Muevo el proceso en la colas
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.SUSP_BLOCKED
-	globals.MapaProcesosMutex.Lock()
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
-	globals.MapaProcesosMutex.Unlock()
 
 	globals.EstadosMutex.Lock()
 	pos := buscarProcesoEnBlocked(proceso.Pcb.Pid)
