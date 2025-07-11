@@ -259,21 +259,79 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 			fmt.Printf("'%s' convertido a int64: %d\n", instDeco.Parametros[0], direccionLog)
 		}
 		entradas, desplazamiento, paginaVirtual := ExtraerEntradasYDesplazamiento(direccionLog, globals_memoria.MemoriaConfig.Page_size, globals.CpuConfig.Tlb_entries, globals_memoria.MemoriaConfig.Number_of_levels)
+		
+		if(globals.CpuConfig.cache_entries>0){//si hay cache
+		
 		entradaCache, encontrado, err := BuscarPaginaEnCache(paginaVirtual, pcb.Pid)
 		if err != nil {
 			fmt.Printf("Error al buscar pagina en cache: %s\n", err)
-		} else {
-			fmt.Printf("entradaCache encontrada para pagina: %d\n", entradaCache.Pagina)
 		}
 
 		if !encontrado {
-			ConseguirDireccionFisica(paginaVirtual, desplazamiento, pcb.Pid, entradas)
-		}
+			fmt.Printf("Cache MISS\n",)
+			direccionFisica := ConseguirDireccionFisica(paginaVirtual, desplazamiento, pcb.Pid, entradas)
+			//contenidoPag := PedirContenidoPagina(direccionFisica)
+			var contenidoPag [64]byte
+			entradaCache = &globals.CacheEntryCache{
+			Pagina:            	paginaVirtual,
+			Contenido:         	contenidoPag,
+			Pid:            	pcb.Pid,
+			R:          	 	0,
+			D:         		 	0,}
+			InsertarOReemplazarEnCache(entradaCache)
+		}else {
+			fmt.Printf("entradaCache encontrada para pagina: %d\n", entradaCache.Pagina)}
+			err = EscribirCache(entradaCache, desplazamiento, instDeco.Parametros[1])
+			if err != nil {
+			fmt.Printf("Error al escribir en cache")
+		}else {fmt.Printf("Se escribio en cache correctamente")}
 
+		}else{//si no hay cache
+		direcccionFisica := ConseguirDireccionFisica(paginaVirtual, desplazamiento, pcb.Pid, entradas)
+		EscribirDatoMemoria(direcccionFisica, instDeco.parametros[1])
+		}	
 		pcb.PC++
 		return CONTINUAR_EJECUCION, nil
 	case "READ":
 		//pasar direccion logica por mmu y mandarle la fisica a memoria y que nos mande lo que lee
+		direccionLog, err := strconv.ParseInt(instDeco.Parametros[0], 10, 64)
+		if err != nil {
+			fmt.Printf("Error al convertir '%s': %v\n", instDeco.Parametros[0], err)
+		} else {
+			fmt.Printf("'%s' convertido a int64: %d\n", instDeco.Parametros[0], direccionLog)
+		}
+		entradas, desplazamiento, paginaVirtual := ExtraerEntradasYDesplazamiento(direccionLog, globals_memoria.MemoriaConfig.Page_size, globals.CpuConfig.Tlb_entries, globals_memoria.MemoriaConfig.Number_of_levels)
+		
+		if(globals.CpuConfig.cache_entries>0){//si hay cache
+		
+		entradaCache, encontrado, err := BuscarPaginaEnCache(paginaVirtual, pcb.Pid)
+		if err != nil {
+			fmt.Printf("Error al buscar pagina en cache: %s\n", err)
+		}
+
+		if !encontrado {
+			fmt.Printf("Cache MISS\n",)
+			direccionFisica := ConseguirDireccionFisica(paginaVirtual, desplazamiento, pcb.Pid, entradas)
+			//contenidoPag := PedirContenidoPagina(direccionFisica)
+			var contenidoPag [64]byte
+			entradaCache = &globals.CacheEntryCache{
+			Pagina:            	paginaVirtual,
+			Contenido:         	contenidoPag,
+			Pid:            	pcb.Pid,
+			R:          	 	0,
+			D:         		 	0,}
+			InsertarOReemplazarEnCache(entradaCache)
+		}else {
+			fmt.Printf("entradaCache encontrada para pagina: %d\n", entradaCache.Pagina)}
+			err = LeerDeCache(entradaCache, desplazamiento, instDeco.Parametros[1])
+			if err != nil {
+			fmt.Printf("Error al leer en cache")
+		}else {fmt.Printf("leyo en cache correctamente")} //FALTA MOSTRAR DATO LEIDO POR LOG Y CONSOLA
+
+		}else{//si no hay cache
+		direcccionFisica := ConseguirDireccionFisica(paginaVirtual, desplazamiento, pcb.Pid, entradas)
+		LeerPaginaMemoria(direcccionFisica, instDeco.parametros[1])
+		}	
 		pcb.PC++
 		return CONTINUAR_EJECUCION, nil
 	case "GOTO":
@@ -605,66 +663,66 @@ func TraducirLogicaAFisica(marco int64, desplazamiento int64, tamanioPagina int6
 }
 
 // (3) funcion que inserte o reemplace en CACHE cuando esta lleno, con el algoritmo elegido
-func InsertarOReemplazarEnCache(c *globals.Cache, nueva globals.CacheEntry, escribirEnMemoria func(entry globals.CacheEntry)) {
+func InsertarOReemplazarEnCache( nueva globals.CacheEntry) {
 	// Si la página ya está en caché, la actualiza y setea Referenced
-	if idx, ok := c.PaginaIndex[nueva.Pagina]; ok {
-		c.Entries[idx] = nueva
-		c.Entries[idx].R = true
+	if idx, ok := globals.ElCache.PaginaIndex[nueva.Pagina]; ok {
+		globals.ElCache.Entries[idx] = nueva
+		globals.ElCache.Entries[idx].R = true
 		return
 	}
 
 	// Si hay espacio, inserta la nueva página
-	if int64(len(c.Entries)) < c.Capacidad {
-		c.Entries = append(c.Entries, nueva)
-		c.PaginaIndex[nueva.Pagina] = len(c.Entries) - 1
+	if int64(len(globals.ElCache.Entries)) < globals.ElCache.Capacidad {
+		globals.ElCache.Entries = append(globals.ElCache.Entries, nueva)
+		globals.ElCache.PaginaIndex[nueva.Pagina] = len(globals.ElCachec.Entries) - 1
 		return
 	}
 
 	// Cache llena: elegir víctima según algoritmo
 	var victimaIdx int
-	switch c.AlgoritmoReemplazo {
+	switch globals.ElCachec.AlgoritmoReemplazo {
 	case "CLOCK":
-		victimaIdx = buscarVictimaCLOCK(c)
+		victimaIdx = buscarVictimaCLOCK()
 	case "CLOCK-M":
-		victimaIdx = buscarVictimaCLOCKM(c)
+		victimaIdx = buscarVictimaCLOCKM()
 	default:
 		panic("Algoritmo de reemplazo no soportado")
 	}
 
 	// Si la víctima está modificada, escribir su contenido a memoria principal
-	if c.Entries[victimaIdx].D {
-		escribirEnMemoria(c.Entries[victimaIdx])
+	if globals.ElCache.Entries[victimaIdx].D {
+	ActualizarPaginaMemoria(globals.ElCache.Entries[victimaIdx].Pid, globals.ElCache.Entries[victimaIdx].Pagina, globals.ElCache.Entries[victimaIdx].Contenido)
 	}
 
 	// Eliminar la página víctima del índice
-	delete(c.PaginaIndex, c.Entries[victimaIdx].Pagina)
+	delete(globals.ElCache.PaginaIndex, globals.ElCache.Entries[victimaIdx].Pagina)
 
 	// Reemplazar entrada
-	c.Entries[victimaIdx] = nueva
-	c.PaginaIndex[nueva.Pagina] = victimaIdx
+	globals.ElCache.Entries[victimaIdx] = nueva
+	globals.ElCache.PaginaIndex[nueva.Pagina] = victimaIdx
 
 	// Avanzar el clock hand
-	c.ClockHand = (victimaIdx + 1) % len(c.Entries)
+	globals.ElCache.ClockHand = (victimaIdx + 1) % len(globals.ElCache.Entries)
 }
 
 // buscarVictimaCLOCK devuelve el índice de la víctima según el algoritmo CLOCK.
-func buscarVictimaCLOCK(c *globals.Cache) int {
+func buscarVictimaCLOCK() int {
 	for {
-		if !c.Entries[c.ClockHand].R {
-			return c.ClockHand
+		if !globals.ElCache.Entries[c.ClockHand].R {
+			return globals.ElCache.ClockHand
 		}
-		c.Entries[c.ClockHand].R = false
-		c.ClockHand = (c.ClockHand + 1) % len(c.Entries)
+		globals.ElCache.Entries[globals.ElCache.ClockHand].R = false
+		globals.ElCache.ClockHand = (globals.ElCache.ClockHand + 1) % len(globals.ElCache.Entries)
 	}
 }
 
 // buscarVictimaCLOCKM devuelve el índice de la víctima según el algoritmo CLOCK-M.
-func buscarVictimaCLOCKM(c *globals.Cache) int {
+func buscarVictimaCLOCKM() int {
 	// Primera pasada: R=0 y D=0
-	for i := 0; i < len(c.Entries); i++ {
-		idx := (c.ClockHand + i) % len(c.Entries)
-		if !c.Entries[idx].R && !c.Entries[idx].D {
-			c.ClockHand = (idx + 1) % len(c.Entries)
+	for i := 0; i < len(globals.ElCache.Entries); i++ {
+		idx := (globals.ElCache.ClockHand + i) % len(cglobals.ElCache.Entries)
+		if !globals.ElCache.Entries[idx].R && !globals.ElCache.Entries[idx].D {
+			globals.ElCache.ClockHand = (idx + 1) % len(globals.ElCache.Entries)
 			return idx
 		}
 	}
@@ -798,16 +856,16 @@ func PedirContenidoPagina(pid int64, pagina int64) ([64]byte, error) {
 	return respuesta.Contenido, nil
 }
 
-// (7) funcion que pida a memoria que escriba (cache deshabilitado)
-func EscribirPaginaMemoria(pid int64, pagina int64, contenido [64]byte) error {
-	solicitud := globals_cpu.SolicitudPaginaContenido{Pid: pid, Pagina: pagina, Contenido: contenido}
+
+func EscribirDatoMemoria(direccionFisica int64, dato String) error {
+	solicitud := globals_cpu.SolicitudPaginaContenido{DireccionFisica: direccionFisica, Dato: dato}
 
 	body, err := json.Marshal(solicitud)
 	if err != nil {
 		return fmt.Errorf("error codificando solicitud: %w", err)
 	}
 
-	url := fmt.Sprintf("http://%s:%d/accederEspacioUsuarioEscritura", globals_cpu.CpuConfig.Ip_memory, globals_cpu.CpuConfig.Port_memory)
+	url := fmt.Sprintf("http://%s:%d/escribirDatoMemoria", globals_cpu.CpuConfig.Ip_memory, globals_cpu.CpuConfig.Port_memory)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		return fmt.Errorf("error haciendo POST a Memoria: %w", err)
@@ -822,8 +880,8 @@ func EscribirPaginaMemoria(pid int64, pagina int64, contenido [64]byte) error {
 }
 
 // (8) funcion que pida a memoria que lea (cache deshabilitado)
-func LeerPaginaMemoria(pid int64, pagina int64) ([64]byte, error) {
-	solicitud := globals_cpu.SolicitudPagina{Pid: pid, Pagina: pagina}
+func LeerPaginaMemoria(direccionFisica int64, tamanio int64) ([64]byte, error) {
+	solicitud := globals_cpu.SolicitudPagina{DireccionFisica: direccionFisica, Tamanio: tamanio}
 
 	body, err := json.Marshal(solicitud)
 	if err != nil {
@@ -874,12 +932,7 @@ func ActualizarPaginaMemoria(pid int64, pagina int64, contenido [64]byte) error 
 }
 
 // (10) funcion que escriba en cache
-func EscribirCache(pagina int64, desplazamiento int64, dato string, cache *globals.Cache) error {
-	index, found := cache.PaginaIndex[pagina]
-	if !found {
-		return fmt.Errorf("error interno: la página %d no se encontró en la caché para el desplazamiento %d", pagina, desplazamiento)
-	}
-	entradaCache := &cache.Entries[index]
+func EscribirCache(entradaCache *globals.CacheEntry, desplazamiento int64, dato string) error {
 	bytesAEscribir := []byte(dato)
 	tamanio := int64(len(bytesAEscribir))
 	if desplazamiento+tamanio > 64 {
@@ -890,7 +943,6 @@ func EscribirCache(pagina int64, desplazamiento int64, dato string, cache *globa
 	entradaCache.D = true
 
 	return nil
-
 }
 
 // (11) funcion que lea en cache
