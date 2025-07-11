@@ -76,6 +76,28 @@ func crearTabla(entradasPorPagina int64) *globals_memoria.TablaDePaginas {
 	}
 }
 
+func construirArbolTablas(nivelActual, cantidadNiveles int, entradasPorTabla int64) *globals_memoria.TablaDePaginas {
+    tabla := crearTabla(entradasPorTabla)
+	if tabla == nil{
+		log.Printf("Fallo al crear la tabla de nivel: %d", nivelActual)
+		return nil
+	}
+	log.Printf("Se creo una tabla de nivel: %d", nivelActual)
+
+    for i := range tabla.Entradas {
+        // Setear el nivel actual a todas las entradas de la tabla
+        tabla.Entradas[i].Nivel = nivelActual
+
+        // Si no es el último nivel, crear recursivamente la siguiente tabla
+        if nivelActual < cantidadNiveles {
+            tabla.Entradas[i].SiguienteNivel = construirArbolTablas(nivelActual+1, cantidadNiveles, entradasPorTabla)
+        }
+    }
+
+    return tabla
+}
+
+
 func buscarMarcosDisponibles(cantidad int) []int {
 	var result []int = make([]int, 0, cantidad)
 
@@ -143,6 +165,8 @@ func asignarPaginasAProceso(pid int, indicesPaginas []int) {
 		globals_memoria.Procesos[pid].MarcosAsignados = append(globals_memoria.Procesos[pid].MarcosAsignados, paginaActual)
 
 		globals_memoria.MemoriaMarcosOcupados[indicesPaginas[i]] = true
+
+		log.Printf("Pagina %+v asignada al proceso %d", paginaActual, pid)
 	}
 }
 
@@ -168,25 +192,27 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	}
 
 	globals_memoria.Procesos[pid] = &globals_memoria.Proceso{
+		Pseudocodigo: nil,
+		MarcosAsignados: nil,
 		Suspendido:      false,
 		PaginasSWAP:     nil,
-		MarcosAsignados: nil,
 	}
 
 	asignarPaginasAProceso(pid, indicesDisponibles)
 
 	var ENTRIES_PER_PAGE int64 = globals_memoria.MemoriaConfig.Entries_per_page
+	var NUMBER_OF_LEVELS int = int(globals_memoria.MemoriaConfig.Number_of_levels)
 	var instrucciones []string
+	var tabla *globals_memoria.TablaDePaginas
 
 	instrucciones = ObtenerInstruccionesDesdeArchivo(filename)
 
 	globals_memoria.Procesos[pid].Pseudocodigo = instrucciones
-	log.Print(instrucciones)
 
-	(*globals_memoria.ProcessManager)[pid] = crearTabla(ENTRIES_PER_PAGE)
+	tabla = construirArbolTablas(1, NUMBER_OF_LEVELS, ENTRIES_PER_PAGE)
 
-	log.Print("Proceso: ", globals_memoria.Procesos[pid])
-	log.Print("Tabla de paginas: ", (*globals_memoria.ProcessManager)[pid])
+	(*globals_memoria.ProcessManager)[pid] = tabla
+	log.Printf("Se creo la tabla de paginas del proceso %d: %+v", pid, tabla)
 
 	return 0
 }

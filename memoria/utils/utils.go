@@ -57,6 +57,7 @@ func extraerInstrucciones(archivo *os.File) []string {
 		linea := strings.TrimSpace(scanner.Text())
 		if linea != "" {
 			instrucciones = append(instrucciones, linea)
+			log.Printf("Se extrajo la instruccion: %s", linea)
 		}
 	}
 	if err := scanner.Err(); err != nil {
