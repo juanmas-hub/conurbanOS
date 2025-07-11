@@ -15,6 +15,9 @@ type Cpu_Config struct {
 	Log_level         string `json:"log_level"`
 }
 
+var Tlb *TLB
+var ElCache *Cache
+
 var CpuConfig *Cpu_Config
 
 type Mensaje struct {

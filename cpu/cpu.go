@@ -39,6 +39,14 @@ func main() {
 		globals_cpu.CpuConfig.Port_cpu,
 	)
 
+	if globals.CpuConfig.Cache_entries > 0 {
+		utils_cpu.NuevaCache(globals.CpuConfig.Cache_entries, globals.CpuConfig.Cache_replacement)
+	}
+
+	if globals.CpuConfig.Tlb_entries > 0 {
+		utils_cpu.NuevaTLB(globals.CpuConfig.Tlb_entries, globals.CpuConfig.Cache_replacement)
+	}
+
 	go func() {
 		for {
 			log.Println("hola")
