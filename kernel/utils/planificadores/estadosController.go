@@ -90,6 +90,8 @@ func ExecuteABlocked(proceso globals.Proceso, razon string) {
 
 	globals.EstadosMutex.Lock()
 	pos := buscarProcesoEnExecute(proceso.Pcb.Pid)
+	slog.Debug(fmt.Sprint("Cola EXECUTE: ", globals.ESTADOS.EXECUTE))
+	slog.Debug(fmt.Sprint("Cola BLOCKED: ", globals.ESTADOS.BLOCKED))
 	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE[:pos], globals.ESTADOS.EXECUTE[pos+1:]...)
 	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED, proceso.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
