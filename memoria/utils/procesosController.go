@@ -149,6 +149,14 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
 
+	if globals_memoria.Procesos[pid].Suspendido == false{
+		log.Printf("Proceso %d no se renaudo porque no estaba suspendido", mensaje.Pid)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("El proceso no estaba suspendido"))
+		return
+
+	}
+
 	var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
 	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 

@@ -75,12 +75,7 @@ func crearTabla(entradasPorPagina int64, nivel int) *globals_memoria.TablaDePagi
 	tabla := &globals_memoria.TablaDePaginas{
 		Entradas: make([]globals_memoria.EntradaTablaPagina, entradasPorPagina),
 	}
-
-	if tabla == nil{
-		log.Printf("Fallo al crear la tabla de nivel: %d", nivel)
-		return nil
-	}
-
+	
 	for i := 0; i<int(entradasPorPagina); i++{
 		tabla.Entradas[i].Nivel = nivel
 	}
