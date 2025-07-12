@@ -45,7 +45,7 @@ func escribir(direccion int, dato string) int {
 	return 0
 }
 
-func escribirPaginas(paginasDTO []globals_memoria.PaginaDTO, marcos []int) {
+func escribirPaginas(pid int, paginasDTO []globals_memoria.PaginaDTO, marcos []int) {
 	var direccion int
 	for i := 0; i < len(marcos); i++ {
 		direccion = marcos[i] * int(globals_memoria.MemoriaConfig.Page_size)
@@ -55,10 +55,12 @@ func escribirPaginas(paginasDTO []globals_memoria.PaginaDTO, marcos []int) {
 			return
 		}
 		log.Print(paginasDTO[i])
-		paginasDTO[i].Entrada.Marco = marcos[i]
-		paginasDTO[i].Entrada.Modificado = 0
-		paginasDTO[i].Entrada.Presencia = 1
-		paginasDTO[i].Entrada.Uso = 0
+		if paginasDTO[i].Entrada != nil {
+			paginasDTO[i].Entrada.Marco = marcos[i]
+			paginasDTO[i].Entrada.Modificado = 0
+			paginasDTO[i].Entrada.Presencia = 1
+			paginasDTO[i].Entrada.Uso = 0
+		}
 		globals_memoria.MemoriaMarcosOcupados[marcos[i]] = true
 	}
 }

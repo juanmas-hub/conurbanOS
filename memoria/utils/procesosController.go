@@ -183,10 +183,11 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Print("Paginas en ReanudarProceso", paginasDTO)
-		escribirPaginas(paginasDTO, marcosDisponibles)
+		escribirPaginas(pid, paginasDTO, marcosDisponibles)
+
 	}
 	globals_memoria.Procesos[pid].Suspendido = false
-	IncrementarMetrica("SUBIDAS_MEMORIA",pid,1)
+	IncrementarMetrica("SUBIDAS_MEMORIA", pid, 1)
 
 	log.Printf("Proceso %d reanudado correctamente", mensaje.Pid)
 	w.WriteHeader(http.StatusOK)
