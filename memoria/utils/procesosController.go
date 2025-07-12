@@ -68,10 +68,13 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 	time.Sleep(time.Duration(delay+delayMem) * time.Millisecond)
 
 	IncrementarMetrica("BAJADAS_SWAP", pid, 1)
-	
+
 	var paginas []globals_memoria.PaginaDTO
 
+	log.Printf("Antes de llamar a eliminarMarcosFisicos")
 	paginas = eliminarMarcosFisicos(pid)
+	log.Print("Paginas despues de ejecutar eliminarMarcosFisicos: ", paginas)
+	log.Printf("Se ejecuto eliminarMarcosFisicos")
 
 	if escribirEnSWAP(pid, paginas) < 0 {
 		log.Printf("Proceso %d no se pudo suspender por fallo al escribir en SWAP", mensaje.Pid)
@@ -149,7 +152,7 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
 
-	if globals_memoria.Procesos[pid].Suspendido == false{
+	if globals_memoria.Procesos[pid].Suspendido == false {
 		log.Printf("Proceso %d no se renaudo porque no estaba suspendido", mensaje.Pid)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("El proceso no estaba suspendido"))

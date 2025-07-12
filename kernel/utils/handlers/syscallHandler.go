@@ -123,9 +123,10 @@ func manejarIO(syscallIO globals.SyscallIO) {
 		} else {
 			io.ColaProcesosEsperando = append(io.ColaProcesosEsperando, syscallIO)
 		}
-		planificadores.EjecutarPlanificadorMedioPlazo(proceso, "Syscall IO")
+		slog.Debug(fmt.Sprintf("Tiempo de IO de PID (%d): %d", syscallIO.PID, syscallIO.Tiempo))
 		globals.MapaIOs[nombreIO] = io
 		globals.ListaIOsMutex.Unlock()
+		planificadores.EjecutarPlanificadorMedioPlazo(proceso, "Syscall IO")
 
 	}
 

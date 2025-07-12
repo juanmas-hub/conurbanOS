@@ -50,7 +50,6 @@ func main() {
 	go func() {
 		for {
 			log.Println("hola")
-			globals.HayInterrupcion = false
 			utils_cpu.Wait(globals.Sem)
 			for pcb := range utils_cpu.ColaDeEjecucion {
 				log.Printf("Ejecutando PID %d en PC %d", pcb.Pid, pcb.PC)
@@ -96,6 +95,7 @@ func main() {
 				case utils_cpu.PONERSE_ESPERA:
 					if globals.HayInterrupcion {
 						log.Printf("Se cede la CPU con PID: (%d) por Interrupcion. PC actual: %d", pcb.Pid, pcb.PC)
+						globals.HayInterrupcion = false
 					} else {
 						log.Printf("Proceso PID %d cede la CPU por Syscall: %s. PC actual: %d", pcb.Pid, instruccionDeco.Nombre, pcb.PC)
 					}
