@@ -91,7 +91,7 @@ func main() {
 
 					break
 				}
-
+				utils_cpu.EnviarPCBaKernel(pcb.Pid, pcb.Pid)
 			}
 		}
 	}()

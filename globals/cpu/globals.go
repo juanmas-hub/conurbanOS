@@ -107,11 +107,11 @@ type TLBentry struct {
 }
 
 type CacheEntry struct {
-	Pagina    int64    //Numero de pagina virtual
-	Contenido [64]byte //contenido de la pagina
-	PID       int64    //PID para desalojar todas las paginas referidas a un proceso
-	R         bool     //bit Referenced de acceso a la pagina
-	D         bool     //bit Dirty de modificacion de la pagina
+	Pagina    int64  //Numero de pagina virtual
+	Contenido []byte //contenido de la pagina
+	PID       int64  //PID para desalojar todas las paginas referidas a un proceso
+	R         bool   //bit Referenced de acceso a la pagina
+	D         bool   //bit Dirty de modificacion de la pagina
 }
 
 type Cache struct {
@@ -140,14 +140,24 @@ type SolicitudPagina struct {
 
 // Para solicitudes con contenido de página
 type SolicitudPaginaContenido struct {
-	Pid       int64    `json:"pid"`
-	Pagina    int64    `json:"pagina"`
-	Contenido [64]byte `json:"contenido"`
+	Pid       int64  `json:"pid"`
+	Pagina    int64  `json:"pagina"`
+	Contenido []byte `json:"contenido"`
 }
 
 // Para respuestas de contenido de página
 type RespuestaContenido struct {
-	Contenido [64]byte `json:"contenido"`
+	Contenido []byte `json:"contenido"`
+}
+
+type SolicitudEscritura struct {
+	DireccionFisica int64  `json:"direccion"`
+	Dato            string `json:"dato"`
+}
+
+type SolicitudLectura struct {
+	DireccionFisica int64 `json:"direccion"`
+	Tamanio         int64 `json:"tamanio"`
 }
 
 // Para respuestas de marco
@@ -174,4 +184,9 @@ type RespuestaInterrupcion struct {
 // Interrupcion
 type Interrupcion struct {
 	PID int64 `json:"pid"`
+}
+
+type PCyPID struct {
+	Pid int64 `json:"pid"`
+	Pc  int64 `json:"pc"`
 }
