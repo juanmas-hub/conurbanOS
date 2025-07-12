@@ -1047,8 +1047,8 @@ func Signal(semaforo globals.Semaforo) {
 
 // Interrupcion
 func RecibirInterrupcion(w http.ResponseWriter, r *http.Request) {
-	var pid int64
-	err := json.NewDecoder(r.Body).Decode(&pid)
+	var interrupt globals.Interrupcion
+	err := json.NewDecoder(r.Body).Decode(&interrupt)
 	if err != nil {
 		log.Printf("Error al decodificar PID: %s\n", err.Error())
 		w.WriteHeader(http.StatusBadRequest)
@@ -1056,8 +1056,23 @@ func RecibirInterrupcion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("PID recibido para interrumpir: %d\n", pid)
+	log.Printf("PID recibido para interrumpir: %d\n", interrupt.PID)
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
+	globals.HayInterrupcion = true
+
+	log.Print("Esperando que termine el ciclo de instruccion")
+	Wait(globals.Sem_Interrupcion)
+	log.Print("Ya se interrumpio")
+
+	respuesta := globals.RespuestaInterrupcion{
+		PC: globals.PC_Interrupcion,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(respuesta)
+	if err != nil {
+		log.Printf("Error al codificar respuesta: %s\n", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }

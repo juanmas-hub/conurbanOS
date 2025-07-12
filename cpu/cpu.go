@@ -50,6 +50,7 @@ func main() {
 	go func() {
 		for {
 			log.Println("hola")
+			globals.HayInterrupcion = false
 			utils_cpu.Wait(globals.Sem)
 			for pcb := range utils_cpu.ColaDeEjecucion {
 				log.Printf("Ejecutando PID %d en PC %d", pcb.Pid, pcb.PC)
@@ -75,15 +76,29 @@ func main() {
 				}
 				log.Printf("Finalizado: nuevo PC = %d", pcb.PC)
 
+				// Check interrupts
+				if globals.HayInterrupcion {
+					log.Printf("Hay interrupcion")
+					globals.PC_Interrupcion = pcb.PC
+					log.Printf("PC: %d", globals.PC_Interrupcion)
+					utils_cpu.Signal(globals.Sem_Interrupcion)
+					log.Printf("Señal enviada")
+					resultadoEjecucion = utils_cpu.PONERSE_ESPERA
+				} else {
+					log.Printf("No hubo interrupcion")
+				}
+
 				switch resultadoEjecucion {
 				case utils_cpu.CONTINUAR_EJECUCION:
 					utils_cpu.ColaDeEjecucion <- pcb
 					continue // Volver al inicio del bucle para FETCH la siguiente instrucción del mismo PCB
 
 				case utils_cpu.PONERSE_ESPERA:
-					log.Printf("Proceso PID %d cede la CPU por Syscall: %s. PC actual: %d", pcb.Pid, instruccionDeco.Nombre, pcb.PC)
-
-					//pcb a kernel
+					if globals.HayInterrupcion {
+						log.Printf("Se cede la CPU con PID: (%d) por Interrupcion. PC actual: %d", pcb.Pid, pcb.PC)
+					} else {
+						log.Printf("Proceso PID %d cede la CPU por Syscall: %s. PC actual: %d", pcb.Pid, instruccionDeco.Nombre, pcb.PC)
+					}
 
 					break // Salir del switch, para que espere un nuevo PCB
 

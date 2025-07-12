@@ -177,10 +177,6 @@ func CrearSemaforo(maxTareas int) Semaforo {
 
 var Sem = CrearSemaforo(0)
 
-type RespuestaInterrupcion struct {
-	PC int64 `json:"pc"`
-}
-
 // Interrupcion
 type Interrupcion struct {
 	PID int64 `json:"pid"`
@@ -190,3 +186,12 @@ type PCyPID struct {
 	Pid int64 `json:"pid"`
 	Pc  int64 `json:"pc"`
 }
+
+type RespuestaInterrupcion struct {
+	PC int64 `json:"pc"`
+}
+
+var HayInterrupcion bool = false
+
+var Sem_Interrupcion = CrearSemaforo(0)
+var PC_Interrupcion int64 = -1

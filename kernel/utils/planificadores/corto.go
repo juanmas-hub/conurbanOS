@@ -39,8 +39,6 @@ func planificadorFIFO() {
 		general.Wait(globals.Sem_ProcesosEnReady) // Espero a que haya procesos en Ready
 
 		globals.EstadosMutex.Lock()
-
-		slog.Debug(fmt.Sprintf(" ---- Algoritmo Corto Plazo ----"))
 		ejecutarUnProceso()
 
 		globals.EstadosMutex.Unlock()
@@ -63,12 +61,16 @@ func planificadorSJF() {
 
 func planificadorSRT() {
 	for {
+		slog.Debug(fmt.Sprint("Esperando Replanificar SRT"))
 		<-globals.SrtReplanificarChan
+		slog.Debug(fmt.Sprint("Se llamó para Replanificar SRT"))
 
 		// Chequeo los 4 posibles casos
 
 		if hayProcesosEnReady() && hayCpusLibres() {
 			globals.EstadosMutex.Lock()
+
+			slog.Debug(fmt.Sprint("SRT - Hay procesos en ready y hay cpus libres"))
 
 			ordenarReadyPorRafaga()
 			ejecutarUnProceso()
@@ -77,18 +79,23 @@ func planificadorSRT() {
 		}
 
 		if hayProcesosEnReady() && !hayCpusLibres() {
+
+			slog.Debug(fmt.Sprint("SRT - Hay procesos en ready y NO hay cpus libres"))
 			// Caso desalojo
 			pidEnExec, hayQueDesalojar := verificarDesalojo()
 			if hayQueDesalojar {
+				slog.Debug(fmt.Sprint("SRT - PID elegido a deslojar: ", pidEnExec))
 				desalojarYEnviarProceso(pidEnExec)
 			}
 		}
 
 		if !hayProcesosEnReady() && hayCpusLibres() {
+			slog.Debug(fmt.Sprint("SRT - No hay procesos en ready y hay cpus libres"))
 			// No hacemos nada
 		}
 
 		if !hayProcesosEnReady() && !hayCpusLibres() {
+			slog.Debug(fmt.Sprint("SRT - No hay ni procesos en ready ni cpus libres"))
 			// No hacemos nada
 		}
 	}
@@ -256,6 +263,7 @@ func ejecutarUnProceso() {
 
 func desalojarYEnviarProceso(pidEnExec int64) {
 	ipCPU, puertoCPU, nombreCPU, ok := general.BuscarCpuPorPID(pidEnExec)
+	slog.Debug(fmt.Sprint("SRT - CPU del proceso a desalojar: ", nombreCPU))
 	if ok {
 		globals.EstadosMutex.Lock()
 		globals.MapaProcesosMutex.Lock()
@@ -270,33 +278,28 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 			log.Fatal("Error en interrupción:", err)
 		}
 		general.ActualizarPC(pidEnExec, respuestaInterrupcion.PC)
-		general.EnviarProcesoAEjecutar_ACPU(ipCPU, puertoCPU, pidProcesoAEjecutar, pcProcesoAEjecutar, nombreCPU)
-
-		// LOG Desalojo: ## (<PID>) - Desalojado por algoritmo SJF/SRT
-		slog.Info(fmt.Sprintf("## (%d) - Desalojado por algoritmo SJF/SRT", proceso.Pcb.Pid))
 
 		globals.MapaProcesosMutex.Lock()
+		procesoDesalojado := globals.MapaProcesos[pidEnExec]
+		globals.MapaProcesosMutex.Unlock()
+		ExecuteAReady(procesoDesalojado, "")
+
+		// LOG Desalojo: ## (<PID>) - Desalojado por algoritmo SJF/SRT
+		slog.Info(fmt.Sprintf("## (%d) - Desalojado por algoritmo SJF/SRT", procesoDesalojado.Pcb.Pid))
+
+		general.EnviarProcesoAEjecutar_ACPU(ipCPU, puertoCPU, pidProcesoAEjecutar, pcProcesoAEjecutar, nombreCPU)
 		globals.EstadosMutex.Lock()
 		aExecute(proceso)
 		globals.EstadosMutex.Unlock()
 
-		procesoDesalojado := globals.MapaProcesos[pidEnExec]
-		globals.MapaProcesosMutex.Unlock()
-
-		ExecuteAReady(procesoDesalojado, "")
-
 	} else {
-		log.Printf("No se encontró la CPU que ejecuta el PID %d", pidEnExec)
+		slog.Info(fmt.Sprintf("No se encontró la CPU que ejecuta el PID %d al momento de desalojar", pidEnExec))
 	}
+	slog.Debug(fmt.Sprint("Notificado Replanificar SRT"))
 }
 
 func ExecuteAReady(proceso globals.Proceso, razon string) {
-	ahora := time.Now()
-	tiempoEnEstado := ahora.Sub(proceso.UltimoCambioDeEstado)
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
-	if globals.KernelConfig.Scheduler_algorithm != "FIFO" {
-		ActualizarEstimado(proceso.Pcb.Pid, float64(tiempoEnEstado.Milliseconds()))
-	}
 
 	proceso.Estado_Actual = globals.READY
 	globals.MapaProcesosMutex.Lock()
@@ -308,7 +311,6 @@ func ExecuteAReady(proceso globals.Proceso, razon string) {
 	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE[:pos], globals.ESTADOS.EXECUTE[pos+1:]...)
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
 	globals.EstadosMutex.Unlock()
-
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado EXECUTE al estado READY", proceso.Pcb.Pid))
 }
