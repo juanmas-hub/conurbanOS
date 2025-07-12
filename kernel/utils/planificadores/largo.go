@@ -66,17 +66,25 @@ func pasarProcesosAReady() {
 			if lenghtSUSP_READY == 0 {
 
 				for len(globals.ESTADOS.NEW) > 0 {
+					slog.Debug("Se quiere lockear en ExecuteAReady")
 					globals.EstadosMutex.Lock()
+					slog.Debug("Se lockear en ExecuteAReady")
 					procesoNuevo := globals.ESTADOS.NEW[0]
+					slog.Debug("Se quiere deslockear en ExecuteAReady")
 					globals.EstadosMutex.Unlock()
+					slog.Debug("Se deslockear en ExecuteAReady")
 					//slog.Debug(fmt.Sprintf("Solicito iniciar proceso: %d", procesoNuevo.Proceso.Pcb.Pid))
 					if general.SolicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
 						break
 					}
 
+					slog.Debug("Se quiere lockear en ExecuteAReady 2 ")
 					globals.EstadosMutex.Lock()
+					slog.Debug("Se lockear en ExecuteAReady 2 ")
 					globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
+					slog.Debug("Se quiere deslockear en ExecuteAReady 2 ")
 					globals.EstadosMutex.Unlock()
+					slog.Debug("Se deslockear en ExecuteAReady 2 ")
 					go NewAReady(procesoNuevo)
 
 				}
@@ -133,7 +141,9 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		Proceso:              proceso,
 	}
 
+	slog.Debug("Se quiere lockear en CrearProcesoNuevo")
 	globals.EstadosMutex.Lock()
+	slog.Debug("Se lockear en CrearProcesoNuevo")
 
 	// Aca no hay metricas que actualizar
 	globals.ESTADOS.NEW = append(globals.ESTADOS.NEW, procesoNuevo)
@@ -147,7 +157,9 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		//log.Print("NEW despues de ordenarlo: ", globals.ESTADOS.NEW)
 	}
 
+	slog.Debug("Se quiere deslockear en CrearProcesoNuevo")
 	globals.EstadosMutex.Unlock()
+	slog.Debug("Se deslockear en CrearProcesoNuevo")
 
 	globals.DeDondeSeLlamaMutex.Lock()
 	globals.DeDondeSeLlamaPasarProcesosAReady = "New"
@@ -175,9 +187,13 @@ func FinalizarProceso(pid int64) {
 	// Mover a EXIT y eliminar de su cola
 	ProcesoAExit(proceso)
 
+	slog.Debug("Se quiere lockear en CrearProcesoNuevo")
 	globals.EstadosMutex.Lock()
+	slog.Debug("Se lockear en CrearProcesoNuevo")
 	EliminarProcesoDeSuCola(pid, proceso.Estado_Actual)
+	slog.Debug("Se quiere deslockear en CrearProcesoNuevo")
 	globals.EstadosMutex.Unlock()
+	slog.Debug("Se deslockear en CrearProcesoNuevo")
 
 	// Eliminar del mapa de procesos
 	globals.MapaProcesosMutex.Lock()

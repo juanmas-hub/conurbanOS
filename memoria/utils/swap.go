@@ -3,8 +3,10 @@ package utils
 import (
 	//"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
+
 	//"net/http"
 	"os"
 
@@ -138,5 +140,20 @@ func escribirEnSWAP(pid int, paginasDTO []globals_memoria.PaginaDTO) int {
 
 		globals_memoria.Procesos[pid].PaginasSWAP = append(globals_memoria.Procesos[pid].PaginasSWAP, paginaSwapDisponible)
 	}
+
+	// Leer todo el archivo
+	data, err := io.ReadAll(archivo)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	slog.Debug(fmt.Sprintf("Leí %d bytes\n", len(data)))
+
+	// Mostrar los primeros 10 bytes en hexadecimal
+	//for i := 0; i < 10 && i < len(data); i++ {
+	//	fmt.Printf("%02X ", data[i])
+	//}
+	slog.Debug(fmt.Sprint("Data leida de SWAP: ", data))
+
 	return 0
 }

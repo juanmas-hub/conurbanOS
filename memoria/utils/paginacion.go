@@ -75,8 +75,8 @@ func crearTabla(entradasPorPagina int64, nivel int) *globals_memoria.TablaDePagi
 	tabla := &globals_memoria.TablaDePaginas{
 		Entradas: make([]globals_memoria.EntradaTablaPagina, entradasPorPagina),
 	}
-	
-	for i := 0; i<int(entradasPorPagina); i++{
+
+	for i := 0; i < int(entradasPorPagina); i++ {
 		tabla.Entradas[i].Nivel = nivel
 	}
 
@@ -91,7 +91,7 @@ func construirArbolTablas(nivelActual, cantidadNiveles int, entradasPorTabla int
 		log.Printf("Fallo al construir el arbol en el nivel: %d", nivelActual)
 		return nil
 	}
-	
+
 	log.Printf("Se creo una tabla de nivel: %d", nivelActual)
 
     for i := range tabla.Entradas {
@@ -136,7 +136,7 @@ func actualizarTablaPaginas(pid int, indices []int) {
 	globals_memoria.Procesos[pid].MarcosAsignados =
 		append(globals_memoria.Procesos[pid].MarcosAsignados[1:], globals_memoria.Procesos[pid].MarcosAsignados[0])
 
-	 marco = &globals_memoria.Procesos[pid].MarcosAsignados[cantidadMarcos-1]
+	marco = &globals_memoria.Procesos[pid].MarcosAsignados[cantidadMarcos-1]
 
 	slog.Debug(fmt.Sprintf("Marco elegido para actualizar tabla de paginas: %+v", marco))
 
@@ -147,13 +147,11 @@ func actualizarTablaPaginas(pid int, indices []int) {
 		siguiente = indices[i+1]
 		slog.Debug(fmt.Sprintf("Indice Actual: %+v, Indice Siguiente: %+v", actual, siguiente))
 
-
 		tabla.Entradas[actual].Marco = siguiente
 
 		if tabla.Entradas[actual].SiguienteNivel == nil {
 			tabla.Entradas[actual].SiguienteNivel = crearTabla(ENTRIES_PER_PAGE, i+1)
 		}
-
 
 		log.Printf("Nivel %d: pagina %d y marco %d", i+1, i, siguiente)
 		IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
@@ -208,7 +206,7 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	}
 
 	globals_memoria.Procesos[pid] = &globals_memoria.Proceso{
-		Pseudocodigo: nil,
+		Pseudocodigo:    nil,
 		MarcosAsignados: nil,
 		Suspendido:      false,
 		PaginasSWAP:     nil,
@@ -258,13 +256,18 @@ func obtenerMarcoDesdeTabla(pid int, primerIndice int) int {
 
 func eliminarMarcosFisicos(pid int) []globals_memoria.PaginaDTO {
 
+	slog.Debug(fmt.Sprint("Se entro a eliminarMarcosFisicos"))
+
 	if globals_memoria.Procesos[pid].MarcosAsignados == nil {
+		slog.Debug(fmt.Sprint("Marcos asignados nulo: ", globals_memoria.Procesos[pid].MarcosAsignados))
 		return nil
 	}
 
 	var marcos *[]globals_memoria.Pagina = &globals_memoria.Procesos[pid].MarcosAsignados
 	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
 	var paginasDTO []globals_memoria.PaginaDTO = []globals_memoria.PaginaDTO{}
+
+	slog.Debug(fmt.Sprint("Length marcos: ", len(*marcos)))
 
 	for i := 0; i < len(*marcos); i++ {
 		var paginaDTO globals_memoria.PaginaDTO
@@ -299,6 +302,7 @@ func eliminarMarcosFisicos(pid int) []globals_memoria.PaginaDTO {
 		(*marcos)[i].IndiceAsignado = -1
 	}
 
+	slog.Debug(fmt.Sprint("PaginasDTO en eliminarMarcosFisicos: ", paginasDTO))
 	return paginasDTO
 }
 

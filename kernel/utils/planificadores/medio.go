@@ -1,6 +1,9 @@
 package planificadores
 
 import (
+	"fmt"
+	"log"
+	"log/slog"
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
@@ -17,14 +20,14 @@ func EjecutarPlanificadorMedioPlazo(proceso globals.Proceso, razon string) {
 	globals.CantidadSesionesIOMutex.Unlock()
 
 	// -- Timer hasta ser suspendido
-	go timer(globals.KernelConfig.Suspension_time, proceso, cantidadSesiones)
 
-}
+	go func() {
+		time.Sleep(time.Duration(time.Duration(globals.KernelConfig.Suspension_time).Milliseconds()))
+		sigueBloqueado(proceso, cantidadSesiones)
+	}()
 
-func timer(tiempo int64, proceso globals.Proceso, cantidadSesiones int) {
-	defer sigueBloqueado(proceso, cantidadSesiones)
-	duracion := time.Duration(tiempo) * time.Millisecond
-	time.Sleep(duracion)
+	slog.Debug(fmt.Sprintf("Proceso %d suspendido, arranco el timer", proceso.Pcb.Pid))
+
 }
 
 func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
@@ -32,30 +35,34 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 	// Para que no siga bloqueado, el proceso tuvo que terminar su IO (lo recibimos como mensaje desde IO, siendo kernel servidor)
 	// Cuando kernel reciba de IO el mensaje, ahí le cambiamos el estado
 
+	slog.Debug(fmt.Sprintf("Termino el timer del proceso %d", proceso.Pcb.Pid))
+
 	globals.MapaProcesosMutex.Lock()
 	procesoActualmente := globals.MapaProcesos[proceso.Pcb.Pid]
+	globals.MapaProcesosMutex.Unlock()
 
 	// Comparo cantidad de sesiones:
 	// 		- Son iguales: es la misma sesion => me fijo si swappeo
 	//		- Son distintas: distintas sesiones => no hago nada
 
-	globals.CantidadSesionesIOMutex.Lock()
-	//log.Printf("Cantidad sesiones actual: %d, previa: %d", globals.CantidadSesionesIO[procesoActualmente.Pcb.Pid], cantidadSesionesPrevia)
-	if globals.CantidadSesionesIO[procesoActualmente.Pcb.Pid] == cantidadSesionesPrevia {
-		if procesoActualmente.Estado_Actual == globals.BLOCKED {
-			// Aviso a memoria que hay que swappear
-			general.AvisarSwappeo(procesoActualmente.Pcb.Pid)
+	cantidadSesionesActual := globals.CantidadSesionesIO[procesoActualmente.Pcb.Pid]
 
-			// Cambio de estado
-			BlockedASuspBlocked(proceso)
+	log.Printf("Cantidad sesiones actual: %d, previa: %d", cantidadSesionesActual, cantidadSesionesPrevia)
 
-			// Libere espacio => llamo a nuevos procesos
-			globals.DeDondeSeLlamaMutex.Lock()
-			globals.DeDondeSeLlamaPasarProcesosAReady = "Susp Blocked"
-			globals.DeDondeSeLlamaMutex.Unlock()
-			globals.SignalPasarProcesoAReady()
-		}
+	if cantidadSesionesActual == cantidadSesionesPrevia && procesoActualmente.Estado_Actual == globals.BLOCKED {
+		// Aviso a memoria que hay que swappear
+		slog.Debug(fmt.Sprint("Hay que swappear proceso: ", procesoActualmente.Pcb.Pid))
+		general.AvisarSwappeo(procesoActualmente.Pcb.Pid)
+
+		// Cambio de estado
+		globals.MapaProcesosMutex.Lock()
+		BlockedASuspBlocked(proceso)
+		globals.MapaProcesosMutex.Unlock()
+
+		// Libere espacio => llamo a nuevos procesos
+		globals.DeDondeSeLlamaMutex.Lock()
+		globals.DeDondeSeLlamaPasarProcesosAReady = "Susp Blocked"
+		globals.DeDondeSeLlamaMutex.Unlock()
+		globals.SignalPasarProcesoAReady()
 	}
-	globals.CantidadSesionesIOMutex.Unlock()
-	globals.MapaProcesosMutex.Unlock()
 }
