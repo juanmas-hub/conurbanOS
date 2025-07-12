@@ -40,6 +40,7 @@ func planificadorFIFO() {
 
 		globals.EstadosMutex.Lock()
 
+		slog.Debug(fmt.Sprintf(" ---- Algoritmo Corto Plazo ----"))
 		ejecutarUnProceso()
 
 		globals.EstadosMutex.Unlock()
@@ -243,6 +244,7 @@ func ordenarReadyPorRafaga() {
 }
 
 func ejecutarUnProceso() {
+	slog.Debug(fmt.Sprintf(" ---- Ready: %d ----", globals.ESTADOS.READY))
 	procesoAEjecutar := globals.ESTADOS.READY[0]
 	ip, port, nombre := elegirCPUlibre()
 	globals.MapaProcesosMutex.Lock()

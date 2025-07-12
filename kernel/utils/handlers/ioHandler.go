@@ -38,7 +38,9 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 	posInstanciaIo := BuscarInstanciaIO(finalizacionIo.NombreIO, finalizacionIo.NombreInstancia)
 
 	if posInstanciaIo == -1 {
-		log.Printf("Error buscando instancia de IO de nombre: %s, con el proceso: %d", finalizacionIo.NombreIO, finalizacionIo.PID)
+		slog.Debug(fmt.Sprintf("No se encontro la instancia de IO %s que tendria el PID: %d, probablemente porque se desconecto", finalizacionIo.NombreInstancia, finalizacionIo.PID))
+		globals.ListaIOsMutex.Unlock()
+		return
 	}
 	instanciaIo := io.Instancias[posInstanciaIo]
 
