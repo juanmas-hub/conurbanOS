@@ -292,8 +292,10 @@ func eliminarMarcosFisicos(pid int) []globals_memoria.PaginaDTO {
 
 		// Guardar entrada asignada
 		slog.Debug(fmt.Sprintf("Entrada: %+v", (*marcos)[i].EntradaAsignada))
-		paginaDTO.Entrada = (*marcos)[i].EntradaAsignada
-		paginasDTO = append(paginasDTO, paginaDTO)
+		if paginaDTO.Entrada == nil {
+			paginaDTO.Entrada = (*marcos)[i].EntradaAsignada
+			paginasDTO = append(paginasDTO, paginaDTO)
+		}
 
 		// Marcar marco como disponible
 		globals_memoria.MemoriaMarcosOcupados[(*marcos)[i].IndiceAsignado] = false
