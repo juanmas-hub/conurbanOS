@@ -299,7 +299,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 			if err != nil {
 				fmt.Printf("Error al conseguir direccion fisica: %s\n", err)
 			}
-			EscribirDatoMemoria(direcccionFisica, instDeco.Parametros[1])
+			EscribirDatoMemoria(direcccionFisica, instDeco.Parametros[1], pcb.Pid)
 		}
 		pcb.PC++
 		return CONTINUAR_EJECUCION, nil
@@ -359,7 +359,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 			if err != nil {
 				fmt.Printf("Error al conseguir direccion fisica")
 			}
-			LeerPaginaMemoria(direcccionFisica, tamanio)
+			LeerPaginaMemoria(direcccionFisica, tamanio, pcb.Pid)
 		}
 		pcb.PC++
 		return CONTINUAR_EJECUCION, nil
@@ -720,6 +720,7 @@ func InsertarOReemplazarEnCache(nueva *globals.CacheEntry) {
 
 	// Si la víctima está modificada, escribir su contenido a memoria principal
 	if globals.ElCache.Entries[victimaIdx].D {
+		// HAY QUE MANDARLE A MEMORIA LA DIRECCION FISICA ==> HAY QUE TRADUCIRLA ANTES (no hecho)
 		ActualizarPaginaMemoria(globals.ElCache.Entries[victimaIdx].PID, globals.ElCache.Entries[victimaIdx].Pagina, globals.ElCache.Entries[victimaIdx].Contenido)
 	}
 
@@ -822,7 +823,7 @@ func ReemplazarEnTLB(nuevaEntrada globals.TLBentry, tlb *globals.TLB) error {
 func PedirMarcoDePagina(pid int64, entradas []int64) (int64, error) {
 	solicitud := struct {
 		Pid      int64   `json:"pid"`
-		Entradas []int64 `json:"pagina"`
+		Entradas []int64 `json:"entradas"`
 	}{
 		Pid:      pid,
 		Entradas: entradas,
@@ -859,7 +860,11 @@ func PedirMarcoDePagina(pid int64, entradas []int64) (int64, error) {
 // (6) funcion que pida a memoria el contenido de una pagina
 func PedirContenidoPagina(direccionFisica int64) ([]byte, error) {
 
-	body, err := json.Marshal(direccionFisica)
+	mensaje := globals_cpu.LeerPaginaDTO{
+		DireccionFisica: direccionFisica,
+	}
+
+	body, err := json.Marshal(mensaje)
 	if err != nil {
 		return []byte{}, fmt.Errorf("error codificando solicitud: %w", err)
 	}
@@ -884,15 +889,15 @@ func PedirContenidoPagina(direccionFisica int64) ([]byte, error) {
 	return respuesta.Contenido, nil
 }
 
-func EscribirDatoMemoria(direccionFisica int64, dato string) error {
-	solicitudEscritura := globals.SolicitudEscritura{DireccionFisica: direccionFisica, Dato: dato}
+func EscribirDatoMemoria(direccionFisica int64, dato string, pid int64) error {
+	solicitudEscritura := globals.SolicitudEscritura{Pid: pid, DireccionFisica: direccionFisica, Dato: dato}
 
 	body, err := json.Marshal(solicitudEscritura)
 	if err != nil {
 		return fmt.Errorf("error codificando solicitud: %w", err)
 	}
 
-	url := fmt.Sprintf("http://%s:%d/escribirDatoMemoria", globals_cpu.CpuConfig.Ip_memory, globals_cpu.CpuConfig.Port_memory)
+	url := fmt.Sprintf("http://%s:%d/accederEspacioUsuarioEscritura", globals_cpu.CpuConfig.Ip_memory, globals_cpu.CpuConfig.Port_memory)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		return fmt.Errorf("error haciendo POST a Memoria: %w", err)
@@ -907,8 +912,8 @@ func EscribirDatoMemoria(direccionFisica int64, dato string) error {
 }
 
 // (8) funcion que pida a memoria que lea (cache deshabilitado)
-func LeerPaginaMemoria(direccionFisica int64, tamanio int64) ([]byte, error) {
-	solicitudLectura := globals_cpu.SolicitudLectura{DireccionFisica: direccionFisica, Tamanio: tamanio}
+func LeerPaginaMemoria(direccionFisica int64, tamanio int64, pid int64) ([]byte, error) {
+	solicitudLectura := globals_cpu.SolicitudLectura{Pid: pid, Posicion: direccionFisica, Tamanio: tamanio}
 
 	body, err := json.Marshal(solicitudLectura)
 	if err != nil {
@@ -936,8 +941,8 @@ func LeerPaginaMemoria(direccionFisica int64, tamanio int64) ([]byte, error) {
 }
 
 // (9) funcion que pida a memoria actualizar una pagina (Dirty BIT),
-func ActualizarPaginaMemoria(pid int64, pagina int64, contenido []byte) error {
-	solicitud := globals_cpu.SolicitudPaginaContenido{Pid: pid, Pagina: pagina, Contenido: contenido}
+func ActualizarPaginaMemoria(pid int64, direccionFisica int64, contenido []byte) error {
+	solicitud := globals_cpu.SolicitudPaginaContenido{Pid: pid, DireccionFisica: direccionFisica, Contenido: contenido}
 
 	body, err := json.Marshal(solicitud)
 	if err != nil {

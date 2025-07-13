@@ -30,10 +30,18 @@ type Memoria_Metrica struct {
 	EscriturasMemoria        int `json:"escrituras_memoria"`
 }
 
+/*
 type MetricasMap map[int]*Memoria_Metrica
 
 var Metricas *MetricasMap
+*/
 
+var MetricasMap map[int]Memoria_Metrica
+
+var Memoria []byte
+var MemoriaMarcosOcupados []bool
+
+/*
 // Entrada de una tabla de páginas
 type EntradaTablaPagina struct {
 	Nivel          int
@@ -52,9 +60,6 @@ type Manager map[int]*TablaDePaginas
 
 var Tablas *Manager
 
-var Memoria []byte
-
-var MemoriaMarcosOcupados []bool
 
 type PaginaDTO struct {
 	Contenido string
@@ -78,6 +83,8 @@ type ProcesosMap map[int]*Proceso
 
 var Procesos ProcesosMap
 
+*/
+
 type IniciarProcesoDTO struct {
 	ArchivoPseudocodigo string `json:"archivo_pseudocodigo"`
 	Tamanio             int64  `json:"tamanio"`
@@ -100,13 +107,13 @@ type LecturaDTO struct {
 }
 
 type EscrituraDTO struct {
-	Pid      int64  `json:"pid"`
-	Posicion int64  `json:"posicion"`
-	Dato     string `json:"dato"`
+	Pid             int64  `json:"pid"`
+	DireccionFisica int64  `json:"posicion"`
+	Dato            string `json:"dato"`
 }
 type TablaDTO struct {
 	Pid     int64 `json:"pid"`
-	Indices []int `json:"indices"`
+	Indices []int `json:"entradas"`
 }
 
 type ConsultaPaginaDTO struct {
@@ -115,44 +122,61 @@ type ConsultaPaginaDTO struct {
 }
 
 type LeerPaginaDTO struct {
-	IndicePagina int64 `json:"indice_pagina"`
+	DireccionFisica int64 `json:"direccion_fisica"`
 }
 
 type ActualizarPaginaDTO struct {
-	IndicePagina int64  `json:"indice_pagina"`
-	Dato         []byte `json:"dato"`
+	Pid             int64  `json:"pid"`
+	DireccionFisica int64  `json:"direccion_fisica"`
+	Contenido       []byte `json:"contenido"`
 }
 
 var Prueba string
 
+/*
 var ListaPaginasSwapDisponibles []Pagina
 
 var ProximoIndiceSwap int
+*/
+
+var IndicesSWAPOcupados []bool
 
 // NUEVA OPCION
 type Proceso struct {
-	Pseudocodigo []string
-	Suspendido   bool
-
-	TablaDePaginas []TablaPaginas
+	Pseudocodigo      []string
+	Suspendido        bool
+	TablaDePaginas    TablaPaginas
+	InicioSWAP        int // guarda el indice donde inicia el proceso en swap
+	CantidadDePaginas int
 }
 
-var Procesos map[Int]Proceso // mapeado por PID
+var Procesos map[int]Proceso // mapeado por PID
 
 type TablaPaginas struct {
 	Entradas []EntradaTP
 }
 
 type EntradaTP struct {
-	NumeroDePagina int        // -1 en niveles intermedios
-	NumeroDeFrame  int        // -1 en niveles intermedios
-	SiguienteNivel *EntradaTP // nil en el ultimo nivel
+	NumeroDePagina int           // -1 en niveles intermedios
+	NumeroDeFrame  int           // -1 en niveles intermedios
+	SiguienteNivel *TablaPaginas // nil en el ultimo nivel
 }
 
 type PaginaEnSwap struct {
 	Pid            int
 	NumeroDePagina int
 	contenido      []byte
+}
+
+// Lo usuaria para swappear
+type Pagina struct {
+	NumeroDePagina int
+	Contenido      []byte
+}
+
+type PaginaLinkeada struct {
+	NumeroDePagina int
+	NumeroDeFrame  int
 }
 
 /*

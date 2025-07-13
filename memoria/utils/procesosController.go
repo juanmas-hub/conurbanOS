@@ -46,6 +46,7 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*
 func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.PidDTO
@@ -87,9 +88,58 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+
+	Suspensión de proceso:
+- Pones el bool de suspendido en true
+- La tabla de paginas la dejas como está
+- Eliminas el contenido de la memoria (recorres la TP y por cada pagina tomas el frame, y lo llenas de 0s. Otra opcion seria tomar el inicio del proceso, su tamaño, volver a calcular los frames q necesita y llenarlos de 0s)
+- Escribis en SWAP
+}*/
+
+func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.PidDTO
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	log.Printf("Me llego para suspender el proceso de pid: %d", mensaje.Pid)
+
+	// Aca empieza la logica
+
+	var pid int = int(mensaje.Pid)
+	var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
+	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
+
+	time.Sleep(time.Duration(delay+delayMem) * time.Millisecond)
+
+	IncrementarMetrica("BAJADAS_SWAP", pid, 1)
+
+	proceso := globals_memoria.Procesos[pid]
+
+	// Marco proceso suspendido
+	proceso.Suspendido = true
+
+	// Eliminas de memoria
+	paginas := eliminarMarcosFisicos(pid)
+
+	// Escribis en swap
+	if escribirEnSWAP(pid, paginas) < 0 {
+		log.Printf("Proceso %d no se pudo suspender por fallo al escribir en SWAP", mensaje.Pid)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Proceso no se pudo suspender por fallo al escribir en SWAP"))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
 }
 
-func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
+/*func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.PidDTO
 	err := decoder.Decode(&mensaje)
@@ -133,8 +183,55 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 	delete((*globals_memoria.Metricas), pid)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
+}*/
+
+func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.PidDTO
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	log.Printf("Me llego para finalizar el proceso de pid: %d", mensaje.Pid)
+
+	// Aca empieza la logica
+	var pid int = int(mensaje.Pid)
+
+	if globals_memoria.Procesos[pid].Suspendido {
+		var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
+		var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
+
+		time.Sleep(time.Duration(delay+delayMem) * time.Millisecond)
+		eliminarPaginasSWAP(pid)
+	} else {
+
+		var delay int64 = globals_memoria.MemoriaConfig.Memory_delay
+
+		time.Sleep(time.Duration(delay) * time.Millisecond)
+		eliminarMarcosFisicos(pid)
+	}
+
+	delete(globals_memoria.Procesos, pid)
+
+	var ATP int = globals_memoria.MetricasMap[pid].AccesosTablas
+	var InstSol int = globals_memoria.MetricasMap[pid].InstruccionesSolicitadas
+	var SWAP int = globals_memoria.MetricasMap[pid].BajadasSwap
+	var MemPrin int = globals_memoria.MetricasMap[pid].SubidasMemoria
+	var LecMem int = globals_memoria.MetricasMap[pid].LecturasMemoria
+	var EscMem int = globals_memoria.MetricasMap[pid].EscriturasMemoria
+
+	log.Printf("## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: <%d; Esc.Mem.: %d", pid, ATP, InstSol, SWAP, MemPrin, LecMem, EscMem)
+
+	delete(globals_memoria.MetricasMap, pid)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
 }
 
+/*
 func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var mensaje globals_memoria.PidDTO
@@ -187,6 +284,71 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 
 	}
 	globals_memoria.Procesos[pid].Suspendido = false
+	IncrementarMetrica("SUBIDAS_MEMORIA", pid, 1)
+
+	log.Printf("Proceso %d reanudado correctamente", mensaje.Pid)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}*/
+
+func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var mensaje globals_memoria.PidDTO
+	err := decoder.Decode(&mensaje)
+	if err != nil {
+		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Error al decodificar mensaje"))
+		return
+	}
+
+	log.Printf("Me llego para reanudar proceso ")
+	log.Printf("%+v\n", mensaje.Pid)
+
+	// Aca empieza la logica
+	var pid int = int(mensaje.Pid)
+
+	if globals_memoria.Procesos[pid].Suspendido == false {
+		log.Printf("Proceso %d no se renaudo porque no estaba suspendido", mensaje.Pid)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("El proceso no estaba suspendido"))
+		return
+
+	}
+
+	var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
+	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
+
+	time.Sleep(time.Duration(delay+delayMem) * time.Millisecond)
+	cantidadPaginas := globals_memoria.Procesos[pid].CantidadDePaginas
+
+	if cantidadPaginas != 0 {
+
+		var marcosDisponibles []int = buscarMarcosDisponibles(cantidadPaginas)
+		if marcosDisponibles == nil {
+			log.Printf("Proceso %d no se renaudo por falta de espacio", mensaje.Pid)
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte("Proceso no se renaudo por falta de espacio"))
+			return
+		}
+
+		paginas := eliminarPaginasSWAP(pid)
+		if paginas == nil {
+			log.Printf("Proceso %d no se renaudo por error al eliminar paginas swap", mensaje.Pid)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("No se renaudo por error al eliminar paginas swap"))
+			return
+		}
+		log.Print("Paginas en ReanudarProceso", paginas)
+		paginasLinkeadas := *escribirPaginas(pid, paginas, marcosDisponibles)
+		actualizarTablaPaginas(pid, paginasLinkeadas)
+
+	}
+
+	proceso := globals_memoria.Procesos[pid]
+	proceso.Suspendido = false
+	globals_memoria.Procesos[pid] = proceso
+
 	IncrementarMetrica("SUBIDAS_MEMORIA", pid, 1)
 
 	log.Printf("Proceso %d reanudado correctamente", mensaje.Pid)

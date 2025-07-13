@@ -140,9 +140,9 @@ type SolicitudPagina struct {
 
 // Para solicitudes con contenido de página
 type SolicitudPaginaContenido struct {
-	Pid       int64  `json:"pid"`
-	Pagina    int64  `json:"pagina"`
-	Contenido []byte `json:"contenido"`
+	Pid             int64  `json:"pid"`
+	DireccionFisica int64  `json:"direccion_fisica"`
+	Contenido       []byte `json:"contenido"`
 }
 
 // Para respuestas de contenido de página
@@ -151,13 +151,18 @@ type RespuestaContenido struct {
 }
 
 type SolicitudEscritura struct {
-	DireccionFisica int64  `json:"direccion"`
+	Pid             int64  `json:"pid"`
+	DireccionFisica int64  `json:"posicion"`
 	Dato            string `json:"dato"`
+}
+type LeerPaginaDTO struct {
+	DireccionFisica int64 `json:"direccion_fisica"`
 }
 
 type SolicitudLectura struct {
-	DireccionFisica int64 `json:"direccion"`
-	Tamanio         int64 `json:"tamanio"`
+	Pid      int64 `json:"pid"`
+	Posicion int64 `json:"posicion"`
+	Tamanio  int64 `json:"tamanio"`
 }
 
 // Para respuestas de marco
