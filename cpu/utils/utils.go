@@ -283,7 +283,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 					PID:       pcb.Pid,
 					R:         false,
 					D:         false}
-				InsertarOReemplazarEnCache(entradaCache)
+				InsertarOReemplazarEnCache(entradaCache, direccionFisica)
 			} else {
 				fmt.Printf("entradaCache encontrada para pagina: %d\n", entradaCache.Pagina)
 			}
@@ -342,7 +342,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 					PID:       pcb.Pid,
 					R:         false,
 					D:         false}
-				InsertarOReemplazarEnCache(entradaCache)
+				InsertarOReemplazarEnCache(entradaCache, direccionFisica)
 			} else {
 				fmt.Printf("entradaCache encontrada para pagina: %d\n", entradaCache.Pagina)
 			}
@@ -692,7 +692,7 @@ func TraducirLogicaAFisica(marco int64, desplazamiento int64, tamanioPagina int6
 }
 
 // (3) funcion que inserte o reemplace en CACHE cuando esta lleno, con el algoritmo elegido
-func InsertarOReemplazarEnCache(nueva *globals.CacheEntry) {
+func InsertarOReemplazarEnCache(nueva *globals.CacheEntry, direccionFisica int64) {
 	// Si la página ya está en caché, la actualiza y setea Referenced
 	if idx, ok := globals.ElCache.PaginaIndex[nueva.Pagina]; ok {
 		globals.ElCache.Entries[idx] = *nueva
@@ -720,8 +720,14 @@ func InsertarOReemplazarEnCache(nueva *globals.CacheEntry) {
 
 	// Si la víctima está modificada, escribir su contenido a memoria principal
 	if globals.ElCache.Entries[victimaIdx].D {
-		// HAY QUE MANDARLE A MEMORIA LA DIRECCION FISICA ==> HAY QUE TRADUCIRLA ANTES (no hecho)
-		ActualizarPaginaMemoria(globals.ElCache.Entries[victimaIdx].PID, globals.ElCache.Entries[victimaIdx].Pagina, globals.ElCache.Entries[victimaIdx].Contenido)
+		victima := globals.ElCache.Entries[victimaIdx]
+		pid := victima.PID
+		contenido := victima.Contenido
+
+		err := ActualizarPaginaMemoria(pid, direccionFisica, contenido)
+		if err != nil {
+			log.Printf("⚠️ Error al actualizar página modificada de PID %d, direccion %d: %v", pid, direccionFisica, err)
+		}
 	}
 
 	// Eliminar la página víctima del índice

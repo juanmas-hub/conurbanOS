@@ -94,12 +94,12 @@ func ObtenerMarcoProceso(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var pid int = int(mensaje.Pid)
-	var primerIndice int = int(mensaje.PrimerIndice)
+	var entradas []int64 = mensaje.Entradas
 	var marco int
 	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
 	time.Sleep(time.Duration(delayMem) * time.Millisecond)
-	marco = obtenerMarcoDesdeTabla(pid, primerIndice)
+	marco = obtenerMarcoDesdeTabla(pid, entradas)
 
 	if marco < 0 {
 		log.Printf("Error al obtener marco")

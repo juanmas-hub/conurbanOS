@@ -302,7 +302,7 @@ func escribirEnSWAP(pid int, paginas []globals_memoria.Pagina) int {
 			globals_memoria.Procesos[pid] = proceso
 		}
 
-		slog.Debug(fmt.Sprintf("SWAP: PID %d, Página %d guardada en índice %d (inicio %inicio)", pid, pagina.NumeroDePagina, inicio+pagina.NumeroDePagina, puntero))
+		slog.Debug(fmt.Sprintf("SWAP: PID %d, Página %d guardada en índice %d ", pid, pagina.NumeroDePagina, inicio+pagina.NumeroDePagina))
 	}
 
 	return 0

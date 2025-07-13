@@ -10,6 +10,7 @@ import (
 	//"net/http"
 	"os"
 
+	globals "github.com/sisoputnfrba/tp-golang/globals/memoria"
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
@@ -309,7 +310,7 @@ func actualizarTablaPaginas(pid int, paginasLinkeadas []globals_memoria.PaginaLi
 	// Actualizar el proceso en la tabla global
 	globals_memoria.Procesos[pid] = proceso
 
-	slog.Debug(fmt.Sprintf("Tabla de paginas actualizada: ", globals_memoria.Procesos[pid].TablaDePaginas))
+	slog.Debug(fmt.Sprint("Tabla de paginas actualizada: ", globals_memoria.Procesos[pid].TablaDePaginas))
 }
 
 /*
@@ -436,26 +437,31 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	return 0
 }
 
-func obtenerMarcoDesdeTabla(pid int, primerIndice int) int {
-	(*globals_memoria.Metricas)[pid].AccesosTablas++
+func obtenerMarcoDesdeTabla(pid int, entradas []int64) int {
+	//(*globals_memoria.Metricas)[pid].AccesosTablas++
+
+	IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
 
 	var NUMBER_OF_LEVELS int = int(globals_memoria.MemoriaConfig.Number_of_levels)
-	var tablaActual *globals_memoria.TablaDePaginas = (*globals_memoria.Tablas)[pid]
-	var indiceActual int = primerIndice
+	tabla := globals.Procesos[pid].TablaDePaginas
+	var indiceActual int
 
 	for i := 0; i < NUMBER_OF_LEVELS-1; i++ {
 
-		var entrada *globals_memoria.EntradaTablaPagina = &tablaActual.Entradas[indiceActual]
-		tablaActual = entrada.SiguienteNivel
-		indiceActual = entrada.Marco
+		indiceActual = int(entradas[i])
+		entrada := tabla.Entradas[indiceActual]
+		tabla = *entrada.SiguienteNivel
+
 	}
 
-	if indiceActual >= len(tablaActual.Entradas) {
+	indiceActual = int(entradas[len(entradas)-1])
+
+	if indiceActual >= len(tabla.Entradas) {
 		log.Printf("Error: índice fuera de rango en nivel final para PID %d", pid)
 		return -1
 	}
 
-	return tablaActual.Entradas[indiceActual].Marco
+	return tabla.Entradas[indiceActual].NumeroDeFrame
 }
 
 /*

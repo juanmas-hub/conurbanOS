@@ -119,8 +119,8 @@ type TablaDTO struct {
 }
 
 type ConsultaPaginaDTO struct {
-	Pid          int64 `json:"pid"`
-	PrimerIndice int64 `json:"primer_indice"`
+	Pid      int64   `json:"pid"`
+	Entradas []int64 `json:"entradas"`
 }
 
 type LeerPaginaDTO struct {
