@@ -36,11 +36,11 @@ var Metricas *MetricasMap
 
 // Entrada de una tabla de páginas
 type EntradaTablaPagina struct {
-	Nivel		   int
+	Nivel          int
 	Marco          int
-	Presencia	   int
-	Uso 		   int	
-	Modificado	   int	
+	Presencia      int
+	Uso            int
+	Modificado     int
 	SiguienteNivel *TablaDePaginas // Ya se inicializa por defecto como null
 }
 
@@ -128,3 +128,94 @@ var Prueba string
 var ListaPaginasSwapDisponibles []Pagina
 
 var ProximoIndiceSwap int
+
+// NUEVA OPCION
+type Proceso struct {
+	Pseudocodigo []string
+	Suspendido   bool
+
+	TablaDePaginas []TablaPaginas
+}
+
+var Procesos map[Int]Proceso // mapeado por PID
+
+type TablaPaginas struct {
+	Entradas []EntradaTP
+}
+
+type EntradaTP struct {
+	NumeroDePagina int        // -1 en niveles intermedios
+	NumeroDeFrame  int        // -1 en niveles intermedios
+	SiguienteNivel *EntradaTP // nil en el ultimo nivel
+}
+
+type PaginaEnSwap struct {
+	Pid            int
+	NumeroDePagina int
+	contenido      []byte
+}
+
+/*
+
+Inicialización del proceso
+- Le asignas los frames
+- Creas la estructura Proceso
+- Creas la tabla de Paginas
+	- En el ultimo nivel le pones el numero de pagina y el numero de frame que le asociaste
+
+Para acceder a una pagina:
+- Recorres la TP
+- Obtenes el numero de frame
+- Haces la cuenta para tener la posicion de memoria
+
+Suspensión de proceso:
+- Pones el bool de suspendido en true
+- La tabla de paginas la dejas como está
+- Eliminas el contenido de la memoria (recorres la TP y por cada pagina tomas el frame, y lo llenas de 0s. Otra opcion seria tomar el inicio del proceso, su tamaño, volver a calcular los frames q necesita y llenarlos de 0s)
+- Escribis en SWAP
+
+Des-suspensión de proceso:
+- Te fijas que el proceso entra en la memoria
+- Creas una estructura auxiliar {pagina, frame, contenido}
+- Obtenes los frames libres y los guardas en la estructura auxiliar (rellenas solo el numero de frame)
+- Lees de SWAP y lo guardas en la estructura auxiliar (rellenas solo numero de pagina y contenido)
+- Hasta aca ya tendrías todo linkeado: numero de pagina, con un numero de frame y su contenido
+- Escribis en memoria
+- Actualizas la TP con los nuevos numeros de frame
+
+Finalización de proceso:
+- Llenas de 0s la memoria en los marcos que tiene el proceso
+- ELiminas el proceso y su TP
+
+Acceso a tabla de páginas:
+- ???
+
+Acceso a espacio de usuario:
+- Leer:
+	- Me pasan DF, leo, y devuelvo el contenido
+- Escribir:
+	- Me pasan DF
+	- Escribo
+
+Leer Página completa:
+- Recibo una DF (tiene que ser el byte 0 de la pagina, supongo que hay que chequearlo)
+- Leo la pagina completa
+- Devuelvo el contenido
+
+Actualizar página completa:
+- Recibo una DF (tiene que ser el byte 0 de la pagina, supongo que hay que chequearlo)
+- Escribo la pagina
+
+Memory Dump:
+- Recorres la TP y escribis en el archivo DUMP
+
+
+*** DUDAS
+- Bits:
+	- Bit de uso: no veo para q usarlo
+	- Bit de Modificado: cuando un proceso vuelve de swap a memoria, las entradas de swap se borran,
+		entonces no tendria sentido tenerlo, porque solo voy a tener el contenido en un lugar
+	- Bit Presencia: si la pagina está en memoria (suspendido = false), todas las paginas estan en memoria. Si está suspendido, este bit no importa porque todas las paginas estan en swap
+
+- Nose que vendria a ser "Acceso a TP"
+*/
