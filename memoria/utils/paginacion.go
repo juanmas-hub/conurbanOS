@@ -61,8 +61,10 @@ func escribirPaginas(pid int, paginasDTO []globals_memoria.PaginaDTO, marcos []i
 			paginasDTO[i].Entrada.Presencia = 1
 			paginasDTO[i].Entrada.Uso = 0
 		}
+
 		globals_memoria.MemoriaMarcosOcupados[marcos[i]] = true
 	}
+	asignarPaginasAProceso(pid, marcos)
 }
 
 func actualizarPagina(indicePagina int, dato string) {
@@ -173,7 +175,11 @@ func actualizarTablaPaginas(pid int, indices []int) {
 
 func asignarPaginasAProceso(pid int, indicesPaginas []int) {
 	var paginaActual globals_memoria.Pagina
+	paginaActual.Pid = pid
 	paginaActual.IndiceSwapAsignado = -1
+
+	// limpiamos los que ya habia
+	globals_memoria.Procesos[pid].MarcosAsignados = nil
 
 	for i := 0; i < len(indicesPaginas); i++ {
 		paginaActual.IndiceAsignado = indicesPaginas[i]

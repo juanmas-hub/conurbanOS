@@ -62,6 +62,8 @@ type PaginaDTO struct {
 }
 
 type Pagina struct {
+	Pid				   int
+	//NumeroDePagina	   int
 	IndiceAsignado     int
 	IndiceSwapAsignado int
 	EntradaAsignada    *EntradaTablaPagina
