@@ -27,6 +27,7 @@ func IniciarConfiguracion(filePath string) *globals_memoria.Memoria_Config {
 	return config
 }
 
+/*
 func InicializarMemoria() {
 	tamanio := globals_memoria.MemoriaConfig.Memory_size
 	tamanioPagina := globals_memoria.MemoriaConfig.Page_size
@@ -47,4 +48,14 @@ func InicializarMemoria() {
 	globals_memoria.ListaPaginasSwapDisponibles = make([]globals_memoria.Pagina, 0)
 
 	globals_memoria.ProximoIndiceSwap = 0
+}*/
+
+func InicializarMemoria() {
+	tamanio := globals_memoria.MemoriaConfig.Memory_size
+	tamanioPagina := globals_memoria.MemoriaConfig.Page_size
+	cantidadMarcos := tamanio / tamanioPagina
+
+	globals_memoria.Memoria = make([]byte, tamanio)
+	globals_memoria.MemoriaMarcosOcupados = make([]bool, cantidadMarcos)
+
 }
