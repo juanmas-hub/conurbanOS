@@ -44,10 +44,10 @@ func BlockedAReady(proceso globals.Proceso) {
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
 
+	globals.EstadosMutex.Lock()
 	pos := buscarProcesoEnBlocked(proceso.Pcb.Pid)
 
 	slog.Debug("Se quiere lockear en BlockedAReady")
-	globals.EstadosMutex.Lock()
 	slog.Debug("Se lockear en BlockedAReady")
 	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED[:pos], globals.ESTADOS.BLOCKED[pos+1:]...)
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)

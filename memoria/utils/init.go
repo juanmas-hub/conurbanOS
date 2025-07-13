@@ -57,5 +57,7 @@ func InicializarMemoria() {
 
 	globals_memoria.Memoria = make([]byte, tamanio)
 	globals_memoria.MemoriaMarcosOcupados = make([]bool, cantidadMarcos)
+	globals_memoria.Procesos = make(map[int]globals_memoria.Proceso)
+	globals_memoria.MetricasMap = make(map[int]globals_memoria.Memoria_Metrica)
 
 }

@@ -430,6 +430,7 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	}
 
 	// Lo añado al mapa de procesos
+
 	globals_memoria.Procesos[pid] = proceso
 
 	slog.Debug(fmt.Sprintf("Se creo la tabla de paginas del proceso %d: %+v", pid, tabla))

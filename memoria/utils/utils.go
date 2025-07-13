@@ -91,9 +91,9 @@ func verificarPIDUnico(pid int) int {
 func verificarPIDUnico(pid int) int {
 	_, existeEntrada := globals_memoria.Procesos[pid]
 	if !existeEntrada {
-		return -1
+		return 0
 	}
-	return 0
+	return -1
 }
 
 /*

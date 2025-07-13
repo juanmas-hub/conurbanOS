@@ -22,11 +22,11 @@ func EjecutarPlanificadorMedioPlazo(proceso globals.Proceso, razon string) {
 	// -- Timer hasta ser suspendido
 
 	go func() {
-		time.Sleep(time.Duration(time.Duration(globals.KernelConfig.Suspension_time).Milliseconds()))
+		time.Sleep(time.Duration(globals.KernelConfig.Suspension_time) * time.Millisecond)
 		sigueBloqueado(proceso, cantidadSesiones)
 	}()
 
-	slog.Debug(fmt.Sprintf("Proceso %d suspendido, arranco el timer", proceso.Pcb.Pid))
+	slog.Debug(fmt.Sprintf("Proceso %d bloqueado, arranco el timer", proceso.Pcb.Pid))
 
 }
 
