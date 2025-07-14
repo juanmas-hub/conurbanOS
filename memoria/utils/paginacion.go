@@ -275,7 +275,6 @@ func actualizarTablaPaginas(pid int, indices []int) {
 func actualizarTablaPaginas(pid int, paginasLinkeadas []globals_memoria.PaginaLinkeada) {
 
 	IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
-	slog.Debug(fmt.Sprintf("Me llego para actualizar la tabla de paginas del proceso %d", pid))
 
 	proceso := globals_memoria.Procesos[pid]
 
@@ -310,7 +309,9 @@ func actualizarTablaPaginas(pid int, paginasLinkeadas []globals_memoria.PaginaLi
 	// Actualizar el proceso en la tabla global
 	globals_memoria.Procesos[pid] = proceso
 
-	slog.Debug(fmt.Sprint("Tabla de paginas actualizada: ", globals_memoria.Procesos[pid].TablaDePaginas))
+	slog.Debug(fmt.Sprint("Tabla de paginas actualizada del proceso: ", pid))
+	logTablaDePaginas(pid)
+
 }
 
 /*
@@ -401,8 +402,10 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	var indicesNecesarios int
 	var indicesDisponibles []int
 
+	slog.Debug(fmt.Sprint("Tamaño: ", tamanio))
 	pageSize = int(globals_memoria.MemoriaConfig.Page_size)
 	indicesNecesarios = (tamanio + pageSize - 1) / pageSize
+	log.Printf("Resultado del cálculo: (%d + %d - 1) / %d = %d", tamanio, pageSize, pageSize, indicesNecesarios)
 	log.Print("Indices necesarios: ", indicesNecesarios)
 	indicesDisponibles = buscarMarcosDisponibles(indicesNecesarios)
 	log.Print("Indices disponibles: ", indicesDisponibles)
@@ -412,14 +415,25 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 		return -1
 	}
 
-	// Asigno los frames en la memoria
-	asignarFramesAProceso(indicesDisponibles)
+	var instrucciones []string
+	var tabla globals_memoria.TablaPaginas
+
+	// Si el proceso no ocupa espacio, no se le asignan paginas
+	if indicesNecesarios != 0 {
+		// Asigno los frames en la memoria
+		asignarFramesAProceso(indicesDisponibles)
+
+		// Creo la tabla de paginas
+		tabla = crearTabla(pid, indicesDisponibles)
+	} else {
+		// Si no necesita espacio, igual inicializo la tabla vacía
+		tabla = globals_memoria.TablaPaginas{
+			Entradas: []globals_memoria.EntradaTP{},
+		}
+	}
 
 	// Obtengo las instrucciones
-	instrucciones := ObtenerInstruccionesDesdeArchivo(filename)
-
-	// Creo la tabla de paginas
-	tabla := crearTabla(pid, indicesDisponibles)
+	instrucciones = ObtenerInstruccionesDesdeArchivo(filename)
 
 	// Creo el proceso
 	proceso := globals_memoria.Proceso{
@@ -430,10 +444,10 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	}
 
 	// Lo añado al mapa de procesos
-
 	globals_memoria.Procesos[pid] = proceso
 
-	slog.Debug(fmt.Sprintf("Se creo la tabla de paginas del proceso %d: %+v", pid, tabla))
+	slog.Debug(fmt.Sprintf("Se creo la tabla de paginas del proceso %d:", pid))
+	logTablaDePaginas(pid)
 
 	return 0
 }

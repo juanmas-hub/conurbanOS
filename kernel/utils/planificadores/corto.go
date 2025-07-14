@@ -306,7 +306,7 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 		slog.Debug("Se lckear en desalojarYEnviarProceso 2")
 
 	} else {
-		slog.Info(fmt.Sprintf("No se encontró la CPU que ejecuta el PID %d al momento de desalojar", pidEnExec))
+		slog.Debug(fmt.Sprintf("No se encontró la CPU que ejecuta el PID %d al momento de desalojar", pidEnExec))
 	}
 	slog.Debug(fmt.Sprint("Notificado Replanificar SRT"))
 }

@@ -52,7 +52,8 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 	if cantidadSesionesActual == cantidadSesionesPrevia && procesoActualmente.Estado_Actual == globals.BLOCKED {
 		// Aviso a memoria que hay que swappear
 		slog.Debug(fmt.Sprint("Hay que swappear proceso: ", procesoActualmente.Pcb.Pid))
-		general.AvisarSwappeo(procesoActualmente.Pcb.Pid)
+		go general.AvisarSwappeo(procesoActualmente.Pcb.Pid)
+		slog.Debug(fmt.Sprint("Ya termino el aviso de swappeo a memoria del proceso: ", procesoActualmente.Pcb.Pid))
 
 		// Cambio de estado
 		globals.MapaProcesosMutex.Lock()

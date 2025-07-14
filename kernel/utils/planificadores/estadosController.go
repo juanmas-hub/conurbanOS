@@ -70,7 +70,7 @@ func BlockedASuspBlocked(proceso globals.Proceso) {
 	slog.Debug("Se llego a BlockedASuspBlocked")
 
 	// Muevo el proceso en la colas
-	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
+	proceso = general.ActualizarMetricas(proceso, globals.BLOCKED)
 	proceso.Estado_Actual = globals.SUSP_BLOCKED
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 
@@ -94,7 +94,7 @@ func BlockedASuspBlocked(proceso globals.Proceso) {
 func ExecuteABlocked(proceso globals.Proceso, razon string) {
 	ahora := time.Now()
 	tiempoEnEstado := ahora.Sub(proceso.UltimoCambioDeEstado)
-	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
+	proceso = general.ActualizarMetricas(proceso, globals.EXECUTE)
 	if globals.KernelConfig.Scheduler_algorithm != "FIFO" {
 		ActualizarEstimado(proceso.Pcb.Pid, float64(tiempoEnEstado.Milliseconds()))
 	}

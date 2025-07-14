@@ -34,21 +34,6 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 
 	globals.ListaIOsMutex.Lock()
-	io := globals.MapaIOs[finalizacionIo.NombreIO]
-	posInstanciaIo := BuscarInstanciaIO(finalizacionIo.NombreIO, finalizacionIo.NombreInstancia)
-
-	if posInstanciaIo == -1 {
-		slog.Debug(fmt.Sprintf("No se encontro la instancia de IO %s que tendria el PID: %d, probablemente porque se desconecto", finalizacionIo.NombreInstancia, finalizacionIo.PID))
-		globals.ListaIOsMutex.Unlock()
-		return
-	}
-	instanciaIo := io.Instancias[posInstanciaIo]
-
-	// Cambio el PID del proceso actual
-	instanciaIo.PidProcesoActual = -1
-	io.Instancias[posInstanciaIo] = instanciaIo
-
-	globals.MapaIOs[finalizacionIo.NombreIO] = io
 
 	//log.Print("Se quiere loquear MapaProcesos en manejarFinIO")
 	globals.MapaProcesosMutex.Lock()
@@ -72,6 +57,22 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 
 	// LOG : Fin de IO: ## (<PID>) finalizó IO y pasa a READY
 	slog.Info(fmt.Sprintf("## (%d) finalizó IO y pasa a %s", finalizacionIo.PID, nuevo_estado))
+
+	io := globals.MapaIOs[finalizacionIo.NombreIO]
+	posInstanciaIo := BuscarInstanciaIO(finalizacionIo.NombreIO, finalizacionIo.NombreInstancia)
+
+	if posInstanciaIo == -1 {
+		slog.Debug(fmt.Sprintf("No se encontro la instancia de IO %s que tendria el PID: %d, probablemente porque se desconecto", finalizacionIo.NombreInstancia, finalizacionIo.PID))
+		globals.ListaIOsMutex.Unlock()
+		return
+	}
+	instanciaIo := io.Instancias[posInstanciaIo]
+
+	// Cambio el PID del proceso actual
+	instanciaIo.PidProcesoActual = -1
+	io.Instancias[posInstanciaIo] = instanciaIo
+
+	globals.MapaIOs[finalizacionIo.NombreIO] = io
 
 	// Si hay procesos esperando IO, envio solicitud
 	if len(globals.MapaIOs[finalizacionIo.NombreIO].ColaProcesosEsperando) > 0 {

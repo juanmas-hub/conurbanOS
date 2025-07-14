@@ -52,9 +52,11 @@ func ActualizarMetricas(proceso globals.Proceso, estadoAnterior string) globals.
 	case globals.BLOCKED:
 		ME.Blocked++
 		MT.Blocked += tiempoEnEstado
+		slog.Debug(fmt.Sprint("Actualizada metrica BLOCKED a: ", MT.Blocked))
 	case globals.SUSP_BLOCKED:
 		ME.Susp_Blocked++
 		MT.Susp_Blocked += tiempoEnEstado
+		slog.Debug(fmt.Sprint("Actualizada metrica SUSP_BLOCKED a: ", MT.Susp_Blocked))
 	case globals.SUSP_READY:
 		ME.Susp_Ready++
 		MT.Susp_Ready += tiempoEnEstado

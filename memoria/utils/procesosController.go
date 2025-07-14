@@ -135,6 +135,8 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	globals_memoria.Procesos[pid] = proceso
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }

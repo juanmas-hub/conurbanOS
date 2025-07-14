@@ -4,7 +4,9 @@ import (
 	//"encoding/json"
 	//"fmt"
 	"bufio"
+	"fmt"
 	"log"
+	"log/slog"
 
 	//"net/http"
 	"os"
@@ -136,4 +138,35 @@ func IncrementarMetrica(metrica string, pid int, cantidad int) {
 		log.Printf("Métrica desconocida: %s\n", metrica)
 	}
 	globals_memoria.MetricasMap[pid] = metricas
+}
+
+func logTablaDePaginas(pid int) {
+	proceso, ok := globals_memoria.Procesos[pid]
+	if !ok {
+		log.Printf("❌ Proceso con PID %d no encontrado.", pid)
+		return
+	}
+
+	log.Printf("-------- Tabla de páginas del proceso %d:", pid)
+	recorrerYLoguearTabla(&proceso.TablaDePaginas, 0, "")
+}
+
+func recorrerYLoguearTabla(tabla *globals_memoria.TablaPaginas, nivel int, prefijo string) {
+	for i, entrada := range tabla.Entradas {
+		indent := strings.Repeat("  ", nivel) // dos espacios por nivel
+
+		slog.Debug(fmt.Sprintf(
+			"%s[%d] Nivel %d - Página: %d | Frame: %d | SiguienteNivel: %v",
+			indent,
+			i,
+			nivel,
+			entrada.NumeroDePagina,
+			entrada.NumeroDeFrame,
+			entrada.SiguienteNivel != nil,
+		))
+
+		if entrada.SiguienteNivel != nil {
+			recorrerYLoguearTabla(entrada.SiguienteNivel, nivel+1, prefijo+"  ")
+		}
+	}
 }
