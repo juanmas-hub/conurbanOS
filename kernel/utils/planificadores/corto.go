@@ -38,14 +38,14 @@ func planificadorFIFO() {
 		general.Wait(globals.Sem_Cpus)            // Espero a que haya Cpus libres
 		general.Wait(globals.Sem_ProcesosEnReady) // Espero a que haya procesos en Ready
 
-		slog.Debug("Se quiere lockear en planificadorFIFO")
+		//slog.Debug("Se quiere lockear en planificadorFIFO")
 		globals.EstadosMutex.Lock()
-		slog.Debug("Se lockear en planificadorFIFO")
+		//slog.Debug("Se lockear en planificadorFIFO")
 		ejecutarUnProceso()
 
-		slog.Debug("Se quiere deslockear en planificadorFIFO")
+		//slog.Debug("Se quiere deslockear en planificadorFIFO")
 		globals.EstadosMutex.Unlock()
-		slog.Debug("Se deslockear en planificadorFIFO")
+		//slog.Debug("Se deslockear en planificadorFIFO")
 	}
 }
 
@@ -65,9 +65,9 @@ func planificadorSJF() {
 
 func planificadorSRT() {
 	for {
-		slog.Debug(fmt.Sprint("Esperando Replanificar SRT"))
+		//slog.Debug(fmt.Sprint("Esperando Replanificar SRT"))
 		<-globals.SrtReplanificarChan
-		slog.Debug(fmt.Sprint("Se llamó para Replanificar SRT"))
+		//slog.Debug(fmt.Sprint("Se llamó para Replanificar SRT"))
 
 		// Chequeo los 4 posibles casos
 
@@ -191,7 +191,7 @@ func hayCpusLibres() bool {
 
 // Chequea si hay que desalojar. Si hay que desalojar, devuelve el PID que esta ejecutando
 func verificarDesalojo() (int64, bool) {
-	slog.Debug("Se lckea en verificarDesalojo")
+	//slog.Debug("Se lckea en verificarDesalojo")
 	globals.EstadosMutex.Lock()
 	defer globals.EstadosMutex.Unlock()
 	globals.MapaProcesosMutex.Lock()
@@ -270,17 +270,17 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 	ipCPU, puertoCPU, nombreCPU, ok := general.BuscarCpuPorPID(pidEnExec)
 	slog.Debug(fmt.Sprint("SRT - CPU del proceso a desalojar: ", nombreCPU))
 	if ok {
-		slog.Debug("Se quiere lckear en desalojarYEnviarProceso")
+		//slog.Debug("Se quiere lckear en desalojarYEnviarProceso")
 		globals.EstadosMutex.Lock()
-		slog.Debug("Se lckear en desalojarYEnviarProceso")
+		//slog.Debug("Se lckear en desalojarYEnviarProceso")
 		globals.MapaProcesosMutex.Lock()
 		pidProcesoAEjecutar := globals.ESTADOS.READY[0]
 		proceso := globals.MapaProcesos[pidProcesoAEjecutar]
 		pcProcesoAEjecutar := proceso.Pcb.PC
 		globals.MapaProcesosMutex.Unlock()
-		slog.Debug("Se quiere deslckear en desalojarYEnviarProceso")
+		//slog.Debug("Se quiere deslckear en desalojarYEnviarProceso")
 		globals.EstadosMutex.Unlock()
-		slog.Debug("Se deslckear en desalojarYEnviarProceso")
+		//slog.Debug("Se deslckear en desalojarYEnviarProceso")
 
 		respuestaInterrupcion, err := general.EnviarInterrupcionACPU(ipCPU, puertoCPU, nombreCPU, pidEnExec)
 		if err != nil {
@@ -297,13 +297,13 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 		slog.Info(fmt.Sprintf("## (%d) - Desalojado por algoritmo SJF/SRT", procesoDesalojado.Pcb.Pid))
 
 		general.EnviarProcesoAEjecutar_ACPU(ipCPU, puertoCPU, pidProcesoAEjecutar, pcProcesoAEjecutar, nombreCPU)
-		slog.Debug("Se quiere lckear en desalojarYEnviarProceso 2 ")
+		//slog.Debug("Se quiere lckear en desalojarYEnviarProceso 2 ")
 		globals.EstadosMutex.Lock()
-		slog.Debug("Se lckear en desalojarYEnviarProceso 2")
+		//slog.Debug("Se lckear en desalojarYEnviarProceso 2")
 		aExecute(proceso)
-		slog.Debug("Se quiere deslckear en desalojarYEnviarProceso 2")
+		//slog.Debug("Se quiere deslckear en desalojarYEnviarProceso 2")
 		globals.EstadosMutex.Unlock()
-		slog.Debug("Se lckear en desalojarYEnviarProceso 2")
+		//slog.Debug("Se lckear en desalojarYEnviarProceso 2")
 
 	} else {
 		slog.Debug(fmt.Sprintf("No se encontró la CPU que ejecuta el PID %d al momento de desalojar", pidEnExec))
@@ -319,15 +319,15 @@ func ExecuteAReady(proceso globals.Proceso, razon string) {
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
 
-	slog.Debug("Se quiere lockear en ExecuteAReady")
+	//slog.Debug("Se quiere lockear en ExecuteAReady")
 	globals.EstadosMutex.Lock()
-	slog.Debug("Se lockear en ExecuteAReady")
+	//slog.Debug("Se lockear en ExecuteAReady")
 	pos := buscarProcesoEnExecute(proceso.Pcb.Pid)
 	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE[:pos], globals.ESTADOS.EXECUTE[pos+1:]...)
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
-	slog.Debug("Se quiere deslockear en ExecuteAReady")
+	//slog.Debug("Se quiere deslockear en ExecuteAReady")
 	globals.EstadosMutex.Unlock()
-	slog.Debug("Se deslockear en ExecuteAReady")
+	//slog.Debug("Se deslockear en ExecuteAReady")
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado EXECUTE al estado READY", proceso.Pcb.Pid))
 }

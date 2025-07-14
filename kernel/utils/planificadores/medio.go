@@ -57,7 +57,7 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 
 		// Cambio de estado
 		globals.MapaProcesosMutex.Lock()
-		BlockedASuspBlocked(proceso)
+		BlockedASuspBlocked(procesoActualmente)
 		globals.MapaProcesosMutex.Unlock()
 
 		// Libere espacio => llamo a nuevos procesos
