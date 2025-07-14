@@ -2,6 +2,8 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
+	"log/slog"
 	"time"
 
 	//"fmt"
@@ -153,9 +155,9 @@ func LeerPagina(w http.ResponseWriter, r *http.Request) {
 	dato = leer(indicePagina, pageSize)
 
 	var enviado struct {
-		Dato string `json:"dato"`
+		Dato []byte `json:"contenido"`
 	}
-	enviado.Dato = dato
+	enviado.Dato = []byte(dato)
 	jsonData, err := json.Marshal(enviado)
 	if err != nil {
 		log.Printf("Error al codificar el mensaje a JSON: %s", err.Error())
@@ -195,7 +197,10 @@ func ActualizarPagina(w http.ResponseWriter, r *http.Request) {
 
 	actualizarPagina(direccionFisica, dato)
 
-	log.Printf("Pagina %v actualizada correctamente desde byte: ", direccionFisica)
+	log.Printf("Pagina %d actualizada correctamente desde byte: %v", direccionFisica/pageSize, direccionFisica)
+
+	slog.Debug(fmt.Sprint("Memoria actualizada: ", globals_memoria.Memoria))
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
