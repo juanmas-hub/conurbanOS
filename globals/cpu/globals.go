@@ -1,5 +1,7 @@
 package globals
 
+import "fmt"
+
 type Cpu_Config struct {
 	Port_cpu          int64  `json:"port_cpu"`
 	Ip_cpu            string `json:"ip_cpu"`
@@ -17,6 +19,16 @@ type Cpu_Config struct {
 
 var Tlb *TLB
 var ElCache *Cache
+
+// Para imprimir el cache (debug)
+func (c *Cache) String() string {
+	result := fmt.Sprintf("Cache (Capacidad: %d, Algoritmo: %s, ClockHand: %d)\n", c.Capacidad, c.AlgoritmoReemplazo, c.ClockHand)
+	for i, entry := range c.Entries {
+		result += fmt.Sprintf("  Entrada %d: PID=%d, Pagina=%d, R=%t, D=%t, Contenido=%v\n",
+			i, entry.PID, entry.Pagina, entry.R, entry.D, string(entry.Contenido))
+	}
+	return result
+}
 
 var CpuConfig *Cpu_Config
 

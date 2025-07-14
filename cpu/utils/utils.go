@@ -380,6 +380,8 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 					R:         true,
 					D:         false}
 				InsertarOReemplazarEnCache(entradaCache)
+				slog.Debug(fmt.Sprint("Se actualizo la cache: ", globals.ElCache))
+				//slog.Debug("Se actualizo la cache: ", globals.ElCache)
 			} else {
 				fmt.Printf("entradaCache encontrada para pagina: %d\n", entradaCache.Pagina)
 			}
