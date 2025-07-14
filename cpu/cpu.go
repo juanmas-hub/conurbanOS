@@ -24,7 +24,11 @@ func main() {
 	utils_logger.ConfigurarLogger("cpu.log")
 	globals_cpu.CpuConfig = utils_cpu.IniciarConfiguracion(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + nombreCPU + ".config")
 	if globals_cpu.CpuConfig == nil {
-		log.Fatal("No se pudo iniciar el config")
+		log.Fatal("No se pudo iniciar el config de cpu")
+	}
+	globals_cpu.MemoriaConfig = utils_cpu.IniciarConfiguracionMemoria(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/Memoria.config")
+	if globals_cpu.MemoriaConfig == nil {
+		log.Fatal("No se pudo iniciar el config de memoria")
 	}
 
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals_cpu.CpuConfig.Log_level))

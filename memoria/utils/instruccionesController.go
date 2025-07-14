@@ -2,6 +2,8 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
+	"log/slog"
 	"time"
 
 	//"fmt"
@@ -291,7 +293,8 @@ func AccederEspacioUsuarioEscritura(w http.ResponseWriter, r *http.Request) {
 	metricas.EscriturasMemoria++
 	globals_memoria.MetricasMap[pid] = metricas
 
-	log.Printf("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d", mensaje.Pid, direccionFisica, len(mensaje.Dato))
+	slog.Debug(fmt.Sprintf("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d - Dato: %s", mensaje.Pid, direccionFisica, len(mensaje.Dato), mensaje.Dato))
+	slog.Debug(fmt.Sprint("Memoria despues de escribir: ", globals_memoria.Memoria))
 
 	globals_memoria.Procesos[pid] = proceso
 

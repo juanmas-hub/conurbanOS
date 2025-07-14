@@ -109,7 +109,7 @@ func ObtenerMarcoProceso(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var enviado struct {
-		Dato int `json:"dato"`
+		Dato int `json:"marco"`
 	}
 	enviado.Dato = marco
 	jsonData, err := json.Marshal(enviado)

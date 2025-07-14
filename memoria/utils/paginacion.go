@@ -32,12 +32,6 @@ func escribir(direccion int, dato string) int {
 		log.Printf("El dato no se pudo escribir porque excede la pagina")
 		return -1
 	}
-	var marco int = direccion / tamanioDePagina // redondea hacia abajo
-
-	if globals_memoria.MemoriaMarcosOcupados[marco] {
-		log.Printf("No se pudo escribir en el marco %v porque ya estaba ocupado", marco)
-		return -1
-	}
 
 	// Se escribe el dato
 	for i := 0; i < len(dato); i++ {

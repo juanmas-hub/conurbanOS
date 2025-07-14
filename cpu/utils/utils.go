@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io" //NUEVO Necesario para io.ReadAll
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -14,11 +15,24 @@ import (
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/cpu"
 	globals_cpu "github.com/sisoputnfrba/tp-golang/globals/cpu"
-	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
 func IniciarConfiguracion(filePath string) *globals.Cpu_Config {
 	var config *globals.Cpu_Config
+	configFile, err := os.Open(filePath)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	defer configFile.Close()
+
+	jsonParser := json.NewDecoder(configFile)
+	jsonParser.Decode(&config)
+
+	return config
+}
+
+func IniciarConfiguracionMemoria(filePath string) *globals.Memoria_Config {
+	var config *globals.Memoria_Config
 	configFile, err := os.Open(filePath)
 	if err != nil {
 		log.Fatal(err.Error())
@@ -258,7 +272,17 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 		} else {
 			fmt.Printf("'%s' convertido a int64: %d\n", instDeco.Parametros[0], direccionLog)
 		}
-		entradas, desplazamiento, paginaVirtual := ExtraerEntradasYDesplazamiento(direccionLog, globals_memoria.MemoriaConfig.Page_size, globals.CpuConfig.Tlb_entries, globals_memoria.MemoriaConfig.Number_of_levels)
+
+		fmt.Println("DEBUG: CpuConfig es nil?", globals.CpuConfig == nil)
+		fmt.Println("DEBUG: MemoriaConfig es nil?", globals_cpu.MemoriaConfig == nil)
+
+		fmt.Printf("DEBUG: Page_size: %d\n", globals_cpu.MemoriaConfig.Page_size)
+		fmt.Printf("DEBUG: Tlb_entries: %d\n", globals.CpuConfig.Tlb_entries)
+		fmt.Printf("DEBUG: Number_of_levels: %d\n", globals_cpu.MemoriaConfig.Number_of_levels)
+		fmt.Printf("DEBUG: Entries_per_page: %d\n", globals_cpu.MemoriaConfig.Entries_per_page)
+		fmt.Printf("DEBUG: Cache_entries: %d\n", globals_cpu.CpuConfig.Cache_entries)
+
+		entradas, desplazamiento, paginaVirtual := ExtraerEntradasYDesplazamiento(direccionLog, globals_cpu.MemoriaConfig.Page_size, globals_cpu.MemoriaConfig.Entries_per_page, globals_cpu.MemoriaConfig.Number_of_levels)
 
 		if globals.CpuConfig.Cache_entries > 0 { //si hay cache
 
@@ -296,6 +320,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 
 		} else { //si no hay cache
 			direcccionFisica, err := ConseguirDireccionFisica(paginaVirtual, desplazamiento, pcb.Pid, entradas)
+			slog.Debug(fmt.Sprint("Direccion fisica: ", direcccionFisica))
 			if err != nil {
 				fmt.Printf("Error al conseguir direccion fisica: %s\n", err)
 			}
@@ -317,7 +342,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 		} else {
 			fmt.Printf("'%s' convertido a int64: %d\n", instDeco.Parametros[0], direccionLog)
 		}
-		entradas, desplazamiento, paginaVirtual := ExtraerEntradasYDesplazamiento(direccionLog, globals_memoria.MemoriaConfig.Page_size, globals.CpuConfig.Tlb_entries, globals_memoria.MemoriaConfig.Number_of_levels)
+		entradas, desplazamiento, paginaVirtual := ExtraerEntradasYDesplazamiento(direccionLog, globals_cpu.MemoriaConfig.Page_size, globals.CpuConfig.Tlb_entries, globals_cpu.MemoriaConfig.Number_of_levels)
 
 		if globals.CpuConfig.Cache_entries > 0 { //si hay cache
 
@@ -437,14 +462,14 @@ func ConseguirDireccionFisica(paginaVirtual int64, desplazamiento int64, pid int
 	if globals.CpuConfig.Tlb_entries > 0 {
 		marco, encontrado := BuscarMarcoEnTLB(paginaVirtual, pid)
 		if encontrado {
-			direccionFisica := TraducirLogicaAFisica(marco, desplazamiento, globals_memoria.MemoriaConfig.Page_size)
+			direccionFisica := TraducirLogicaAFisica(marco, desplazamiento, globals_cpu.MemoriaConfig.Page_size)
 			return direccionFisica, nil
 		} else { //si hay tlb pero no esta el marco pide marco a memoria
 			marco, err := PedirMarcoDePagina(pid, entradas)
 			if err != nil {
 				return -1, fmt.Errorf("Error pidiendo marco")
 			}
-			direccionFisica := TraducirLogicaAFisica(marco, desplazamiento, globals_memoria.MemoriaConfig.Page_size)
+			direccionFisica := TraducirLogicaAFisica(marco, desplazamiento, globals_cpu.MemoriaConfig.Page_size)
 			CargarTLB(paginaVirtual, marco, pid, globals.Tlb)
 			return direccionFisica, nil
 		}
@@ -453,7 +478,7 @@ func ConseguirDireccionFisica(paginaVirtual int64, desplazamiento int64, pid int
 		if err != nil {
 			return -1, fmt.Errorf("Error pidiendo marco")
 		}
-		direccionFisica := TraducirLogicaAFisica(marco, desplazamiento, globals_memoria.MemoriaConfig.Page_size)
+		direccionFisica := TraducirLogicaAFisica(marco, desplazamiento, globals_cpu.MemoriaConfig.Page_size)
 		return direccionFisica, nil
 	}
 
@@ -897,6 +922,8 @@ func PedirContenidoPagina(direccionFisica int64) ([]byte, error) {
 
 func EscribirDatoMemoria(direccionFisica int64, dato string, pid int64) error {
 	solicitudEscritura := globals.SolicitudEscritura{Pid: pid, DireccionFisica: direccionFisica, Dato: dato}
+
+	slog.Debug(fmt.Sprint("Solicitud escritura: ", solicitudEscritura))
 
 	body, err := json.Marshal(solicitudEscritura)
 	if err != nil {
