@@ -132,7 +132,7 @@ type CacheEntry struct {
 }
 
 type Cache struct {
-	Entries            []CacheEntry  //la lista de paginas
+	Entries            []*CacheEntry //la lista de paginas
 	PaginaIndex        map[int64]int //mapa auxiliar para buscar las paginas en la lista
 	Capacidad          int64         //Cantidad maxima de paginas
 	AlgoritmoReemplazo string        //CLOCK o CLOCK-M

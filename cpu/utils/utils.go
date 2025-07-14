@@ -622,8 +622,8 @@ func EnviarINITAKernel(syscallData globals_cpu.SyscallInit) error {
 
 func NuevaCache(capacidad int64, algoritmo string) { //INICIALIZA EL CACHE
 	globals.ElCache = &globals.Cache{
-		Entries:            make([]globals.CacheEntry, 0, capacidad), //crea lista de paginas con capacidad de paginas de cache definida (capacidad viene en config)
-		PaginaIndex:        make(map[int64]int),                      //genera el map
+		Entries:            make([]*globals.CacheEntry, 0, capacidad), //crea lista de paginas con capacidad de paginas de cache definida (capacidad viene en config)
+		PaginaIndex:        make(map[int64]int),                       //genera el map
 		Capacidad:          capacidad,
 		AlgoritmoReemplazo: algoritmo,
 		ClockHand:          0,
@@ -658,7 +658,7 @@ func BuscarPaginaEnCache(paginaVirtual int64, pid int64) (*globals.CacheEntry, b
 		}
 
 		// Si llegamos aquí, la página y el PID coinciden: ¡Es un verdadero Cache Hit!
-		entradaCache := &globals.ElCache.Entries[index] // Obtenemos una referencia a la entrada
+		entradaCache := globals.ElCache.Entries[index] // Obtenemos una referencia a la entrada
 
 		// 2. Actualizar el bit de referencia para algoritmos de reemplazo (CLOCK/CLOCK-M)
 		entradaCache.R = true // Se ha accedido a esta página
@@ -732,7 +732,7 @@ func TraducirLogicaAFisica(marco int64, desplazamiento int64, tamanioPagina int6
 func InsertarOReemplazarEnCache(nueva *globals.CacheEntry, direccionFisica int64) {
 	// Si la página ya está en caché, la actualiza y setea Referenced
 	if idx, ok := globals.ElCache.PaginaIndex[nueva.Pagina]; ok {
-		globals.ElCache.Entries[idx] = *nueva
+		*globals.ElCache.Entries[idx] = *nueva
 		globals.ElCache.Entries[idx].R = true
 		slog.Debug(fmt.Sprint("La pagina esta en cache"))
 		return
@@ -740,7 +740,7 @@ func InsertarOReemplazarEnCache(nueva *globals.CacheEntry, direccionFisica int64
 
 	// Si hay espacio, inserta la nueva página
 	if int64(len(globals.ElCache.Entries)) < globals.ElCache.Capacidad {
-		globals.ElCache.Entries = append(globals.ElCache.Entries, *nueva)
+		globals.ElCache.Entries = append(globals.ElCache.Entries, nueva)
 		globals.ElCache.PaginaIndex[nueva.Pagina] = len(globals.ElCache.Entries) - 1
 		slog.Debug(fmt.Sprint("Hay espacio en cache, inserto entrada"))
 		return
@@ -774,7 +774,7 @@ func InsertarOReemplazarEnCache(nueva *globals.CacheEntry, direccionFisica int64
 	delete(globals.ElCache.PaginaIndex, globals.ElCache.Entries[victimaIdx].Pagina)
 
 	// Reemplazar entrada
-	globals.ElCache.Entries[victimaIdx] = *nueva
+	globals.ElCache.Entries[victimaIdx] = nueva
 	globals.ElCache.PaginaIndex[nueva.Pagina] = victimaIdx
 
 	// Avanzar el clock hand
