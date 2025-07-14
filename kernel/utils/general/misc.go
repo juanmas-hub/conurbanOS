@@ -33,8 +33,6 @@ func BuscarCpu(nombre string) int {
 }
 
 func BuscarCpuPorPID(pid int64) (string, int64, string, bool) {
-	globals.ListaCPUsMutex.Lock()
-	defer globals.ListaCPUsMutex.Unlock()
 
 	for _, cpu := range globals.ListaCPUs {
 		if !cpu.EstaLibre && cpu.PIDActual == pid {

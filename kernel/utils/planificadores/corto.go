@@ -191,7 +191,7 @@ func hayCpusLibres() bool {
 
 // Chequea si hay que desalojar. Si hay que desalojar, devuelve el PID que esta ejecutando
 func verificarDesalojo() (int64, bool) {
-	//slog.Debug("Se lckea en verificarDesalojo")
+
 	globals.EstadosMutex.Lock()
 	defer globals.EstadosMutex.Unlock()
 	globals.MapaProcesosMutex.Lock()
@@ -210,25 +210,36 @@ func verificarDesalojo() (int64, bool) {
 }
 
 func buscarProcesoEnExecuteDeMenorRafagaRestante() (int64, float64) {
+	slog.Debug(fmt.Sprint("Buscando menor rafaga restante en EXECUTE: ", globals.ESTADOS.EXECUTE))
+
 	var pidMenorRafaga int64
+	var menorRafagaRestante float64 = 0
 	pidMenorRafaga = globals.ESTADOS.EXECUTE[0]
 	for i := range globals.ESTADOS.EXECUTE {
 		// Si la posicion i esta libre
 		pidActual := globals.ESTADOS.EXECUTE[i]
-		if rafagaRestante(pidActual) < rafagaRestante(pidMenorRafaga) {
+		rafagaRestanteActual := rafagaRestante(pidActual)
+		if rafagaRestanteActual < menorRafagaRestante {
 			pidMenorRafaga = pidActual
+			menorRafagaRestante = rafagaRestanteActual
 		}
 	}
+	slog.Debug(fmt.Sprintf("PID de menor rafaga restante: %d, restante: %f", pidMenorRafaga, menorRafagaRestante))
 
-	return pidMenorRafaga, rafagaRestante(pidMenorRafaga)
+	return pidMenorRafaga, menorRafagaRestante
 }
 
 func rafagaRestante(pid int64) float64 {
 
+	slog.Debug(fmt.Sprint("PID: ", pid))
 	proceso := globals.MapaProcesos[pid]
-	rafaga := proceso.Rafaga.Est_Sgte                                                // float64
+	slog.Debug(fmt.Sprint("Proceso: ", proceso))
+	rafaga := proceso.Rafaga.Est_Sgte
+	slog.Debug(fmt.Sprint("Rafaga: ", rafaga))                                       // float64
 	tiempoPasado := float64(time.Since(proceso.UltimoCambioDeEstado).Milliseconds()) // tiempo en ms
+	slog.Debug(fmt.Sprint("Tiempo pasado: ", tiempoPasado))
 
+	slog.Debug(fmt.Sprint("Rafaga restante: ", rafaga-tiempoPasado))
 	return rafaga - tiempoPasado
 }
 
@@ -267,21 +278,17 @@ func ejecutarUnProceso() {
 }
 
 func desalojarYEnviarProceso(pidEnExec int64) {
+	globals.EstadosMutex.Lock()
+	defer globals.EstadosMutex.Unlock()
+	globals.MapaProcesosMutex.Lock()
+	defer globals.MapaProcesosMutex.Unlock()
+
 	ipCPU, puertoCPU, nombreCPU, ok := general.BuscarCpuPorPID(pidEnExec)
 	slog.Debug(fmt.Sprint("SRT - CPU del proceso a desalojar: ", nombreCPU))
 	if ok {
-		//slog.Debug("Se quiere lckear en desalojarYEnviarProceso")
-		globals.EstadosMutex.Lock()
-		//slog.Debug("Se lckear en desalojarYEnviarProceso")
-		globals.MapaProcesosMutex.Lock()
 		pidProcesoAEjecutar := globals.ESTADOS.READY[0]
 		proceso := globals.MapaProcesos[pidProcesoAEjecutar]
 		pcProcesoAEjecutar := proceso.Pcb.PC
-		globals.MapaProcesosMutex.Unlock()
-		//slog.Debug("Se quiere deslckear en desalojarYEnviarProceso")
-		globals.EstadosMutex.Unlock()
-		//slog.Debug("Se deslckear en desalojarYEnviarProceso")
-
 		respuestaInterrupcion, err := general.EnviarInterrupcionACPU(ipCPU, puertoCPU, nombreCPU, pidEnExec)
 		if err != nil {
 			log.Fatal("Error en interrupción:", err)

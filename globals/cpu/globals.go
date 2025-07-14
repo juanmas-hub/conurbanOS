@@ -1,6 +1,9 @@
 package globals
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Cpu_Config struct {
 	Port_cpu          int64  `json:"port_cpu"`
@@ -28,6 +31,20 @@ func (c *Cache) String() string {
 			i, entry.PID, entry.Pagina, entry.R, entry.D, string(entry.Contenido))
 	}
 	return result
+}
+
+// Para imprimir la TLB (debug)
+func (t *TLB) String() string {
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("TLB (Capacidad: %d, Algoritmo: %s, FIFOindex: %d)\n", t.Capacidad, t.AlgoritmoReemplazo, t.FIFOindex))
+	sb.WriteString("Entradas:\n")
+
+	for i, entry := range t.Entries {
+		sb.WriteString(fmt.Sprintf("  [%d] Pagina: %d | Marco: %d | PID: %d | Timestamp: %d\n", i, entry.Pagina, entry.Marco, entry.PID, entry.Timestamp))
+	}
+
+	return sb.String()
 }
 
 var CpuConfig *Cpu_Config

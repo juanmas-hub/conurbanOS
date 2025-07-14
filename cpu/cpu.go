@@ -48,7 +48,7 @@ func main() {
 	}
 
 	if globals.CpuConfig.Tlb_entries > 0 {
-		utils_cpu.NuevaTLB(globals.CpuConfig.Tlb_entries, globals.CpuConfig.Cache_replacement)
+		utils_cpu.NuevaTLB(globals.CpuConfig.Tlb_entries, globals.CpuConfig.Tlb_replacement)
 	}
 
 	go func() {

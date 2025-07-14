@@ -14,13 +14,9 @@ import (
 
 func ActualizarPC(pid int64, pc int64) {
 
-	//log.Print("Se quiere loquear MapaProcesos en ActualizarPC")
-	globals.MapaProcesosMutex.Lock()
 	proceso := globals.MapaProcesos[pid]
 	proceso.Pcb.PC = pc
 	globals.MapaProcesos[pid] = proceso
-	globals.MapaProcesosMutex.Unlock()
-	//log.Print("Se unloquea MapaProcesos en ActualizarPC")
 }
 
 func NotificarReplanifSRT() {

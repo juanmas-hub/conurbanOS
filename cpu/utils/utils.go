@@ -477,6 +477,14 @@ func ConseguirDireccionFisica(paginaVirtual int64, desplazamiento int64, pid int
 		marco, encontrado := BuscarMarcoEnTLB(paginaVirtual, pid)
 		if encontrado {
 			direccionFisica := TraducirLogicaAFisica(marco, desplazamiento, globals_cpu.MemoriaConfig.Page_size)
+
+			// Actualizar el timestamp
+			if index, ok := globals.Tlb.PaginaIndex[paginaVirtual]; ok {
+				globals.Tlb.Entries[index].Timestamp = time.Now().UnixNano()
+			}
+
+			slog.Debug(fmt.Sprint("El marco estaba en la TLB:"))
+			slog.Debug(globals.Tlb.String())
 			return direccionFisica, nil
 		} else { //si hay tlb pero no esta el marco pide marco a memoria
 			marco, err := PedirMarcoDePagina(pid, entradas)
@@ -485,6 +493,8 @@ func ConseguirDireccionFisica(paginaVirtual int64, desplazamiento int64, pid int
 			}
 			direccionFisica := TraducirLogicaAFisica(marco, desplazamiento, globals_cpu.MemoriaConfig.Page_size)
 			CargarTLB(paginaVirtual, marco, pid, globals.Tlb)
+			slog.Debug(fmt.Sprint("Se reemplazo un marco de la TLB: "))
+			slog.Debug(globals.Tlb.String())
 			return direccionFisica, nil
 		}
 	} else { //si no hay tlb pide marco a memoria

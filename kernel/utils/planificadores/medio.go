@@ -56,9 +56,7 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 		slog.Debug(fmt.Sprint("Ya termino el aviso de swappeo a memoria del proceso: ", procesoActualmente.Pcb.Pid))
 
 		// Cambio de estado
-		globals.MapaProcesosMutex.Lock()
 		BlockedASuspBlocked(procesoActualmente)
-		globals.MapaProcesosMutex.Unlock()
 
 		// Libere espacio => llamo a nuevos procesos
 		globals.DeDondeSeLlamaMutex.Lock()

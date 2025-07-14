@@ -11,22 +11,21 @@ import (
 )
 
 func SuspBlockedASuspReady(proceso globals.Proceso) {
+
+	globals.MapaProcesosMutex.Lock()
+	defer globals.MapaProcesosMutex.Unlock()
+
+	globals.EstadosMutex.Lock()
+	defer globals.EstadosMutex.Unlock()
+
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.SUSP_READY
-	globals.MapaProcesosMutex.Lock()
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
-	globals.MapaProcesosMutex.Unlock()
 
 	pos := buscarProcesoEnSuspBlocked(proceso.Pcb.Pid)
 
-	//slog.Debug("Se quiere lockear en SuspBlockedASuspReady")
-	globals.EstadosMutex.Lock()
-	//slog.Debug("Se lockear en SuspBlockedASuspReady")
 	globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED[:pos], globals.ESTADOS.SUSP_BLOCKED[pos+1:]...)
 	globals.ESTADOS.SUSP_READY = append(globals.ESTADOS.SUSP_READY, proceso.Pcb.Pid)
-	//slog.Debug("Se quiere deslockear en SuspBlockedASuspReady")
-	globals.EstadosMutex.Unlock()
-	//slog.Debug("Se deslockear en SuspBlockedASuspReady")
 
 	globals.DeDondeSeLlamaMutex.Lock()
 	globals.DeDondeSeLlamaPasarProcesosAReady = "SUSP READY"
@@ -38,22 +37,29 @@ func SuspBlockedASuspReady(proceso globals.Proceso) {
 }
 
 func BlockedAReady(proceso globals.Proceso) {
-	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
-	proceso.Estado_Actual = globals.READY
+
 	globals.MapaProcesosMutex.Lock()
-	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
-	globals.MapaProcesosMutex.Unlock()
+	defer globals.MapaProcesosMutex.Unlock()
 
 	globals.EstadosMutex.Lock()
-	pos := buscarProcesoEnBlocked(proceso.Pcb.Pid)
+	defer globals.EstadosMutex.Unlock()
 
-	//slog.Debug("Se quiere lockear en BlockedAReady")
-	//slog.Debug("Se lockear en BlockedAReady")
+	slog.Debug(fmt.Sprint("Se quiere pasar de BLOCKED a READY: ", proceso.Pcb.Pid))
+
+	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
+	proceso.Estado_Actual = globals.READY
+	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
+
+	pos := buscarProcesoEnBlocked(proceso.Pcb.Pid)
+	slog.Debug(fmt.Sprint("BLOCKED: ", globals.ESTADOS.BLOCKED))
+	slog.Debug(fmt.Sprint("Posicion del proceso en BLOCKED: ", pos))
+
 	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED[:pos], globals.ESTADOS.BLOCKED[pos+1:]...)
 	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
-	//slog.Debug("Se quiere deslockear en BlockedAReady")
-	globals.EstadosMutex.Unlock()
-	//slog.Debug("Se deslockear en BlockedAReady")
+
+	slog.Debug(fmt.Sprint("Despues de pasar de BLOCKED a READY:"))
+	slog.Debug(fmt.Sprint("BLOCKED:", globals.ESTADOS.BLOCKED))
+	slog.Debug(fmt.Sprint("READY:", globals.ESTADOS.READY))
 
 	switch globals.KernelConfig.Scheduler_algorithm {
 	case "FIFO", "SJF":
@@ -67,24 +73,29 @@ func BlockedAReady(proceso globals.Proceso) {
 }
 
 func BlockedASuspBlocked(proceso globals.Proceso) {
-	//slog.Debug("Se llego a BlockedASuspBlocked")
+
+	globals.MapaProcesosMutex.Lock()
+	defer globals.MapaProcesosMutex.Unlock()
+
+	globals.EstadosMutex.Lock()
+	defer globals.EstadosMutex.Unlock()
 
 	// Muevo el proceso en la colas
 	proceso = general.ActualizarMetricas(proceso, globals.BLOCKED)
 	proceso.Estado_Actual = globals.SUSP_BLOCKED
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 
-	//slog.Debug("Se actualizo el mapa del proceso")
+	slog.Debug(fmt.Sprint("Se quiere pasar de BLOCKED a SUSP_BLOCKED: ", proceso.Pcb.Pid))
 
-	//slog.Debug("Se quiere lockear en BlockedASuspBlocked")
-	globals.EstadosMutex.Lock()
-	//slog.Debug("Se paso el lock")
 	pos := buscarProcesoEnBlocked(proceso.Pcb.Pid)
+	slog.Debug(fmt.Sprint("BLOCKED: ", globals.ESTADOS.BLOCKED))
+	slog.Debug(fmt.Sprint("Posicion del proceso en BLOCKED: ", pos))
 	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED[:pos], globals.ESTADOS.BLOCKED[pos+1:]...)
 	globals.ESTADOS.SUSP_BLOCKED = append(globals.ESTADOS.SUSP_BLOCKED, proceso.Pcb.Pid)
-	//slog.Debug("Se quiere deslockear en BlockedASuspBlocked")
-	globals.EstadosMutex.Unlock()
-	//slog.Debug("Se desslock")
+
+	slog.Debug(fmt.Sprint("Despues de pasar de BLOCKED a READY:"))
+	slog.Debug(fmt.Sprint("BLOCKED:", globals.ESTADOS.BLOCKED))
+	slog.Debug(fmt.Sprint("READY:", globals.ESTADOS.READY))
 
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado BLOCKED al estado SUSP_BLOCKED", proceso.Pcb.Pid))
@@ -92,6 +103,13 @@ func BlockedASuspBlocked(proceso globals.Proceso) {
 }
 
 func ExecuteABlocked(proceso globals.Proceso, razon string) {
+
+	globals.MapaProcesosMutex.Lock()
+	defer globals.MapaProcesosMutex.Unlock()
+
+	globals.EstadosMutex.Lock()
+	defer globals.EstadosMutex.Unlock()
+
 	ahora := time.Now()
 	tiempoEnEstado := ahora.Sub(proceso.UltimoCambioDeEstado)
 	proceso = general.ActualizarMetricas(proceso, globals.EXECUTE)
@@ -100,21 +118,19 @@ func ExecuteABlocked(proceso globals.Proceso, razon string) {
 	}
 
 	proceso.Estado_Actual = globals.BLOCKED
-	globals.MapaProcesosMutex.Lock()
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
-	globals.MapaProcesosMutex.Unlock()
 
-	//slog.Debug("Se quiere lockear en ExecuteABlocked")
-	globals.EstadosMutex.Lock()
-	//slog.Debug("Se lockear en ExecuteABlocked")
+	slog.Debug(fmt.Sprint("Se quiere pasar de EXECUTE a BLOCKED: ", proceso.Pcb.Pid))
+
 	pos := buscarProcesoEnExecute(proceso.Pcb.Pid)
-	//slog.Debug(fmt.Sprint("Cola EXECUTE: ", globals.ESTADOS.EXECUTE))
-	//slog.Debug(fmt.Sprint("Cola BLOCKED: ", globals.ESTADOS.BLOCKED))
+	slog.Debug(fmt.Sprint("EXECUTE: ", globals.ESTADOS.EXECUTE))
+	slog.Debug(fmt.Sprint("Posicion del proceso en EXECUTE: ", pos))
 	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE[:pos], globals.ESTADOS.EXECUTE[pos+1:]...)
 	globals.ESTADOS.BLOCKED = append(globals.ESTADOS.BLOCKED, proceso.Pcb.Pid)
-	//slog.Debug("Se quiere deslockear en ExecuteABlocked")
-	globals.EstadosMutex.Unlock()
-	//slog.Debug("Se deslockear en ExecuteABlocked")
+
+	slog.Debug(fmt.Sprint("Despues de pasar de EXECUTE a BLOCKED:"))
+	slog.Debug(fmt.Sprint("EXECUTE:", globals.ESTADOS.EXECUTE))
+	slog.Debug(fmt.Sprint("BLOCKED:", globals.ESTADOS.BLOCKED))
 
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado EXECUTE al estado BLOCKED", proceso.Pcb.Pid))

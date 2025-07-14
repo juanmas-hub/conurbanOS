@@ -388,10 +388,10 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 
 func AlmacenarProceso(pid int, tamanio int, filename string) int {
 
-	if verificarPIDUnico(pid) != 0 {
+	/*if verificarPIDUnico(pid) != 0 {
 		log.Printf("el proceso con PID %d ya existia", pid)
 		return -1
-	}
+	}*/
 	var pageSize int
 	var indicesNecesarios int
 	var indicesDisponibles []int
