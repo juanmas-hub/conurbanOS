@@ -182,6 +182,8 @@ func ActualizarPagina(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	slog.Debug(fmt.Sprint("Me llego para actualizar pagina: ", mensaje))
+
 	var direccionFisica int = int(mensaje.DireccionFisica)
 	var pageSize int = int(globals_memoria.MemoriaConfig.Page_size)
 	var dato string = string(mensaje.Contenido)
@@ -196,8 +198,6 @@ func ActualizarPagina(w http.ResponseWriter, r *http.Request) {
 	}
 
 	actualizarPagina(direccionFisica, dato)
-
-	log.Printf("Pagina %d actualizada correctamente desde byte: %v", direccionFisica/pageSize, direccionFisica)
 
 	slog.Debug(fmt.Sprint("Memoria actualizada: ", globals_memoria.Memoria))
 

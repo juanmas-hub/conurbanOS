@@ -307,7 +307,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 					PID:       pcb.Pid,
 					R:         true,
 					D:         true}
-				InsertarOReemplazarEnCache(entradaCache, direccionFisica)
+				InsertarOReemplazarEnCache(entradaCache)
 			} else {
 				fmt.Printf("entradaCache encontrada para pagina: %d\n", entradaCache.Pagina)
 
@@ -379,7 +379,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 					PID:       pcb.Pid,
 					R:         true,
 					D:         false}
-				InsertarOReemplazarEnCache(entradaCache, direccionFisica)
+				InsertarOReemplazarEnCache(entradaCache)
 			} else {
 				fmt.Printf("entradaCache encontrada para pagina: %d\n", entradaCache.Pagina)
 			}
@@ -729,7 +729,7 @@ func TraducirLogicaAFisica(marco int64, desplazamiento int64, tamanioPagina int6
 }
 
 // (3) funcion que inserte o reemplace en CACHE cuando esta lleno, con el algoritmo elegido
-func InsertarOReemplazarEnCache(nueva *globals.CacheEntry, direccionFisica int64) {
+func InsertarOReemplazarEnCache(nueva *globals.CacheEntry) {
 	// Si la página ya está en caché, la actualiza y setea Referenced
 	if idx, ok := globals.ElCache.PaginaIndex[nueva.Pagina]; ok {
 		*globals.ElCache.Entries[idx] = *nueva
@@ -763,7 +763,13 @@ func InsertarOReemplazarEnCache(nueva *globals.CacheEntry, direccionFisica int64
 		pid := victima.PID
 		contenido := victima.Contenido
 
-		err := ActualizarPaginaMemoria(pid, victima.Pagina, contenido)
+		direccionLogica := victima.Pagina * globals.MemoriaConfig.Page_size
+		entradas, _, _ := ExtraerEntradasYDesplazamiento(direccionLogica, globals.MemoriaConfig.Page_size, globals.MemoriaConfig.Entries_per_page, globals.MemoriaConfig.Number_of_levels)
+		direccionFisica, errorr := ConseguirDireccionFisica(victima.Pagina, 0, pid, entradas)
+		if errorr != nil {
+			log.Printf("⚠️ Error al conseguir la direccion fisica de la victima en InsertarOReemplazarEnCache")
+		}
+		err := ActualizarPaginaMemoria(pid, direccionFisica, contenido)
 		if err != nil {
 			log.Printf("⚠️ Error al actualizar página modificada de PID %d, direccion %d: %v", pid, direccionFisica, err)
 		}
@@ -1000,6 +1006,8 @@ func LeerPaginaMemoria(direccionFisica int64, tamanio int64, pid int64) ([]byte,
 // (9) funcion que pida a memoria actualizar una pagina (Dirty BIT),
 func ActualizarPaginaMemoria(pid int64, direccionFisica int64, contenido []byte) error {
 	solicitud := globals_cpu.SolicitudPaginaContenido{Pid: pid, DireccionFisica: direccionFisica, Contenido: contenido}
+
+	slog.Debug(fmt.Sprint("Enviado a memoria para actualizar pagina: ", solicitud))
 
 	body, err := json.Marshal(solicitud)
 	if err != nil {
