@@ -90,29 +90,30 @@ func RecibirEXIT(w http.ResponseWriter, r *http.Request) {
 // ---- LOGICA
 
 func manejarIO(syscallIO globals.SyscallIO) {
+
 	globals.ListaIOsMutex.Lock()
 	existe := VerificarExistenciaIO(syscallIO.NombreIO)
 	nombreIO := syscallIO.NombreIO
-	globals.ListaIOsMutex.Unlock()
 
 	logSyscalls(syscallIO.PID, "IO")
 
 	// Motivo de Bloqueo: ## (<PID>) - Bloqueado por IO: <DISPOSITIVO_IO>
 	slog.Info(fmt.Sprintf("## (%d) - Bloqueado por IO: %s", syscallIO.PID, syscallIO.NombreIO))
 	if !existe {
+		globals.ListaIOsMutex.Unlock()
 		planificadores.FinalizarProceso(syscallIO.PID)
 	} else {
 
 		// Bloqueo el proceso y le actualizo el PC
-		general.ActualizarPC(syscallIO.PID, syscallIO.PC)
-		//log.Print("Se quiere loquear MapaProcesos en ManejarIO")
+		general.LogIntentoLockeo("Mapa Procesos", "manejarIO")
 		globals.MapaProcesosMutex.Lock()
+		general.LogLockeo("Mapa Procesos", "manejarIO")
+		general.ActualizarPC(syscallIO.PID, syscallIO.PC)
 		proceso := globals.MapaProcesos[syscallIO.PID]
 		globals.MapaProcesosMutex.Unlock()
-		//log.Print("Se unloquea MapaProcesos en ManejarIO")
+		general.LogUnlockeo("Mapa Procesos", "manejarIO")
 
 		// Si hay instancias libres, envio solicitud, sino agrego a la cola
-		globals.ListaIOsMutex.Lock()
 		io := globals.MapaIOs[nombreIO]
 		instanciaIo, pos, hayLibre := BuscarInstanciaIOLibre(syscallIO.NombreIO)
 		if hayLibre {
@@ -148,21 +149,25 @@ func manejarInit_Proc(syscallINIT globals.SyscallInit) {
 func manejarDUMP_MEMORY(syscallDUMP globals.SyscallDump) {
 	logSyscalls(syscallDUMP.PID, "DUMP_MEMORY")
 
-	//log.Print("Se quiere loquear MapaProcesos en ManejarDUMP_MEMORY")
+	general.LogIntentoLockeo("Mapa Procesos", "manejarDUMP_MEMORY")
 	globals.MapaProcesosMutex.Lock()
+	general.LogLockeo("Mapa Procesos", "manejarDUMP_MEMORY")
 	proceso := globals.MapaProcesos[syscallDUMP.PID]
 	globals.MapaProcesosMutex.Unlock()
-	//log.Print("Se unloquea MapaProcesos en ManejarDUMP_MEMORY")
+	general.LogUnlockeo("Mapa Procesos", "manejarDUMP_MEMORY")
 
 	planificadores.EjecutarPlanificadorMedioPlazo(proceso, "Syscall Dump")
 	general.LiberarCPU(syscallDUMP.NombreCPU)
 
 	if general.EnviarDumpMemory(syscallDUMP.PID) {
 		// Se desbloquea normalmente
-		general.ActualizarPC(syscallDUMP.PID, syscallDUMP.PC)
+		general.LogIntentoLockeo("Mapa Procesos", "manejarDUMP_MEMORY 2")
 		globals.MapaProcesosMutex.Lock()
+		general.LogLockeo("Mapa Procesos", "manejarDUMP_MEMORY 2")
+		general.ActualizarPC(syscallDUMP.PID, syscallDUMP.PC)
 		proceso := globals.MapaProcesos[syscallDUMP.PID]
 		globals.MapaProcesosMutex.Unlock()
+		general.LogUnlockeo("Mapa Procesos", "manejarDUMP_MEMORY 2")
 		planificadores.BlockedAReady(proceso)
 	} else {
 		planificadores.FinalizarProceso(syscallDUMP.PID)

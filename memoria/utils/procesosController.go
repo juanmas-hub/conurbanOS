@@ -113,9 +113,8 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 
 	var pid int = int(mensaje.Pid)
 	var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
-	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-	time.Sleep(time.Duration(delay+delayMem) * time.Millisecond)
+	time.Sleep(time.Duration(delay) * time.Millisecond)
 
 	IncrementarMetrica("BAJADAS_SWAP", pid, 1)
 
@@ -319,9 +318,8 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
-	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-	time.Sleep(time.Duration(delay+delayMem) * time.Millisecond)
+	time.Sleep(time.Duration(delay) * time.Millisecond)
 	cantidadPaginas := globals_memoria.Procesos[pid].CantidadDePaginas
 
 	if cantidadPaginas != 0 {

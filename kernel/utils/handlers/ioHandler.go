@@ -36,9 +36,12 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 	globals.ListaIOsMutex.Lock()
 
 	//log.Print("Se quiere loquear MapaProcesos en manejarFinIO")
+	general.LogIntentoLockeo("Mapa Procesos", "manejarFinIO")
 	globals.MapaProcesosMutex.Lock()
+	general.LogLockeo("Mapa Procesos", "manejarFinIO")
 	proceso := globals.MapaProcesos[finalizacionIo.PID]
 	globals.MapaProcesosMutex.Unlock()
+	general.LogUnlockeo("Mapa Procesos", "manejarFinIO")
 	//log.Print("Se unloquea MapaProcesos en manejarFinIO")
 
 	var nuevo_estado string

@@ -110,9 +110,7 @@ func ActualizarEstimado(pid int64, rafagaReal float64) {
 
 	slog.Debug(fmt.Sprintf("Rafaga real: %f", rafagaReal))
 
-	globals.MapaProcesosMutex.Lock()
 	proceso := globals.MapaProcesos[pid]
-	globals.MapaProcesosMutex.Unlock()
 
 	alpha := globals.KernelConfig.Alpha
 	est_ant := proceso.Rafaga.Est_Sgte
@@ -124,9 +122,7 @@ func ActualizarEstimado(pid int64, rafagaReal float64) {
 
 	slog.Debug(fmt.Sprintf("Rafaga actualizada de PID %d: %f", proceso.Pcb.Pid, proceso.Rafaga))
 
-	globals.MapaProcesosMutex.Lock()
 	globals.MapaProcesos[pid] = proceso
-	globals.MapaProcesosMutex.Unlock()
 }
 
 func elegirCPUlibre() (string, int64, string) {
@@ -156,7 +152,6 @@ func elegirCPUlibre() (string, int64, string) {
 	}
 }
 
-// Se llama con MapaProcesosMutex lockeado
 func aExecute(proceso globals.Proceso) {
 	// Esto funcionaría para FIFO y SJF. Nose si SRT
 
@@ -164,11 +159,18 @@ func aExecute(proceso globals.Proceso) {
 
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 	proceso.Estado_Actual = globals.EXECUTE
-	globals.MapaProcesosMutex.Lock()
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
-	globals.MapaProcesosMutex.Unlock()
-	globals.ESTADOS.READY = globals.ESTADOS.READY[1:]
-	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE, proceso.Pcb.Pid)
+	ok := EliminarProcesoDeCola(&globals.ESTADOS.READY, proceso.Pcb.Pid)
+	if !ok {
+		slog.Debug(fmt.Sprintf("PID %d no se encontro en READY en aExecute", proceso.Pcb.Pid))
+		return
+	}
+
+	ok = AgregarProcesoACola(&globals.ESTADOS.EXECUTE, proceso.Pcb.Pid)
+	if !ok {
+		slog.Debug(fmt.Sprintf("PID %d ya estaba en EXECUTE, se evitó duplicación", proceso.Pcb.Pid))
+		return
+	}
 
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado %s al estado EXECUTE", proceso.Pcb.Pid, estado_anterior))
@@ -196,37 +198,53 @@ func verificarDesalojo() (int64, bool) {
 	defer globals.EstadosMutex.Unlock()
 	globals.MapaProcesosMutex.Lock()
 	defer globals.MapaProcesosMutex.Unlock()
+	general.LogLockeo("Mapa Procesos", "verificarDesalojo")
+	defer general.LogUnlockeo("Mapa Procesos", "verificarDesalojo")
 
 	ordenarReadyPorRafaga()
-	pidEnExec, restanteExec := buscarProcesoEnExecuteDeMenorRafagaRestante()
-	rafagaNuevo := globals.MapaProcesos[globals.ESTADOS.READY[0]].Rafaga.Est_Sgte
+	pidEnExec, restanteExec, encontro := buscarProcesoEnExecuteDeMenorRafagaRestante()
 
-	if rafagaNuevo < restanteExec {
-		return pidEnExec, true
+	if encontro {
+		rafagaNuevo := globals.MapaProcesos[globals.ESTADOS.READY[0]].Rafaga.Est_Sgte
+
+		if rafagaNuevo < restanteExec {
+			return pidEnExec, true
+		}
 	}
 
 	return -1, false
 
 }
 
-func buscarProcesoEnExecuteDeMenorRafagaRestante() (int64, float64) {
+func buscarProcesoEnExecuteDeMenorRafagaRestante() (int64, float64, bool) {
 	slog.Debug(fmt.Sprint("Buscando menor rafaga restante en EXECUTE: ", globals.ESTADOS.EXECUTE))
 
 	var pidMenorRafaga int64
-	var menorRafagaRestante float64 = 0
-	pidMenorRafaga = globals.ESTADOS.EXECUTE[0]
-	for i := range globals.ESTADOS.EXECUTE {
-		// Si la posicion i esta libre
-		pidActual := globals.ESTADOS.EXECUTE[i]
-		rafagaRestanteActual := rafagaRestante(pidActual)
-		if rafagaRestanteActual < menorRafagaRestante {
+	var menorRafagaRestante float64
+	encontro := false
+
+	for _, pidActual := range globals.ESTADOS.EXECUTE {
+		_, ok := globals.MapaProcesos[pidActual]
+		if !ok {
+			slog.Warn(fmt.Sprintf("PID %d no encontrado en MapaProcesos. Posiblemente finalizado.", pidActual))
+			continue
+		}
+
+		restante := rafagaRestante(pidActual)
+		if !encontro || restante < menorRafagaRestante {
 			pidMenorRafaga = pidActual
-			menorRafagaRestante = rafagaRestanteActual
+			menorRafagaRestante = restante
+			encontro = true
 		}
 	}
-	slog.Debug(fmt.Sprintf("PID de menor rafaga restante: %d, restante: %f", pidMenorRafaga, menorRafagaRestante))
 
-	return pidMenorRafaga, menorRafagaRestante
+	if !encontro {
+		slog.Warn("No se encontró ningún proceso válido en EXECUTE para evaluar desalojo.")
+		return 0, 0, false
+	}
+
+	slog.Debug(fmt.Sprintf("PID de menor rafaga restante: %d, restante: %f", pidMenorRafaga, menorRafagaRestante))
+	return pidMenorRafaga, menorRafagaRestante, true
 }
 
 func rafagaRestante(pid int64) float64 {
@@ -270,11 +288,14 @@ func ejecutarUnProceso() {
 	slog.Debug(fmt.Sprintf(" ---- Ready: %d ----", globals.ESTADOS.READY))
 	procesoAEjecutar := globals.ESTADOS.READY[0]
 	ip, port, nombre := elegirCPUlibre()
+	general.LogIntentoLockeo("Mapa Procesos", "ejecutarUnProceso")
 	globals.MapaProcesosMutex.Lock()
+	general.LogLockeo("Mapa Procesos", "ejecutarUnProceso")
 	proceso := globals.MapaProcesos[procesoAEjecutar]
-	globals.MapaProcesosMutex.Unlock()
 	general.EnviarProcesoAEjecutar_ACPU(ip, port, proceso.Pcb.Pid, proceso.Pcb.PC, nombre)
 	aExecute(proceso)
+	globals.MapaProcesosMutex.Unlock()
+	general.LogUnlockeo("Mapa Procesos", "ejecutarUnProceso")
 }
 
 func desalojarYEnviarProceso(pidEnExec int64) {
@@ -282,6 +303,8 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 	defer globals.EstadosMutex.Unlock()
 	globals.MapaProcesosMutex.Lock()
 	defer globals.MapaProcesosMutex.Unlock()
+	general.LogLockeo("Mapa Procesos", "desalojarYEnviarProceso")
+	defer general.LogUnlockeo("Mapa Procesos", "desalojarYEnviarProceso")
 
 	ipCPU, puertoCPU, nombreCPU, ok := general.BuscarCpuPorPID(pidEnExec)
 	slog.Debug(fmt.Sprint("SRT - CPU del proceso a desalojar: ", nombreCPU))
@@ -295,22 +318,16 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 		}
 		general.ActualizarPC(pidEnExec, respuestaInterrupcion.PC)
 
-		globals.MapaProcesosMutex.Lock()
 		procesoDesalojado := globals.MapaProcesos[pidEnExec]
-		globals.MapaProcesosMutex.Unlock()
+
 		ExecuteAReady(procesoDesalojado, "")
 
 		// LOG Desalojo: ## (<PID>) - Desalojado por algoritmo SJF/SRT
 		slog.Info(fmt.Sprintf("## (%d) - Desalojado por algoritmo SJF/SRT", procesoDesalojado.Pcb.Pid))
 
 		general.EnviarProcesoAEjecutar_ACPU(ipCPU, puertoCPU, pidProcesoAEjecutar, pcProcesoAEjecutar, nombreCPU)
-		//slog.Debug("Se quiere lckear en desalojarYEnviarProceso 2 ")
-		globals.EstadosMutex.Lock()
-		//slog.Debug("Se lckear en desalojarYEnviarProceso 2")
+
 		aExecute(proceso)
-		//slog.Debug("Se quiere deslckear en desalojarYEnviarProceso 2")
-		globals.EstadosMutex.Unlock()
-		//slog.Debug("Se lckear en desalojarYEnviarProceso 2")
 
 	} else {
 		slog.Debug(fmt.Sprintf("No se encontró la CPU que ejecuta el PID %d al momento de desalojar", pidEnExec))
@@ -322,35 +339,29 @@ func ExecuteAReady(proceso globals.Proceso, razon string) {
 	proceso = general.ActualizarMetricas(proceso, proceso.Estado_Actual)
 
 	proceso.Estado_Actual = globals.READY
+	general.LogIntentoLockeo("Mapa Procesos", "ExecuteAReady")
 	globals.MapaProcesosMutex.Lock()
+	general.LogLockeo("Mapa Procesos", "ExecuteAReady")
 	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
+	general.LogUnlockeo("Mapa Procesos", "ExecuteAReady")
 
 	//slog.Debug("Se quiere lockear en ExecuteAReady")
 	globals.EstadosMutex.Lock()
 	//slog.Debug("Se lockear en ExecuteAReady")
-	pos := buscarProcesoEnExecute(proceso.Pcb.Pid)
-	globals.ESTADOS.EXECUTE = append(globals.ESTADOS.EXECUTE[:pos], globals.ESTADOS.EXECUTE[pos+1:]...)
-	globals.ESTADOS.READY = append(globals.ESTADOS.READY, proceso.Pcb.Pid)
+	ok := EliminarProcesoDeCola(&globals.ESTADOS.EXECUTE, proceso.Pcb.Pid)
+	if !ok {
+		slog.Debug(fmt.Sprintf("PID %d no se encontro en EXECUTE en ExecuteAReady", proceso.Pcb.Pid))
+		return
+	}
+
+	ok = AgregarProcesoACola(&globals.ESTADOS.READY, proceso.Pcb.Pid)
+	if !ok {
+		slog.Debug(fmt.Sprintf("PID %d ya estaba en READY, se evitó duplicación", proceso.Pcb.Pid))
+	}
 	//slog.Debug("Se quiere deslockear en ExecuteAReady")
 	globals.EstadosMutex.Unlock()
 	//slog.Debug("Se deslockear en ExecuteAReady")
 	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado EXECUTE al estado READY", proceso.Pcb.Pid))
-}
-
-// Se llama con estados mutex lockeado
-func buscarProcesoEnExecute(pid int64) int64 {
-	colaExecute := globals.ESTADOS.EXECUTE
-
-	var posicion int64
-
-	for indice, valor := range colaExecute {
-		if valor == pid {
-			posicion = int64(indice)
-			break
-		}
-	}
-
-	return posicion
 }

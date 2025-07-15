@@ -56,9 +56,12 @@ func pasarProcesosAReady() {
 					break
 				}
 
+				general.LogIntentoLockeo("Mapa Procesos", "pasarProcesosAReady")
 				globals.MapaProcesosMutex.Lock()
+				general.LogLockeo("Mapa Procesos", "pasarProcesosAReady")
 				proceso := globals.MapaProcesos[pid]
 				globals.MapaProcesosMutex.Unlock()
+				general.LogUnlockeo("Mapa Procesos", "pasarProcesosAReady")
 				SuspReadyAReady(proceso)
 				lenghtSUSP_READY--
 			}
@@ -66,25 +69,17 @@ func pasarProcesosAReady() {
 			if lenghtSUSP_READY == 0 {
 
 				for len(globals.ESTADOS.NEW) > 0 {
-					//slog.Debug("Se quiere lockear en ExecuteAReady")
 					globals.EstadosMutex.Lock()
-					//slog.Debug("Se lockear en ExecuteAReady")
 					procesoNuevo := globals.ESTADOS.NEW[0]
-					//slog.Debug("Se quiere deslockear en ExecuteAReady")
 					globals.EstadosMutex.Unlock()
-					//slog.Debug("Se deslockear en ExecuteAReady")
-					//slog.Debug(fmt.Sprintf("Solicito iniciar proceso: %d", procesoNuevo.Proceso.Pcb.Pid))
+
 					if general.SolicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
 						break
 					}
 
-					//slog.Debug("Se quiere lockear en ExecuteAReady 2 ")
 					globals.EstadosMutex.Lock()
-					//slog.Debug("Se lockear en ExecuteAReady 2 ")
 					globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
-					//slog.Debug("Se quiere deslockear en ExecuteAReady 2 ")
 					globals.EstadosMutex.Unlock()
-					//slog.Debug("Se deslockear en ExecuteAReady 2 ")
 					go NewAReady(procesoNuevo)
 
 				}
@@ -131,9 +126,12 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		proceso.Rafaga = &rafaga
 	}
 
+	general.LogIntentoLockeo("Mapa Procesos", "CrearProcesoNuevo")
 	globals.MapaProcesosMutex.Lock()
+	general.LogLockeo("Mapa Procesos", "CrearProcesoNuevo")
 	globals.MapaProcesos[pid] = proceso
 	globals.MapaProcesosMutex.Unlock()
+	general.LogUnlockeo("Mapa Procesos", "CrearProcesoNuevo")
 
 	procesoNuevo := globals.Proceso_Nuevo{
 		Archivo_Pseudocodigo: archivo,
@@ -170,12 +168,19 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 
 func FinalizarProceso(pid int64) {
 	globals.MapaProcesosMutex.Lock()
+	defer globals.MapaProcesosMutex.Unlock()
+	general.LogLockeo("Mapa Procesos", "BlockedASuspBlocked")
+	defer general.LogUnlockeo("Mapa Procesos", "BlockedASuspBlocked")
+
 	proceso, ok := globals.MapaProcesos[pid]
-	globals.MapaProcesosMutex.Unlock()
 	if !ok {
 		log.Printf("No se encontró el proceso con PID %d", pid)
 		return
 	}
+
+	globals.EstadosMutex.Lock()
+	EliminarProcesoDeSuCola(pid, proceso.Estado_Actual)
+	globals.EstadosMutex.Unlock()
 
 	// Enviar a memoria
 	ok = enviarFinalizacionDeProceso_AMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, pid)
@@ -184,21 +189,11 @@ func FinalizarProceso(pid int64) {
 		return
 	}
 
-	// Mover a EXIT y eliminar de su cola
+	// Mover a EXIT
 	ProcesoAExit(proceso)
 
-	//slog.Debug("Se quiere lockear en CrearProcesoNuevo")
-	globals.EstadosMutex.Lock()
-	//slog.Debug("Se lockear en CrearProcesoNuevo")
-	EliminarProcesoDeSuCola(pid, proceso.Estado_Actual)
-	//slog.Debug("Se quiere deslockear en CrearProcesoNuevo")
-	globals.EstadosMutex.Unlock()
-	//slog.Debug("Se deslockear en CrearProcesoNuevo")
-
 	// Eliminar del mapa de procesos
-	globals.MapaProcesosMutex.Lock()
 	delete(globals.MapaProcesos, pid)
-	globals.MapaProcesosMutex.Unlock()
 
 	// Señal para ready
 	globals.DeDondeSeLlamaMutex.Lock()

@@ -37,22 +37,27 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 
 	slog.Debug(fmt.Sprintf("Termino el timer del proceso %d", proceso.Pcb.Pid))
 
+	general.LogIntentoLockeo("Mapa Procesos", "sigueBloqueado")
 	globals.MapaProcesosMutex.Lock()
+	general.LogLockeo("Mapa Procesos", "sigueBloqueado")
 	procesoActualmente := globals.MapaProcesos[proceso.Pcb.Pid]
 	globals.MapaProcesosMutex.Unlock()
+	general.LogUnlockeo("Mapa Procesos", "sigueBloqueado")
 
 	// Comparo cantidad de sesiones:
 	// 		- Son iguales: es la misma sesion => me fijo si swappeo
 	//		- Son distintas: distintas sesiones => no hago nada
 
+	globals.CantidadSesionesIOMutex.Lock()
 	cantidadSesionesActual := globals.CantidadSesionesIO[procesoActualmente.Pcb.Pid]
+	globals.CantidadSesionesIOMutex.Unlock()
 
 	log.Printf("Cantidad sesiones actual: %d, previa: %d", cantidadSesionesActual, cantidadSesionesPrevia)
 
 	if cantidadSesionesActual == cantidadSesionesPrevia && procesoActualmente.Estado_Actual == globals.BLOCKED {
 		// Aviso a memoria que hay que swappear
 		slog.Debug(fmt.Sprint("Hay que swappear proceso: ", procesoActualmente.Pcb.Pid))
-		go general.AvisarSwappeo(procesoActualmente.Pcb.Pid)
+		general.AvisarSwappeo(procesoActualmente.Pcb.Pid)
 		slog.Debug(fmt.Sprint("Ya termino el aviso de swappeo a memoria del proceso: ", procesoActualmente.Pcb.Pid))
 
 		// Cambio de estado
