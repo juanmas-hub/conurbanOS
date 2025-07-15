@@ -156,7 +156,7 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 	// Aca no hay metricas que actualizar
 	globals.ESTADOS.NEW = append(globals.ESTADOS.NEW, procesoNuevo)
 
-	// LOG Creación de Proceso: “## (<PID>) Se crea el proceso - Estado: NEW”
+	// LOG Creación de Proceso: "## (<PID>) Se crea el proceso - Estado: NEW"
 	slog.Info(fmt.Sprintf("## (%d) Se crea el proceso - Estado: NEW", pid))
 
 	//log.Printf("Después de agregar, NEW tiene %d procesos", len(globals.ESTADOS.NEW))
