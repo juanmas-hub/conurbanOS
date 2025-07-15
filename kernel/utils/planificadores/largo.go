@@ -31,8 +31,6 @@ func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 	}
 
 	go EjecutarPlanificadorCortoPlazo()
-
-	// El planif largo tiene dos partes:
 	go pasarProcesosAReady()
 
 	CrearProcesoNuevo(archivo, tamanio) // Primer proceso
@@ -47,43 +45,55 @@ func pasarProcesosAReady() {
 		//general.Wait(globals.Sem_PasarProcesoAReady)
 		globals.WaitPasarProcesoAReady()
 		if globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED == false {
+
+			general.LogIntentoLockeo("MapaProcesos", "pasarProcesosAReady")
+			globals.MapaProcesosMutex.Lock()
+			general.LogLockeo("MapaProcesos", "pasarProcesosAReady")
+			general.LogIntentoLockeo("Estados", "pasarProcesosAReady")
+			globals.EstadosMutex.Lock()
+			general.LogLockeo("Estados", "pasarProcesosAReady")
+
 			slog.Debug(fmt.Sprintf("Intentando pasar procesos a ready porque llego un proceso a:  %s", globals.DeDondeSeLlamaPasarProcesosAReady))
 
 			var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
+
+			slog.Debug(fmt.Sprintf("Procesos en SUSP_READY: %d", len(globals.ESTADOS.SUSP_READY)))
 			for lenghtSUSP_READY > 0 {
 				pid := globals.ESTADOS.SUSP_READY[0]
 				if general.SolicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid) == false {
+					globals.EstadosMutex.Unlock()
+					globals.MapaProcesosMutex.Unlock()
 					break
 				}
 
-				general.LogIntentoLockeo("Mapa Procesos", "pasarProcesosAReady")
-				globals.MapaProcesosMutex.Lock()
-				general.LogLockeo("Mapa Procesos", "pasarProcesosAReady")
 				proceso := globals.MapaProcesos[pid]
-				globals.MapaProcesosMutex.Unlock()
-				general.LogUnlockeo("Mapa Procesos", "pasarProcesosAReady")
-				SuspReadyAReady(proceso)
+
+				CambiarEstado(proceso.Pcb.Pid, globals.SUSP_READY, globals.READY)
 				lenghtSUSP_READY--
 			}
 
 			if lenghtSUSP_READY == 0 {
 
+				slog.Debug(fmt.Sprintf("Procesos en NEW: %d", len(globals.ESTADOS.SUSP_READY)))
 				for len(globals.ESTADOS.NEW) > 0 {
-					globals.EstadosMutex.Lock()
+
 					procesoNuevo := globals.ESTADOS.NEW[0]
-					globals.EstadosMutex.Unlock()
 
 					if general.SolicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
+						globals.EstadosMutex.Unlock()
+						globals.MapaProcesosMutex.Unlock()
 						break
 					}
 
-					globals.EstadosMutex.Lock()
-					globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
-					globals.EstadosMutex.Unlock()
-					go NewAReady(procesoNuevo)
+					CambiarEstado(procesoNuevo.Proceso.Pcb.Pid, globals.NEW, globals.READY)
 
 				}
 			}
+
+			globals.EstadosMutex.Unlock()
+			general.LogUnlockeo("Estados", "pasarProcesosAReady")
+			globals.MapaProcesosMutex.Unlock()
+			general.LogUnlockeo("MapaProcesos", "pasarProcesosAReady")
 		}
 	}
 }
@@ -139,9 +149,9 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		Proceso:              proceso,
 	}
 
-	//slog.Debug("Se quiere lockear en CrearProcesoNuevo")
+	general.LogIntentoLockeo("Estados", "CrearProcesoNuevo")
 	globals.EstadosMutex.Lock()
-	//slog.Debug("Se lockear en CrearProcesoNuevo")
+	general.LogLockeo("Estados", "CrearProcesoNuevo")
 
 	// Aca no hay metricas que actualizar
 	globals.ESTADOS.NEW = append(globals.ESTADOS.NEW, procesoNuevo)
@@ -152,12 +162,10 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 	//log.Printf("Después de agregar, NEW tiene %d procesos", len(globals.ESTADOS.NEW))
 	if globals.KernelConfig.New_algorithm == "PMCP" {
 		ordenarNewPorTamanio()
-		//log.Print("NEW despues de ordenarlo: ", globals.ESTADOS.NEW)
 	}
 
-	//slog.Debug("Se quiere deslockear en CrearProcesoNuevo")
 	globals.EstadosMutex.Unlock()
-	//slog.Debug("Se deslockear en CrearProcesoNuevo")
+	general.LogUnlockeo("Estados", "CrearProcesoNuevo")
 
 	globals.DeDondeSeLlamaMutex.Lock()
 	globals.DeDondeSeLlamaPasarProcesosAReady = "New"
@@ -169,37 +177,35 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 func FinalizarProceso(pid int64) {
 	globals.MapaProcesosMutex.Lock()
 	defer globals.MapaProcesosMutex.Unlock()
-	general.LogLockeo("Mapa Procesos", "BlockedASuspBlocked")
-	defer general.LogUnlockeo("Mapa Procesos", "BlockedASuspBlocked")
-
-	proceso, ok := globals.MapaProcesos[pid]
-	if !ok {
-		log.Printf("No se encontró el proceso con PID %d", pid)
-		return
-	}
-
-	globals.EstadosMutex.Lock()
-	EliminarProcesoDeSuCola(pid, proceso.Estado_Actual)
-	globals.EstadosMutex.Unlock()
+	general.LogLockeo("Mapa Procesos", "FinalizarProceso")
+	defer general.LogUnlockeo("Mapa Procesos", "FinalizarProceso")
 
 	// Enviar a memoria
-	ok = enviarFinalizacionDeProceso_AMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, pid)
+	ok := enviarFinalizacionDeProceso_AMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, pid)
 	if !ok {
 		log.Printf("Memoria no pudo finalizar el proceso PID %d.", pid)
 		return
 	}
 
 	// Mover a EXIT
-	ProcesoAExit(proceso)
+	general.LogIntentoLockeo("Estados", "FinalizarProceso")
+	globals.EstadosMutex.Lock()
+	general.LogLockeo("Estados", "FinalizarProceso")
+	ok = CambiarEstado(pid, "", globals.EXIT)
+	globals.EstadosMutex.Unlock()
+	general.LogUnlockeo("Estados", "FinalizarProceso")
 
-	// Eliminar del mapa de procesos
-	delete(globals.MapaProcesos, pid)
+	if ok {
+		// Eliminar del mapa de procesos
+		delete(globals.MapaProcesos, pid)
 
-	// Señal para ready
-	globals.DeDondeSeLlamaMutex.Lock()
-	globals.DeDondeSeLlamaPasarProcesosAReady = "Exit"
-	globals.DeDondeSeLlamaMutex.Unlock()
-	globals.SignalPasarProcesoAReady()
+		// Señal para ready
+		globals.DeDondeSeLlamaMutex.Lock()
+		globals.DeDondeSeLlamaPasarProcesosAReady = "Exit"
+		globals.DeDondeSeLlamaMutex.Unlock()
+		globals.SignalPasarProcesoAReady()
+	}
+
 }
 
 func enviarFinalizacionDeProceso_AMemoria(ip string, puerto int64, pid int64) bool {

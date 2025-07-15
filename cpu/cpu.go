@@ -120,7 +120,6 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/dispatchProceso", utils_cpu.RecibirProcesoAEjecutar)
-	mux.HandleFunc("/recibirPCB", utils_cpu.RecibirPCBDeKernel)
 	mux.HandleFunc("/interrumpir", utils_cpu.RecibirInterrupcion)
 
 	puerto := globals_cpu.CpuConfig.Port_cpu

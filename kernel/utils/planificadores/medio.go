@@ -11,13 +11,29 @@ import (
 )
 
 // Se llama cuando un proceso de execute se bloquea (IO o DUMP)
-func EjecutarPlanificadorMedioPlazo(proceso globals.Proceso, razon string) {
+func EjecutarPlanificadorMedioPlazo(proceso globals.Proceso, razon string) bool {
 
-	ExecuteABlocked(proceso, razon)
+	general.LogIntentoLockeo("MapaProcesos", "EjecutarPlanificadorMedioPlazo")
+	globals.MapaProcesosMutex.Lock()
+	general.LogLockeo("MapaProcesos", "EjecutarPlanificadorMedioPlazo")
+	general.LogIntentoLockeo("Estados", "EjecutarPlanificadorMedioPlazo")
+	globals.EstadosMutex.Lock()
+	general.LogLockeo("Estados", "EjecutarPlanificadorMedioPlazo")
+
+	if !CambiarEstado(proceso.Pcb.Pid, globals.EXECUTE, globals.BLOCKED) {
+		globals.EstadosMutex.Unlock()
+		globals.MapaProcesosMutex.Unlock()
+		return false
+	}
 
 	globals.CantidadSesionesIOMutex.Lock()
 	cantidadSesiones := globals.CantidadSesionesIO[proceso.Pcb.Pid]
 	globals.CantidadSesionesIOMutex.Unlock()
+
+	globals.EstadosMutex.Unlock()
+	general.LogUnlockeo("Estados", "EjecutarPlanificadorMedioPlazo")
+	globals.MapaProcesosMutex.Unlock()
+	general.LogUnlockeo("MapaProcesos", "EjecutarPlanificadorMedioPlazo")
 
 	// -- Timer hasta ser suspendido
 
@@ -28,6 +44,8 @@ func EjecutarPlanificadorMedioPlazo(proceso globals.Proceso, razon string) {
 
 	slog.Debug(fmt.Sprintf("Proceso %d bloqueado, arranco el timer", proceso.Pcb.Pid))
 
+	return true
+
 }
 
 func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
@@ -37,12 +55,18 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 
 	slog.Debug(fmt.Sprintf("Termino el timer del proceso %d", proceso.Pcb.Pid))
 
-	general.LogIntentoLockeo("Mapa Procesos", "sigueBloqueado")
+	general.LogIntentoLockeo("MapaProcesos", "sigueBloqueado")
 	globals.MapaProcesosMutex.Lock()
-	general.LogLockeo("Mapa Procesos", "sigueBloqueado")
-	procesoActualmente := globals.MapaProcesos[proceso.Pcb.Pid]
-	globals.MapaProcesosMutex.Unlock()
-	general.LogUnlockeo("Mapa Procesos", "sigueBloqueado")
+	general.LogLockeo("MapaProcesos", "sigueBloqueado")
+
+	procesoActualmente, presente := globals.MapaProcesos[proceso.Pcb.Pid]
+	if !presente {
+		slog.Debug(fmt.Sprintf("PID %d no se encontro en MapaProcesos en sigueBloqueado. Probablemente finalizo", proceso.Pcb.Pid))
+		globals.MapaProcesosMutex.Unlock()
+		general.LogUnlockeo("MapaProcesos", "sigueBloqueado")
+
+		return
+	}
 
 	// Comparo cantidad de sesiones:
 	// 		- Son iguales: es la misma sesion => me fijo si swappeo
@@ -55,18 +79,29 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 	log.Printf("Cantidad sesiones actual: %d, previa: %d", cantidadSesionesActual, cantidadSesionesPrevia)
 
 	if cantidadSesionesActual == cantidadSesionesPrevia && procesoActualmente.Estado_Actual == globals.BLOCKED {
-		// Aviso a memoria que hay que swappear
-		slog.Debug(fmt.Sprint("Hay que swappear proceso: ", procesoActualmente.Pcb.Pid))
-		general.AvisarSwappeo(procesoActualmente.Pcb.Pid)
-		slog.Debug(fmt.Sprint("Ya termino el aviso de swappeo a memoria del proceso: ", procesoActualmente.Pcb.Pid))
 
 		// Cambio de estado
-		BlockedASuspBlocked(procesoActualmente)
+		general.LogIntentoLockeo("Estados", "sigueBloqueado")
+		globals.EstadosMutex.Lock()
+		general.LogLockeo("Estados", "sigueBloqueado")
+		ok := CambiarEstado(procesoActualmente.Pcb.Pid, globals.BLOCKED, globals.SUSP_BLOCKED)
+		globals.EstadosMutex.Unlock()
+		general.LogUnlockeo("Estados", "sigueBloqueado")
 
-		// Libere espacio => llamo a nuevos procesos
-		globals.DeDondeSeLlamaMutex.Lock()
-		globals.DeDondeSeLlamaPasarProcesosAReady = "Susp Blocked"
-		globals.DeDondeSeLlamaMutex.Unlock()
-		globals.SignalPasarProcesoAReady()
+		if ok {
+			// Aviso a memoria que hay que swappear
+			slog.Debug(fmt.Sprint("Hay que swappear proceso: ", procesoActualmente.Pcb.Pid))
+			general.AvisarSwappeo(procesoActualmente.Pcb.Pid)
+			slog.Debug(fmt.Sprint("Ya termino el aviso de swappeo a memoria del proceso: ", procesoActualmente.Pcb.Pid))
+
+			// Libere espacio => llamo a nuevos procesos
+			globals.DeDondeSeLlamaMutex.Lock()
+			globals.DeDondeSeLlamaPasarProcesosAReady = "Susp Blocked"
+			globals.DeDondeSeLlamaMutex.Unlock()
+			globals.SignalPasarProcesoAReady()
+		}
 	}
+
+	globals.MapaProcesosMutex.Unlock()
+	general.LogUnlockeo("MapaProcesos", "sigueBloqueado")
 }
