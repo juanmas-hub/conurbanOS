@@ -5,7 +5,6 @@ import (
 	//"fmt"
 	"bufio"
 	"fmt"
-	"log"
 	"log/slog"
 
 	//"net/http"
@@ -32,11 +31,11 @@ func abrirArchivo(filename string) *os.File {
 
 	var rutaArchivo string = globals_memoria.MemoriaConfig.Scripts_path + filename
 
-	log.Println("Intentando acceder a la direccion: ", rutaArchivo)
+	slog.Debug(fmt.Sprint("Intentando acceder a la direccion: ", rutaArchivo))
 
 	file, err := os.Open(rutaArchivo)
 	if err != nil {
-		log.Println("No se pudo abrir el archivo: ", err)
+		slog.Debug(fmt.Sprint("No se pudo abrir el archivo: ", err))
 		return nil
 	}
 	return file
@@ -59,11 +58,11 @@ func extraerInstrucciones(archivo *os.File) []string {
 		linea := strings.TrimSpace(scanner.Text())
 		if linea != "" {
 			instrucciones = append(instrucciones, linea)
-			log.Printf("Se extrajo la instruccion: %s", linea)
+			slog.Debug(fmt.Sprintf("Se extrajo la instruccion: %s", linea))
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		log.Println("Error al extraer las instrucciones del archivo")
+		slog.Debug(fmt.Sprintf("Error al extraer las instrucciones del archivo"))
 		return nil
 	}
 
@@ -135,7 +134,7 @@ func IncrementarMetrica(metrica string, pid int, cantidad int) {
 	case "ESCRITURAS_MEMORIA":
 		metricas.EscriturasMemoria += cantidad
 	default:
-		log.Printf("Métrica desconocida: %s\n", metrica)
+		slog.Debug(fmt.Sprintf("Métrica desconocida: %s\n", metrica))
 	}
 	globals_memoria.MetricasMap[pid] = metricas
 }
@@ -143,11 +142,11 @@ func IncrementarMetrica(metrica string, pid int, cantidad int) {
 func logTablaDePaginas(pid int) {
 	proceso, ok := globals_memoria.Procesos[pid]
 	if !ok {
-		log.Printf("❌ Proceso con PID %d no encontrado.", pid)
+		slog.Debug(fmt.Sprintf("❌ Proceso con PID %d no encontrado.", pid))
 		return
 	}
 
-	log.Printf("-------- Tabla de páginas del proceso %d:", pid)
+	slog.Debug(fmt.Sprintf("-------- Tabla de páginas del proceso %d:", pid))
 	recorrerYLoguearTabla(&proceso.TablaDePaginas, 0, "")
 }
 

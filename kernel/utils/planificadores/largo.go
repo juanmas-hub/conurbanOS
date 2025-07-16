@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -22,7 +21,7 @@ func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 	slog.Info(" ---- Planificador de largo plazo en STOP, presionar ENTER: ")
 	for {
 		text, _ := reader.ReadString('\n')
-		log.Print(text)
+		slog.Debug(text)
 
 		if text == "\n" {
 			globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED = false
@@ -195,7 +194,7 @@ func FinalizarProceso(pid int64) {
 	// Enviar a memoria
 	ok := enviarFinalizacionDeProceso_AMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, pid)
 	if !ok {
-		log.Printf("Memoria no pudo finalizar el proceso PID %d.", pid)
+		slog.Debug(fmt.Sprintf("Memoria no pudo finalizar el proceso PID %d.", pid))
 		return
 	}
 
@@ -224,14 +223,14 @@ func enviarFinalizacionDeProceso_AMemoria(ip string, puerto int64, pid int64) bo
 	mensaje := globals.PidJSON{PID: pid}
 	body, err := json.Marshal(mensaje)
 	if err != nil {
-		log.Printf("error codificando mensaje: %s", err.Error())
+		slog.Debug(fmt.Sprintf("error codificando mensaje: %s", err.Error()))
 	}
 
 	// Posible problema con el int64 del puerto
 	url := fmt.Sprintf("http://%s:%d/finalizarProceso", ip, puerto)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+		slog.Debug(fmt.Sprintf("error enviando mensaje a ip:%s puerto:%d", ip, puerto))
 	}
 
 	slog.Debug(fmt.Sprintf("Finalizacion PID %d enviada a memoria, respuesta: %s", pid, resp.Status))

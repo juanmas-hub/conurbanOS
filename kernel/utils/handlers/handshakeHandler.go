@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 
@@ -16,7 +15,7 @@ func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
 	var handshake globals.HandshakeIO
 	err := decoder.Decode(&handshake)
 	if err != nil {
-		log.Printf("Error al decodificar handshake: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar handshake: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar handshake"))
 		return
@@ -36,7 +35,7 @@ func RecibirHandshakeCPU(w http.ResponseWriter, r *http.Request) {
 	var handshake globals.Handshake
 	err := decoder.Decode(&handshake)
 	if err != nil {
-		log.Printf("Error al decodificar handshake: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar handshake: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar handshake"))
 		return
@@ -62,6 +61,8 @@ func agregarAInstanciasIOs(handshake globals.HandshakeIO) {
 	}
 	io.Instancias = append(io.Instancias, elementoAAgregar)
 	globals.MapaIOs[handshake.NombreIO] = io
+
+	//IntentarPasarAIO(handshake.NombreIO, elementoAAgregar)
 }
 
 func agregarAListaCPUs(handshake globals.Handshake) {
@@ -75,7 +76,7 @@ func agregarAListaCPUs(handshake globals.Handshake) {
 	case "FIFO", "SJF":
 		general.Signal(globals.Sem_Cpus)
 	case "SRT":
-		slog.Debug(fmt.Sprintf("Notificando replanificación en agregarAListaCPUs - Nueva CPU Libre"))
-		general.NotificarReplanifSRT()
+		//slog.Debug(fmt.Sprintf("Notificando replanificación en agregarAListaCPUs - Nueva CPU Libre"))
+		//general.NotificarReplanifSRT()
 	}
 }

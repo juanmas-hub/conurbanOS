@@ -8,7 +8,7 @@ import (
 
 	//"fmt"
 	//"bufio"
-	"log"
+
 	"net/http"
 
 	//"os"
@@ -89,7 +89,7 @@ func ObtenerMarcoProceso(w http.ResponseWriter, r *http.Request) {
 	var mensaje globals_memoria.ConsultaPaginaDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar mensaje: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
@@ -104,7 +104,7 @@ func ObtenerMarcoProceso(w http.ResponseWriter, r *http.Request) {
 	marco = obtenerMarcoDesdeTabla(pid, entradas)
 
 	if marco < 0 {
-		log.Printf("Error al obtener marco")
+		slog.Debug(fmt.Sprintf("Error al obtener marco"))
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error al obtener marco"))
 		return
@@ -116,7 +116,7 @@ func ObtenerMarcoProceso(w http.ResponseWriter, r *http.Request) {
 	enviado.Dato = marco
 	jsonData, err := json.Marshal(enviado)
 	if err != nil {
-		log.Printf("Error al codificar la instruccion a JSON: %s", err.Error())
+		slog.Debug(fmt.Sprintf("Error al codificar la instruccion a JSON: %s", err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error interno del servidor"))
 		return
@@ -133,7 +133,7 @@ func LeerPagina(w http.ResponseWriter, r *http.Request) {
 	var mensaje globals_memoria.LeerPaginaDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar mensaje: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
@@ -146,7 +146,7 @@ func LeerPagina(w http.ResponseWriter, r *http.Request) {
 
 	time.Sleep(time.Duration(delayMem) * time.Millisecond)
 	if indicePagina%pageSize != 0 {
-		log.Printf("Error, el indice enviado (%v) no es multiplo de %v", indicePagina, pageSize)
+		slog.Debug(fmt.Sprintf("Error, el indice enviado (%v) no es multiplo de %v", indicePagina, pageSize))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error indice no es multiplo del tamaño de pagina"))
 		return
@@ -160,7 +160,7 @@ func LeerPagina(w http.ResponseWriter, r *http.Request) {
 	enviado.Dato = []byte(dato)
 	jsonData, err := json.Marshal(enviado)
 	if err != nil {
-		log.Printf("Error al codificar el mensaje a JSON: %s", err.Error())
+		slog.Debug(fmt.Sprintf("Error al codificar el mensaje a JSON: %s", err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error interno del servidor"))
 		return
@@ -176,7 +176,7 @@ func ActualizarPagina(w http.ResponseWriter, r *http.Request) {
 	var mensaje globals_memoria.ActualizarPaginaDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar mensaje: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
@@ -191,7 +191,7 @@ func ActualizarPagina(w http.ResponseWriter, r *http.Request) {
 
 	time.Sleep(time.Duration(delayMem) * time.Millisecond)
 	if direccionFisica%pageSize != 0 {
-		log.Printf("Error, el indice enviado (%v) no es multiplo de %v", direccionFisica, pageSize)
+		slog.Debug(fmt.Sprintf("Error, el indice enviado (%v) no es multiplo de %v", direccionFisica, pageSize))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error indice no es multiplo del tamaño de pagina"))
 		return

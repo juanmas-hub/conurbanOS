@@ -8,7 +8,7 @@ import (
 
 	//"fmt"
 	//"bufio"
-	"log"
+
 	"net/http"
 
 	//"os"
@@ -30,7 +30,7 @@ func ConsultarMock(w http.ResponseWriter, r *http.Request) {
 	jsonData, err := json.Marshal(enviado)
 
 	if err != nil {
-		log.Printf("Error al codificar el mock a JSON: %s", err.Error())
+		slog.Debug(fmt.Sprintf("Error al codificar el mock a JSON: %s", err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error interno del servidor"))
 		return
@@ -98,14 +98,14 @@ func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 	var mensaje globals_memoria.InstruccionDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar mensaje: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
 	}
 
-	log.Printf("Solicitud de instruccion de PID: %d y PC: %d", mensaje.Pid, mensaje.Pc)
-	log.Printf("%+v\n", mensaje.Pid)
+	slog.Debug(fmt.Sprintf("Solicitud de instruccion de PID: %d y PC: %d", mensaje.Pid, mensaje.Pc))
+	slog.Debug(fmt.Sprintf("%+v\n", mensaje.Pid))
 
 	var instruccion string = globals_memoria.Procesos[int(mensaje.Pid)].Pseudocodigo[mensaje.Pc]
 	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
@@ -127,7 +127,7 @@ func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 	metricas.InstruccionesSolicitadas++
 	globals_memoria.MetricasMap[int(mensaje.Pid)] = metricas
 
-	log.Printf("## PID: %d - Obtener instrucción: %d - Instrucción: %s", mensaje.Pid, mensaje.Pc, instruccion)
+	slog.Info(fmt.Sprintf("## PID: %d - Obtener instrucción: %d - Instrucción: %s", mensaje.Pid, mensaje.Pc, instruccion))
 
 	var enviado struct {
 		Instruccion string `json:"instruccion"`
@@ -135,7 +135,7 @@ func EnviarInstruccion(w http.ResponseWriter, r *http.Request) {
 	enviado.Instruccion = instruccion
 	jsonData, err := json.Marshal(enviado)
 	if err != nil {
-		log.Printf("Error al codificar la instruccion a JSON: %s", err.Error())
+		slog.Debug(fmt.Sprintf("Error al codificar la instruccion a JSON: %s", err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error interno del servidor"))
 		return
@@ -191,7 +191,7 @@ func AccederEspacioUsuarioLectura(w http.ResponseWriter, r *http.Request) {
 	var mensaje globals_memoria.LecturaDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar mensaje: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
@@ -217,13 +217,13 @@ func AccederEspacioUsuarioLectura(w http.ResponseWriter, r *http.Request) {
 	enviado.Dato = leido
 	jsonData, err := json.Marshal(enviado)
 	if err != nil {
-		log.Printf("Error al codificar la instruccion a JSON: %s", err.Error())
+		slog.Debug(fmt.Sprintf("Error al codificar la instruccion a JSON: %s", err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error interno del servidor"))
 		return
 	}
 
-	log.Printf("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d", mensaje.Pid, mensaje.Posicion, mensaje.Tamanio)
+	slog.Info(fmt.Sprintf("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d", mensaje.Pid, mensaje.Posicion, mensaje.Tamanio))
 
 	globals_memoria.Procesos[pid] = proceso
 
@@ -269,7 +269,7 @@ func AccederEspacioUsuarioEscritura(w http.ResponseWriter, r *http.Request) {
 	var mensaje globals_memoria.EscrituraDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		//log.Printf("Error al decodificar mensaje: %s\n", err.Error())
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
@@ -283,7 +283,7 @@ func AccederEspacioUsuarioEscritura(w http.ResponseWriter, r *http.Request) {
 
 	time.Sleep(time.Duration(delayMem) * time.Millisecond)
 	if escribir(direccionFisica, dato) < 0 {
-		log.Printf("Error al escribir en la posicion %v", direccionFisica)
+		//log.Printf("Error al escribir en la posicion %v", direccionFisica)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte("Error al escribir en la posicion"))
 		return
@@ -293,7 +293,7 @@ func AccederEspacioUsuarioEscritura(w http.ResponseWriter, r *http.Request) {
 	metricas.EscriturasMemoria++
 	globals_memoria.MetricasMap[pid] = metricas
 
-	slog.Debug(fmt.Sprintf("## PID: %d - Lectura - Dir. Física: %d - Tamaño: %d - Dato: %s", mensaje.Pid, direccionFisica, len(mensaje.Dato), mensaje.Dato))
+	slog.Info(fmt.Sprintf("## PID: %d - Escritura - Dir. Física: %d - Tamaño: %d", mensaje.Pid, direccionFisica, len(mensaje.Dato)))
 	slog.Debug(fmt.Sprint("Memoria despues de escribir: ", globals_memoria.Memoria))
 
 	globals_memoria.Procesos[pid] = proceso

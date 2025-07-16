@@ -246,3 +246,4 @@ var HayInterrupcion bool = false
 
 var Sem_Interrupcion = CrearSemaforo(0)
 var PC_Interrupcion int64 = -1
+var EnvieSyscallBloqueante bool = false

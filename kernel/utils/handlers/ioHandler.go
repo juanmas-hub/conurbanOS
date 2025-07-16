@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 
@@ -17,7 +16,7 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 	var finalizacionIo globals.FinalizacionIO
 	err := decoder.Decode(&finalizacionIo)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar mensaje: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
@@ -77,7 +76,6 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 		case "FIFO", "SJF":
 			general.Signal(globals.Sem_ProcesosEnReady)
 		case "SRT":
-			slog.Debug(fmt.Sprintf("Notificando replanificación en agregarAListaCPUs - Nueva CPU Libre"))
 			general.NotificarReplanifSRT()
 		}
 		slog.Debug(fmt.Sprintf("Notificando replanificación en manejarFinIO - Llego un proceso a READY"))
@@ -125,6 +123,30 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 	globals.MapaIOs[finalizacionIo.NombreIO] = io
 }
 
+// Cuando se conecta una nueva IO, se fija si hay procesos esperando y los manda.
+/*func IntentarPasarAIO(nombreIO string, instanciaIO globals.InstanciaIO) {
+
+	globals.ListaIOsMutex.Lock()
+	defer globals.ListaIOsMutex.Unlock()
+
+	if len(globals.MapaIOs[nombreIO].ColaProcesosEsperando) > 0 {
+		procesoAIO := globals.MapaIOs[nombreIO].ColaProcesosEsperando[0]
+		instanciaIO.PidProcesoActual = procesoAIO.PID
+		general.EnviarSolicitudIO(
+			instanciaIO.Handshake.IP,
+			instanciaIO.Handshake.Puerto,
+			procesoAIO.PID,
+			procesoAIO.Tiempo,
+		)
+
+		io := globals.MapaIOs[nombreIO]
+		posInstanciaIo := BuscarInstanciaIO(nombreIO, instanciaIO.Handshake.NombreInstancia)
+		io.ColaProcesosEsperando = io.ColaProcesosEsperando[1:]
+		io.Instancias[posInstanciaIo] = instanciaIO
+		globals.MapaIOs[nombreIO] = io
+	}
+}*/
+
 func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	// Cuando se desconecta un IO, se pasa a exit el proceso que estaba en el IO.
 
@@ -132,7 +154,7 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	var desconexionIO globals.DesconexionIO
 	err := decoder.Decode(&desconexionIO)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar mensaje: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
@@ -150,7 +172,7 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	// Saco la instancia de la cola de instancias
 	posInstanciaIo := BuscarInstanciaIO(desconexionIO.NombreIO, desconexionIO.NombreInstancia)
 	if posInstanciaIo < 0 {
-		log.Printf("Error buscando la instancia de IO de IP: %s, puerto: %d, que tendría el proceso: %d", desconexionIO.Ip, desconexionIO.Puerto, pidProceso)
+		slog.Debug(fmt.Sprintf("Error buscando la instancia de IO de IP: %s, puerto: %d, que tendría el proceso: %d", desconexionIO.Ip, desconexionIO.Puerto, pidProceso))
 	}
 	io.Instancias = append(io.Instancias[:posInstanciaIo], io.Instancias[posInstanciaIo+1:]...)
 

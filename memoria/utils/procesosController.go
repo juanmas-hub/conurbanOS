@@ -2,6 +2,8 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
+	"log/slog"
 	"time"
 
 	//"fmt"
@@ -20,14 +22,14 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 	var mensaje globals_memoria.IniciarProcesoDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar mensaje: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
 	}
 
-	log.Println("Me llego para iniciar un proceso")
-	log.Printf("%+v\n", mensaje)
+	slog.Debug(fmt.Sprint("Me llego para iniciar un proceso"))
+	slog.Debug(fmt.Sprintf("%+v\n", mensaje))
 
 	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
@@ -39,8 +41,7 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotImplemented)
 		w.Write([]byte("notImplemented"))
 	} else {
-		log.Printf("## PID: %v - Proceso Creado - Tamaño: %v", pid, mensaje.Tamanio)
-
+		slog.Info(fmt.Sprintf("## PID: %d - Proceso Creado - Tamaño: %d", pid, tamanio))
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	}
@@ -101,13 +102,13 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 	var mensaje globals_memoria.PidDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar mensaje: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
 	}
 
-	log.Printf("Me llego para suspender el proceso de pid: %d", mensaje.Pid)
+	slog.Debug(fmt.Sprintf("Me llego para suspender el proceso de pid: %d", mensaje.Pid))
 
 	// Aca empieza la logica
 
@@ -128,7 +129,7 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 
 	// Escribis en swap
 	if escribirEnSWAP(pid, paginas) < 0 {
-		log.Printf("Proceso %d no se pudo suspender por fallo al escribir en SWAP", mensaje.Pid)
+		slog.Debug(fmt.Sprintf("Proceso %d no se pudo suspender por fallo al escribir en SWAP", mensaje.Pid))
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Proceso no se pudo suspender por fallo al escribir en SWAP"))
 		return
@@ -191,13 +192,13 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 	var mensaje globals_memoria.PidDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar mensaje: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
 	}
 
-	log.Printf("Me llego para finalizar el proceso de pid: %d", mensaje.Pid)
+	slog.Debug(fmt.Sprintf("Me llego para finalizar el proceso de pid: %d", mensaje.Pid))
 
 	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
@@ -225,7 +226,7 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 	var LecMem int = globals_memoria.MetricasMap[pid].LecturasMemoria
 	var EscMem int = globals_memoria.MetricasMap[pid].EscriturasMemoria
 
-	log.Printf("## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: <%d; Esc.Mem.: %d", pid, ATP, InstSol, SWAP, MemPrin, LecMem, EscMem)
+	slog.Info(fmt.Sprintf("## PID: %d - Proceso Destruido - Métricas - Acc.T.Pag: %d; Inst.Sol.: %d; SWAP: %d; Mem.Prin.: %d; Lec.Mem.: %d; Esc.Mem.: %d", pid, ATP, InstSol, SWAP, MemPrin, LecMem, EscMem))
 
 	delete(globals_memoria.MetricasMap, pid)
 	w.WriteHeader(http.StatusOK)
@@ -303,14 +304,14 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Me llego para reanudar proceso ")
-	log.Printf("%+v\n", mensaje.Pid)
+	//log.Printf("Me llego para reanudar proceso ")
+	//log.Printf("%+v\n", mensaje.Pid)
 
 	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
 
 	if globals_memoria.Procesos[pid].Suspendido == false {
-		log.Printf("Proceso %d no se renaudo porque no estaba suspendido", mensaje.Pid)
+		//log.Printf("Proceso %d no se renaudo porque no estaba suspendido", mensaje.Pid)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("El proceso no estaba suspendido"))
 		return
@@ -326,7 +327,7 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 
 		var marcosDisponibles []int = buscarMarcosDisponibles(cantidadPaginas)
 		if marcosDisponibles == nil {
-			log.Printf("Proceso %d no se renaudo por falta de espacio", mensaje.Pid)
+			//log.Printf("Proceso %d no se renaudo por falta de espacio", mensaje.Pid)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("Proceso no se renaudo por falta de espacio"))
 			return
@@ -334,12 +335,12 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 
 		paginas := eliminarPaginasSWAP(pid)
 		if paginas == nil {
-			log.Printf("Proceso %d no se renaudo por error al eliminar paginas swap", mensaje.Pid)
+			//log.Printf("Proceso %d no se renaudo por error al eliminar paginas swap", mensaje.Pid)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("No se renaudo por error al eliminar paginas swap"))
 			return
 		}
-		log.Print("Paginas en ReanudarProceso", paginas)
+		//log.Print("Paginas en ReanudarProceso", paginas)
 		paginasLinkeadas := *escribirPaginas(pid, paginas, marcosDisponibles)
 		actualizarTablaPaginas(pid, paginasLinkeadas)
 
@@ -351,7 +352,7 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 
 	IncrementarMetrica("SUBIDAS_MEMORIA", pid, 1)
 
-	log.Printf("Proceso %d reanudado correctamente", mensaje.Pid)
+	//log.Printf("Proceso %d reanudado correctamente", mensaje.Pid)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
@@ -361,19 +362,20 @@ func MemoryDump(w http.ResponseWriter, r *http.Request) {
 	var mensaje globals_memoria.PidDTO
 	err := decoder.Decode(&mensaje)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar mensaje: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
 	}
-	log.Printf("PID: %d - Memory Dump solicitado", mensaje.Pid)
+
+	slog.Info(fmt.Sprintf("## PID: %d - Memory Dump solicitado.", mensaje.Pid))
 
 	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
 	time.Sleep(time.Duration(delayMem) * time.Millisecond)
 
 	if generarMemoryDump(int(mensaje.Pid)) < 0 {
-		log.Printf("Proceso %d no hizo memory dump", mensaje.Pid)
+		slog.Debug(fmt.Sprintf("Proceso %d no hizo memory dump", mensaje.Pid))
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("No se hizo memory dump"))
 		return

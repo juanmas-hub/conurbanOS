@@ -3,7 +3,6 @@ package utils
 import (
 	//"encoding/json"
 	"fmt"
-	"log"
 	"log/slog"
 	"time"
 
@@ -29,7 +28,7 @@ func escribir(direccion int, dato string) int {
 	var offset int = direccion % tamanioDePagina
 
 	if len(dato) > (tamanioDePagina - offset) {
-		log.Printf("El dato no se pudo escribir porque excede la pagina")
+		slog.Debug(fmt.Sprintf("El dato no se pudo escribir porque excede la pagina"))
 		return -1
 	}
 
@@ -72,7 +71,7 @@ func escribirPaginas(pid int, paginas []globals_memoria.Pagina, marcos []int) *[
 		direccion = marcos[i] * int(globals_memoria.MemoriaConfig.Page_size)
 
 		if escribir(direccion, string(paginas[i].Contenido)) != 0 {
-			log.Println("No se pudo escribir la pagina")
+			slog.Debug(fmt.Sprint("No se pudo escribir la pagina"))
 			return nil
 		}
 
@@ -82,7 +81,7 @@ func escribirPaginas(pid int, paginas []globals_memoria.Pagina, marcos []int) *[
 		}
 		paginasLinkeadas = append(paginasLinkeadas, paginaLinkeada)
 
-		log.Print(paginas[i])
+		slog.Debug(fmt.Sprint(paginas[i]))
 
 		globals_memoria.MemoriaMarcosOcupados[marcos[i]] = true
 	}
@@ -213,7 +212,7 @@ func buscarMarcosDisponibles(cantidad int) []int {
 		}
 	}
 
-	log.Printf("no hay suficientes marcos libres: se encontraron %d de %d", len(result), cantidad)
+	slog.Debug(fmt.Sprintf("no hay suficientes marcos libres: se encontraron %d de %d", len(result), cantidad))
 	return nil
 }
 
@@ -399,13 +398,13 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	slog.Debug(fmt.Sprint("Tamaño: ", tamanio))
 	pageSize = int(globals_memoria.MemoriaConfig.Page_size)
 	indicesNecesarios = (tamanio + pageSize - 1) / pageSize
-	log.Printf("Resultado del cálculo: (%d + %d - 1) / %d = %d", tamanio, pageSize, pageSize, indicesNecesarios)
-	log.Print("Indices necesarios: ", indicesNecesarios)
+	slog.Debug(fmt.Sprintf("Resultado del cálculo: (%d + %d - 1) / %d = %d", tamanio, pageSize, pageSize, indicesNecesarios))
+	slog.Debug(fmt.Sprint("Indices necesarios: ", indicesNecesarios))
 	indicesDisponibles = buscarMarcosDisponibles(indicesNecesarios)
-	log.Print("Indices disponibles: ", indicesDisponibles)
+	slog.Debug(fmt.Sprint("Indices disponibles: ", indicesDisponibles))
 
 	if indicesDisponibles == nil {
-		log.Printf("Error no hay suficiente espacio para almacenar el proceso %d", pid)
+		slog.Debug(fmt.Sprintf("Error no hay suficiente espacio para almacenar el proceso %d", pid))
 		return -1
 	}
 
@@ -466,7 +465,7 @@ func obtenerMarcoDesdeTabla(pid int, entradas []int64) int {
 	indiceActual = int(entradas[len(entradas)-1])
 
 	if indiceActual >= len(tabla.Entradas) {
-		log.Printf("Error: índice fuera de rango en nivel final para PID %d", pid)
+		slog.Debug(fmt.Sprintf("Error: índice fuera de rango en nivel final para PID %d", pid))
 		return -1
 	}
 
@@ -629,7 +628,7 @@ func generarMemoryDump(pid int) int {
 func generarMemoryDump(pid int) int {
 	proceso, ok := globals_memoria.Procesos[pid]
 	if !ok {
-		log.Printf("PID %d no encontrado", pid)
+		slog.Debug(fmt.Sprintf("PID %d no encontrado", pid))
 		return -1
 	}
 
@@ -642,13 +641,13 @@ func generarMemoryDump(pid int) int {
 	// Crear carpeta si no existe
 	err := os.MkdirAll(directorio, os.ModePerm)
 	if err != nil {
-		log.Printf("❌ Error al crear directorio de dump: %v", err)
+		slog.Debug(fmt.Sprintf("❌ Error al crear directorio de dump: %v", err))
 		return -1
 	}
 
 	archivo, err := os.Create(nombreArchivo)
 	if err != nil {
-		log.Printf("❌ Error al crear archivo dump: %v", err)
+		slog.Debug(fmt.Sprintf("❌ Error al crear archivo dump: %v", err))
 		return -1
 	}
 	defer archivo.Close()
@@ -667,7 +666,7 @@ func generarMemoryDump(pid int) int {
 					contenido := globals_memoria.Memoria[inicio : inicio+pageSize]
 					_, err := archivo.Write(contenido)
 					if err != nil {
-						log.Printf("❌ Error al escribir dump de PID %d: %v", pid, err)
+						slog.Debug(fmt.Sprintf("❌ Error al escribir dump de PID %d: %v", pid, err))
 					}
 				}
 			}
@@ -676,6 +675,6 @@ func generarMemoryDump(pid int) int {
 
 	escribirContenido(&proceso.TablaDePaginas)
 
-	log.Printf("✅ Memory dump generado correctamente: %s", nombreArchivo)
+	slog.Debug(fmt.Sprintf("✅ Memory dump generado correctamente: %s", nombreArchivo))
 	return 0
 }

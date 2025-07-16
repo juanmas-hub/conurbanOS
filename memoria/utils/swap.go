@@ -4,7 +4,6 @@ import (
 	//"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 
 	//"net/http"
@@ -32,7 +31,7 @@ func moverseAPaginaSWAP(inicioSwap int, numeroDePagina int, archivo *os.File) in
 	// Posicionarse en la dirección deseada
 	_, err := archivo.Seek(direccion, 0)
 	if err != nil {
-		log.Printf("Error al posicionarse en el archivo: %v", err)
+		slog.Debug(fmt.Sprintf("Error al posicionarse en el archivo: %v", err))
 		return 1
 	}
 	return 0
@@ -66,7 +65,7 @@ func leerPaginaSWAP(inicioSwap int, numeroDePagina int, archivo *os.File) string
 	buffer := make([]byte, int(globals_memoria.MemoriaConfig.Page_size))
 	_, err := archivo.Read(buffer)
 	if err != nil {
-		log.Printf("error al leer del archivo: %v", err)
+		slog.Debug(fmt.Sprintf("error al leer del archivo: %v", err))
 		return ""
 	}
 
@@ -135,7 +134,7 @@ func eliminarPaginasSWAP(pid int) []globals_memoria.Pagina {
 
 		// Volver a posicionarse para sobrescribir
 		if moverseAPaginaSWAP(inicioSwap, paginaActual.NumeroDePagina, archivo) == 1 {
-			log.Printf("Error al reposicionarse para sobrescribir la página SWAP %d en el indice %v", inicioSwap+paginaActual.NumeroDePagina, i)
+			slog.Debug(fmt.Sprintf("Error al reposicionarse para sobrescribir la página SWAP %d en el indice %v", inicioSwap+paginaActual.NumeroDePagina, i))
 			return nil
 		}
 
@@ -143,7 +142,7 @@ func eliminarPaginasSWAP(pid int) []globals_memoria.Pagina {
 		ceros := make([]byte, pageSize)
 		_, err := archivo.Write(ceros)
 		if err != nil {
-			log.Printf("error al sobrescribir la página: %v", err)
+			slog.Debug(fmt.Sprintf("error al sobrescribir la página: %v", err))
 			return nil
 		}
 
@@ -269,7 +268,7 @@ func escribirEnSWAP(pid int, paginasDTO []globals_memoria.PaginaDTO) int {
 func escribirEnSWAP(pid int, paginas []globals_memoria.Pagina) int {
 	archivo := abrirArchivoBinario()
 	if archivo == nil {
-		log.Printf("No se pudo abrir el archivo de SWAP")
+		slog.Debug(fmt.Sprintf("No se pudo abrir el archivo de SWAP"))
 		return -1
 	}
 	defer archivo.Close()
@@ -284,14 +283,14 @@ func escribirEnSWAP(pid int, paginas []globals_memoria.Pagina) int {
 		puntero := (inicio + pagina.NumeroDePagina) * pageSize
 		_, err := archivo.Seek(int64(puntero), io.SeekStart)
 		if err != nil {
-			log.Printf("Error al posicionarse en SWAP en %d: %v", puntero, err)
+			slog.Debug(fmt.Sprintf("Error al posicionarse en SWAP en %d: %v", puntero, err))
 			return -1
 		}
 
 		// Escribir contenido
 		n, err := archivo.Write(pagina.Contenido)
 		if err != nil || n != pageSize {
-			log.Printf("Error al escribir en SWAP en %d: %v", puntero, err)
+			slog.Debug(fmt.Sprintf("Error al escribir en SWAP en %d: %v", puntero, err))
 			return -1
 		}
 

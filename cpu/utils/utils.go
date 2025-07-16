@@ -54,7 +54,7 @@ func HandshakeAKernel(ip string, puerto int64, nombreCPU string, ipCPU string, p
 	}
 	body, err := json.Marshal(handshake)
 	if err != nil {
-		log.Printf("error codificando mensaje: %s", err.Error())
+		slog.Debug(fmt.Sprintf("error codificando mensaje: %s", err.Error()))
 	}
 
 	url := fmt.Sprintf("http://%s:%d/handshakeCPU", ip, puerto)
@@ -62,10 +62,10 @@ func HandshakeAKernel(ip string, puerto int64, nombreCPU string, ipCPU string, p
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 
 	if err != nil {
-		log.Printf("error en el handshake a ip:%s puerto:%d", ip, puerto)
+		slog.Debug(fmt.Sprintf("error en el handshake a ip:%s puerto:%d", ip, puerto))
 	}
 
-	log.Printf("respuesta del servidor (handshake): %s", resp.Status)
+	slog.Debug(fmt.Sprintf("respuesta del servidor (handshake): %s", resp.Status))
 
 }
 
@@ -75,13 +75,13 @@ func RecibirPCBDeKernel(w http.ResponseWriter, r *http.Request) {
 	var pcb globals.PCB
 	err := json.NewDecoder(r.Body).Decode(&pcb)
 	if err != nil {
-		log.Printf("Error al decodificar PCB: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar PCB: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar PCB"))
 		return
 	}
 
-	log.Printf("PCB recibido: PID=%d PC=%d\n", pcb.Pid, pcb.PC)
+	slog.Debug(fmt.Sprintf("PCB recibido: PID=%d PC=%d\n", pcb.Pid, pcb.PC))
 
 	ColaDeEjecucion <- pcb
 
@@ -120,7 +120,7 @@ func EnviarSolicitudInstruccion(pid int64, pc int64) (string, error) {
 		return "", fmt.Errorf("error al decodificar respuesta de Memoria: %w", err)
 	}
 
-	log.Printf("Instrucción recibida de Memoria: %s", respuesta.Instruccion)
+	slog.Debug(fmt.Sprintf("Instrucción recibida de Memoria: %s", respuesta.Instruccion))
 	return respuesta.Instruccion, nil
 }
 
@@ -132,16 +132,16 @@ func Decode(instruccion string) (globals.InstruccionDecodificada, error) {
 	if len(partes) > 1 {
 		parametrosStr = partes[1]
 		parametrosStr = strings.Trim(parametrosStr, "()") //borra los parentesis que deja la funcion anterior
-		log.Println("Parametros antes de dividir: ", parametrosStr)
+		slog.Debug(fmt.Sprint("Parametros antes de dividir: ", parametrosStr))
 	}
 
 	parametros := strings.Split(parametrosStr, " ") //divide los argumentos y los deja separados en un array de strings
-	log.Println("Parametros despues de dividir: ", parametros)
+	slog.Debug(fmt.Sprint("Parametros despues de dividir: ", parametros))
 	if parametrosStr == "" {
 		parametros = []string{}
 	}
 
-	log.Println("longitud: ", len(parametros))
+	slog.Debug(fmt.Sprint("longitud: ", len(parametros)))
 
 	instDeco := globals.InstruccionDecodificada{
 		Nombre:     nombre,
@@ -208,7 +208,7 @@ func EnviarDireccionAMemoria(pid int64, physicalAddressStr string) error { // FU
 
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("Error codificando payload JSON para Memoria: %s", err.Error())
+		slog.Debug(fmt.Sprintf("Error codificando payload JSON para Memoria: %s", err.Error()))
 		return fmt.Errorf("error codificando payload JSON para Memoria: %w", err)
 	}
 
@@ -227,7 +227,7 @@ func EnviarDireccionAMemoria(pid int64, physicalAddressStr string) error { // FU
 	// Enviar la solicitud HTTP POST
 	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonPayload))
 	if err != nil {
-		log.Printf("Error enviando solicitud a Memoria (%s): %s", url, err.Error())
+		slog.Debug(fmt.Sprintf("Error enviando solicitud a Memoria (%s): %s", url, err.Error()))
 		return fmt.Errorf("error enviando solicitud a Memoria (%s): %w", url, err)
 	}
 	defer resp.Body.Close() // Asegurarse de cerrar el cuerpo de la respuesta
@@ -235,13 +235,13 @@ func EnviarDireccionAMemoria(pid int64, physicalAddressStr string) error { // FU
 	// Verificar la respuesta de Memoria
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body) // Leer el cuerpo para el log de error
-		log.Printf("Memoria respondió con error %d: %s", resp.StatusCode, string(bodyBytes))
+		slog.Debug(fmt.Sprintf("Memoria respondió con error %d: %s", resp.StatusCode, string(bodyBytes)))
 		return fmt.Errorf("memoria respondió con error %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	// Log obligatorio (adaptado para este ejemplo) [2]
 	// FUTURO: El log se adaptará al formato específico de "Lectura/Escritura Memoria" del enunciado. [2]
-	log.Printf("PID: %d - Dirección enviada a Memoria: %s", pid, physicalAddressStr) // FUTURO: Aquí se usaría physicalAddress (int64)
+	slog.Debug(fmt.Sprintf("PID: %d - Dirección enviada a Memoria: %s", pid, physicalAddressStr)) // FUTURO: Aquí se usaría physicalAddress (int64)
 
 	return nil
 }
@@ -268,19 +268,10 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 	case "WRITE":
 		direccionLog, err := strconv.ParseInt(instDeco.Parametros[0], 10, 64)
 		if err != nil {
-			fmt.Printf("Error al convertir '%s': %v\n", instDeco.Parametros[0], err)
+			slog.Debug(fmt.Sprintf("Error al convertir '%s': %v\n", instDeco.Parametros[0], err))
 		} else {
-			fmt.Printf("'%s' convertido a int64: %d\n", instDeco.Parametros[0], direccionLog)
+			slog.Debug(fmt.Sprintf("'%s' convertido a int64: %d\n", instDeco.Parametros[0], direccionLog))
 		}
-
-		fmt.Println("DEBUG: CpuConfig es nil?", globals.CpuConfig == nil)
-		fmt.Println("DEBUG: MemoriaConfig es nil?", globals_cpu.MemoriaConfig == nil)
-
-		fmt.Printf("DEBUG: Page_size: %d\n", globals_cpu.MemoriaConfig.Page_size)
-		fmt.Printf("DEBUG: Tlb_entries: %d\n", globals.CpuConfig.Tlb_entries)
-		fmt.Printf("DEBUG: Number_of_levels: %d\n", globals_cpu.MemoriaConfig.Number_of_levels)
-		fmt.Printf("DEBUG: Entries_per_page: %d\n", globals_cpu.MemoriaConfig.Entries_per_page)
-		fmt.Printf("DEBUG: Cache_entries: %d\n", globals_cpu.CpuConfig.Cache_entries)
 
 		entradas, desplazamiento, paginaVirtual := ExtraerEntradasYDesplazamiento(direccionLog, globals_cpu.MemoriaConfig.Page_size, globals_cpu.MemoriaConfig.Entries_per_page, globals_cpu.MemoriaConfig.Number_of_levels)
 
@@ -288,18 +279,18 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 
 			entradaCache, encontrado, err := BuscarPaginaEnCache(paginaVirtual, pcb.Pid)
 			if err != nil {
-				fmt.Printf("Error al buscar pagina en cache: %s\n", err)
+				slog.Debug(fmt.Sprintf("Error al buscar pagina en cache: %s\n", err))
 			}
 
 			if !encontrado {
-				fmt.Printf("Cache MISS\n")
+				slog.Debug(fmt.Sprint("Cache MISS\n"))
 				direccionFisica, err := ConseguirDireccionFisica(paginaVirtual, desplazamiento, pcb.Pid, entradas)
 				if err != nil {
-					fmt.Printf("Error al conseguir direccion fisica: %s\n", err)
+					slog.Debug(fmt.Sprintf("Error al conseguir direccion fisica: %s\n", err))
 				}
 				contenidoPag, err := PedirContenidoPagina(direccionFisica)
 				if err != nil {
-					fmt.Printf("Error al pedir contenido de pagina: %s\n", err)
+					slog.Debug(fmt.Sprintf("Error al pedir contenido de pagina: %s\n", err))
 				}
 				entradaCache = &globals.CacheEntry{
 					Pagina:    paginaVirtual,
@@ -307,16 +298,16 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 					PID:       pcb.Pid,
 					R:         true,
 					D:         true}
-				InsertarOReemplazarEnCache(entradaCache)
+				InsertarOReemplazarEnCache(pcb.Pid, entradaCache)
 			} else {
-				fmt.Printf("entradaCache encontrada para pagina: %d\n", entradaCache.Pagina)
+				slog.Debug(fmt.Sprintf("entradaCache encontrada para pagina: %d\n", entradaCache.Pagina))
 
 			}
 			err = EscribirCache(entradaCache, desplazamiento, instDeco.Parametros[1])
 			if err != nil {
-				fmt.Printf("Error al escribir en cache")
+				slog.Debug(fmt.Sprintf("Error al escribir en cache"))
 			} else {
-				fmt.Printf("Se escribio en cache correctamente")
+				slog.Debug(fmt.Sprintf("Se escribio en cache correctamente"))
 			}
 
 			slog.Debug(fmt.Sprint("Se actualizo la cache: ", globals.ElCache))
@@ -324,7 +315,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 			direcccionFisica, err := ConseguirDireccionFisica(paginaVirtual, desplazamiento, pcb.Pid, entradas)
 			slog.Debug(fmt.Sprint("Direccion fisica: ", direcccionFisica))
 			if err != nil {
-				fmt.Printf("Error al conseguir direccion fisica: %s\n", err)
+				slog.Debug(fmt.Sprintf("Error al conseguir direccion fisica: %s\n", err))
 			}
 			EscribirDatoMemoria(direcccionFisica, instDeco.Parametros[1], pcb.Pid)
 		}
@@ -334,25 +325,16 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 		//pasar direccion logica por mmu y mandarle la fisica a memoria y que nos mande lo que lee
 		direccionLog, err := strconv.ParseInt(instDeco.Parametros[0], 10, 64)
 		if err != nil {
-			fmt.Printf("Error al convertir '%s': %v\n", instDeco.Parametros[0], err)
+			slog.Debug(fmt.Sprintf("Error al convertir '%s': %v\n", instDeco.Parametros[0], err))
 		} else {
-			fmt.Printf("'%s' convertido a int64: %d\n", instDeco.Parametros[0], direccionLog)
+			slog.Debug(fmt.Sprintf("'%s' convertido a int64: %d\n", instDeco.Parametros[0], direccionLog))
 		}
 		tamanio, err := strconv.ParseInt(instDeco.Parametros[1], 10, 64)
 		if err != nil {
-			fmt.Printf("Error al convertir '%s': %v\n", instDeco.Parametros[0], err)
+			slog.Debug(fmt.Sprintf("Error al convertir '%s': %v\n", instDeco.Parametros[0], err))
 		} else {
-			fmt.Printf("'%s' convertido a int64: %d\n", instDeco.Parametros[0], direccionLog)
+			slog.Debug(fmt.Sprintf("'%s' convertido a int64: %d\n", instDeco.Parametros[0], direccionLog))
 		}
-
-		fmt.Println("DEBUG: CpuConfig es nil?", globals.CpuConfig == nil)
-		fmt.Println("DEBUG: MemoriaConfig es nil?", globals_cpu.MemoriaConfig == nil)
-
-		fmt.Printf("DEBUG: Page_size: %d\n", globals_cpu.MemoriaConfig.Page_size)
-		fmt.Printf("DEBUG: Tlb_entries: %d\n", globals.CpuConfig.Tlb_entries)
-		fmt.Printf("DEBUG: Number_of_levels: %d\n", globals_cpu.MemoriaConfig.Number_of_levels)
-		fmt.Printf("DEBUG: Entries_per_page: %d\n", globals_cpu.MemoriaConfig.Entries_per_page)
-		fmt.Printf("DEBUG: Cache_entries: %d\n", globals_cpu.CpuConfig.Cache_entries)
 
 		entradas, desplazamiento, paginaVirtual := ExtraerEntradasYDesplazamiento(direccionLog, globals_cpu.MemoriaConfig.Page_size, globals_cpu.MemoriaConfig.Entries_per_page, globals_cpu.MemoriaConfig.Number_of_levels)
 
@@ -360,18 +342,18 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 
 			entradaCache, encontrado, err := BuscarPaginaEnCache(paginaVirtual, pcb.Pid)
 			if err != nil {
-				fmt.Printf("Error al buscar pagina en cache: %s\n", err)
+				slog.Debug(fmt.Sprintf("Error al buscar pagina en cache: %s\n", err))
 			}
 
 			if !encontrado {
-				fmt.Printf("Cache MISS\n")
+				slog.Debug(fmt.Sprint("Cache MISS\n"))
 				direccionFisica, err := ConseguirDireccionFisica(paginaVirtual, desplazamiento, pcb.Pid, entradas)
 				if err != nil {
-					fmt.Printf("Error al conseguir direccion fisica: %s\n", err)
+					slog.Debug(fmt.Sprintf("Error al conseguir direccion fisica: %s\n", err))
 				}
 				contenidoPag, err := PedirContenidoPagina(direccionFisica)
 				if err != nil {
-					fmt.Printf("Error al pedir contenido de la pagina: %s\n", err)
+					slog.Debug(fmt.Sprintf("Error al pedir contenido de la pagina: %s\n", err))
 				}
 				entradaCache = &globals.CacheEntry{
 					Pagina:    paginaVirtual,
@@ -379,7 +361,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 					PID:       pcb.Pid,
 					R:         true,
 					D:         false}
-				InsertarOReemplazarEnCache(entradaCache)
+				InsertarOReemplazarEnCache(pcb.Pid, entradaCache)
 				slog.Debug(fmt.Sprint("Se actualizo la cache: ", globals.ElCache))
 				//slog.Debug("Se actualizo la cache: ", globals.ElCache)
 			} else {
@@ -387,16 +369,16 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 			}
 			contenidoLeido, err := LeerDeCache(entradaCache, desplazamiento, tamanio)
 			if err != nil {
-				fmt.Printf("Error al leer en cache")
+				slog.Debug(fmt.Sprint("Error al leer en cache"))
 			} else {
-				fmt.Printf("leyo en cache correctamente")
-				fmt.Printf("Lectura: %s\n", contenidoLeido)
+				slog.Debug(fmt.Sprint("leyo en cache correctamente"))
+				slog.Debug(fmt.Sprintf("Lectura: %s\n", contenidoLeido))
 			} //FALTA MOSTRAR DATO LEIDO POR LOG Y CONSOLA
 
 		} else { //si no hay cache
 			direcccionFisica, err := ConseguirDireccionFisica(paginaVirtual, desplazamiento, pcb.Pid, entradas)
 			if err != nil {
-				fmt.Printf("Error al conseguir direccion fisica")
+				slog.Debug(fmt.Sprint("Error al conseguir direccion fisica"))
 			}
 			LeerPaginaMemoria(direcccionFisica, tamanio, pcb.Pid)
 		}
@@ -405,7 +387,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 	case "GOTO":
 		nuevoPC, err := strconv.ParseInt(instDeco.Parametros[0], 10, 64)
 		if err != nil {
-			fmt.Printf("Error al convertir '%s' a int64: %s\n", instDeco.Parametros[0], err)
+			slog.Debug(fmt.Sprintf("Error al convertir '%s' a int64: %s\n", instDeco.Parametros[0], err))
 		}
 		pcb.PC = nuevoPC
 		return CONTINUAR_EJECUCION, nil
@@ -413,7 +395,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 	case "IO":
 		TiempoINT, err := strconv.ParseInt(instDeco.Parametros[1], 10, 64)
 		if err != nil {
-			fmt.Printf("Error al convertir '%s' a int64: %s\n", instDeco.Parametros[1], err)
+			slog.Debug(fmt.Sprintf("Error al convertir '%s' a int64: %s\n", instDeco.Parametros[1], err))
 		}
 		pcb.PC++
 		IO := globals.SyscallIO{
@@ -423,15 +405,16 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 			PID:       pcb.Pid,
 			PC:        pcb.PC}
 		err = EnviarIOAKernel(IO)
+		globals.EnvieSyscallBloqueante = true
 		if err != nil {
-			log.Printf("ERROR: No se pudo enviar SYSCALL IO del PID %d al Kernel: %s", pcb.Pid, err)
+			slog.Debug(fmt.Sprintf("ERROR: No se pudo enviar SYSCALL IO del PID %d al Kernel: %s", pcb.Pid, err))
 			return ERROR_EJECUCION, fmt.Errorf("fallo al enviar SYSCALL IO: %w", err)
 		}
 		return PONERSE_ESPERA, nil
 	case "INIT_PROC":
 		TamanioINT, err := strconv.ParseInt(instDeco.Parametros[1], 10, 64)
 		if err != nil {
-			fmt.Printf("Error al convertir '%s' a int64: %s\n", instDeco.Parametros[1], err)
+			slog.Debug(fmt.Sprintf("Error al convertir '%s' a int64: %s\n", instDeco.Parametros[1], err))
 		}
 		pcb.PC++
 		INIT := globals.SyscallInit{
@@ -442,7 +425,7 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 			PC:        pcb.PC}
 		err = EnviarINITAKernel(INIT)
 		if err != nil {
-			log.Printf("ERROR: No se pudo enviar SYSCALL INIT del PID %d al Kernel: %s", pcb.Pid, err)
+			slog.Debug(fmt.Sprintf("ERROR: No se pudo enviar SYSCALL INIT del PID %d al Kernel: %s", pcb.Pid, err))
 			return ERROR_EJECUCION, fmt.Errorf("fallo al enviar SYSCALL INIT: %w", err)
 		}
 		return PONERSE_ESPERA, nil
@@ -453,8 +436,9 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 			PC:        pcb.PC,
 			NombreCPU: os.Args[1]}
 		err := EnviarDUMPAKernel(DUMP)
+		globals.EnvieSyscallBloqueante = true
 		if err != nil {
-			log.Printf("ERROR: No se pudo enviar SYSCALL DUMP MEMORY del PID %d al Kernel: %s", pcb.Pid, err)
+			slog.Debug(fmt.Sprintf("ERROR: No se pudo enviar SYSCALL DUMP MEMORY del PID %d al Kernel: %s", pcb.Pid, err))
 			return ERROR_EJECUCION, fmt.Errorf("fallo al enviar SYSCALL DUMP MEMORY: %w", err)
 		}
 		return PONERSE_ESPERA, nil
@@ -463,8 +447,9 @@ func Execute(instDeco globals.InstruccionDecodificada, pcb *globals.PCB) (Result
 			PID:       pcb.Pid,
 			NombreCPU: os.Args[1]}
 		err := EnviarEXITAKernel(EXIT)
+		globals.EnvieSyscallBloqueante = true
 		if err != nil {
-			log.Printf("ERROR: No se pudo enviar SYSCALL EXIT del PID %d al Kernel: %s", pcb.Pid, err)
+			slog.Debug(fmt.Sprintf("ERROR: No se pudo enviar SYSCALL EXIT del PID %d al Kernel: %s", pcb.Pid, err))
 			return ERROR_EJECUCION, fmt.Errorf("fallo al enviar SYSCALL EXIT: %w", err)
 		}
 		return PONERSE_ESPERA, nil
@@ -483,22 +468,29 @@ func ConseguirDireccionFisica(paginaVirtual int64, desplazamiento int64, pid int
 				globals.Tlb.Entries[index].Timestamp = time.Now().UnixNano()
 			}
 
+			slog.Info(fmt.Sprintf("PID: %d - TLB HIT - Pagina: %d", pid, paginaVirtual))
+
 			slog.Debug(fmt.Sprint("El marco estaba en la TLB:"))
 			slog.Debug(globals.Tlb.String())
 			return direccionFisica, nil
 		} else { //si hay tlb pero no esta el marco pide marco a memoria
-			marco, err := PedirMarcoDePagina(pid, entradas)
+
+			slog.Info(fmt.Sprintf("PID: %d - TLB MISS - Pagina: %d", pid, paginaVirtual))
+
+			marco, err := PedirMarcoDePagina(pid, entradas, paginaVirtual)
 			if err != nil {
 				return -1, fmt.Errorf("Error pidiendo marco")
 			}
 			direccionFisica := TraducirLogicaAFisica(marco, desplazamiento, globals_cpu.MemoriaConfig.Page_size)
 			CargarTLB(paginaVirtual, marco, pid, globals.Tlb)
+
 			slog.Debug(fmt.Sprint("Se reemplazo un marco de la TLB: "))
 			slog.Debug(globals.Tlb.String())
+
 			return direccionFisica, nil
 		}
 	} else { //si no hay tlb pide marco a memoria
-		marco, err := PedirMarcoDePagina(pid, entradas)
+		marco, err := PedirMarcoDePagina(pid, entradas, paginaVirtual)
 		if err != nil {
 			return -1, fmt.Errorf("Error pidiendo marco")
 		}
@@ -513,14 +505,14 @@ func RecibirProcesoAEjecutar(w http.ResponseWriter, r *http.Request) {
 	var proc globals.ProcesoAExecutar
 	err := decoder.Decode(&proc)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar mensaje: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
 	}
 
-	log.Println("Me llego un proceso paaaa")
-	log.Printf("%+v\n", proc)
+	slog.Debug(fmt.Sprint("Me llego un proceso paaaa"))
+	slog.Debug(fmt.Sprintf("%+v\n", proc))
 
 	// TEMPORAL
 	go func() {
@@ -556,7 +548,7 @@ func EnviarIOAKernel(syscallData globals_cpu.SyscallIO) error {
 		return fmt.Errorf("kernel respondió con error al recibir SYSCALL (%d %s): %s", resp.StatusCode, resp.Status, respBody.String())
 	}
 
-	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "IO", resp.Status)
+	slog.Debug(fmt.Sprintf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "IO", resp.Status))
 	return nil
 }
 
@@ -580,7 +572,7 @@ func EnviarEXITAKernel(syscallData globals_cpu.SyscallExit) error {
 		return fmt.Errorf("kernel respondió con error al recibir SYSCALL (%d %s): %s", resp.StatusCode, resp.Status, respBody.String())
 	}
 
-	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "EXIT", resp.Status)
+	slog.Debug(fmt.Sprintf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "EXIT", resp.Status))
 	return nil
 }
 
@@ -604,7 +596,7 @@ func EnviarDUMPAKernel(syscallData globals_cpu.SyscallDump) error {
 		return fmt.Errorf("kernel respondió con error al recibir SYSCALL (%d %s): %s", resp.StatusCode, resp.Status, respBody.String())
 	}
 
-	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "DUMP", resp.Status)
+	slog.Debug(fmt.Sprintf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "DUMP", resp.Status))
 	return nil
 }
 
@@ -628,7 +620,7 @@ func EnviarINITAKernel(syscallData globals_cpu.SyscallInit) error {
 		return fmt.Errorf("kernel respondió con error al recibir SYSCALL (%d %s): %s", resp.StatusCode, resp.Status, respBody.String())
 	}
 
-	log.Printf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "INIT", resp.Status)
+	slog.Debug(fmt.Sprintf("SYSCALL enviada correctamente a Kernel (%s). Respuesta: %s", "INIT", resp.Status))
 	return nil
 }
 
@@ -664,10 +656,15 @@ func BuscarPaginaEnCache(paginaVirtual int64, pid int64) (*globals.CacheEntry, b
 		// AHORA, ¡VERIFICAR EL PID! Esto es CRÍTICO para el aislamiento entre procesos.
 		// Una página virtual con el mismo número pero de un PID diferente NO es un hit.
 		if globals.ElCache.Entries[index].PID != pid {
-			log.Printf("PID %d: Cache Miss por PID mismatch para Pagina %d (Encontró PID %d en caché)",
-				pid, paginaVirtual, globals.ElCache.Entries[index].PID)
+			slog.Debug(fmt.Sprintf("PID %d: Cache Miss por PID mismatch para Pagina %d (Encontró PID %d en caché)",
+				pid, paginaVirtual, globals.ElCache.Entries[index].PID))
+
+			slog.Info(fmt.Sprintf("PID: %d - Cache Miss - Pagina: %d", pid, paginaVirtual))
+
 			return nil, false, nil // Es un miss para este PID
 		}
+
+		slog.Info(fmt.Sprintf("PID: %d - Cache Hit - Pagina: %d", pid, paginaVirtual))
 
 		// Si llegamos aquí, la página y el PID coinciden: ¡Es un verdadero Cache Hit!
 		entradaCache := globals.ElCache.Entries[index] // Obtenemos una referencia a la entrada
@@ -675,14 +672,14 @@ func BuscarPaginaEnCache(paginaVirtual int64, pid int64) (*globals.CacheEntry, b
 		// 2. Actualizar el bit de referencia para algoritmos de reemplazo (CLOCK/CLOCK-M)
 		entradaCache.R = true // Se ha accedido a esta página
 
-		log.Printf("PID %d: Cache Hit para Pagina %d(Referenced bit actualizado)",
-			pid, paginaVirtual) // Asumiendo que Marco es parte de PageCacheEntry
+		slog.Debug(fmt.Sprintf("PID %d: Cache Hit para Pagina %d(Referenced bit actualizado)",
+			pid, paginaVirtual)) // Asumiendo que Marco es parte de PageCacheEntry
 
 		return entradaCache, true, nil // Devolvemos la entrada y true (indicando hit)
 
 	} else {
 		// Cache Miss: La página no fue encontrada en la caché.
-		log.Printf("PID %d: Cache Miss para Pagina %d", pid, paginaVirtual)
+		slog.Info(fmt.Sprintf("PID: %d - Cache Miss - Pagina: %d", pid, paginaVirtual))
 		return nil, false, nil // Devolvemos nil, false (indicando miss) y sin error
 	}
 }
@@ -692,8 +689,8 @@ func BuscarMarcoEnTLB(paginaVirtual int64, pid int64) (int64, bool) {
 	if found {
 
 		if globals.Tlb.Entries[index].PID != pid {
-			log.Printf("PID %d: TLB Miss por PID mismatch para Pagina %d (Encontró PID %d)",
-				pid, paginaVirtual, globals.Tlb.Entries[index].PID)
+			slog.Debug(fmt.Sprintf("PID %d: TLB Miss por PID mismatch para Pagina %d (Encontró PID %d)",
+				pid, paginaVirtual, globals.Tlb.Entries[index].PID))
 			return -1, false // No es un hit para este PID
 		}
 
@@ -702,16 +699,16 @@ func BuscarMarcoEnTLB(paginaVirtual int64, pid int64) (int64, bool) {
 		// Si el algoritmo es LRU, actualizamos el Timestamp para marcarla como "usada recientemente"
 		if globals.Tlb.AlgoritmoReemplazo == "LRU" {
 			globals.Tlb.Entries[index].Timestamp = time.Now().UnixNano()
-			log.Printf("PID %d: TLB Hit para Pagina %d, Marco %d (LRU: Timestamp actualizado)", paginaVirtual, marco, pid)
+			slog.Debug(fmt.Sprintf("PID %d: TLB Hit para Pagina %d, Marco %d (LRU: Timestamp actualizado)", paginaVirtual, marco, pid))
 		} else {
-			log.Printf("PID %d: TLB Hit para Pagina %d, Marco %d", pid, paginaVirtual, marco)
+			slog.Debug(fmt.Sprintf("PID %d: TLB Hit para Pagina %d, Marco %d", pid, paginaVirtual, marco))
 		}
 
 		return marco, true // Devolvemos el marco encontrado y true (indicando hit)
 
 	} else {
 		// TLB Miss: La traducción no fue encontrada en la TLB.
-		log.Printf("PID %d: TLB Miss para Pagina %d", pid, paginaVirtual)
+		slog.Debug(fmt.Sprintf("PID %d: TLB Miss para Pagina %d", pid, paginaVirtual))
 		return -1, false // Devolvemos -1 y false (indicando miss)
 	}
 }
@@ -741,7 +738,7 @@ func TraducirLogicaAFisica(marco int64, desplazamiento int64, tamanioPagina int6
 }
 
 // (3) funcion que inserte o reemplace en CACHE cuando esta lleno, con el algoritmo elegido
-func InsertarOReemplazarEnCache(nueva *globals.CacheEntry) {
+func InsertarOReemplazarEnCache(pid int64, nueva *globals.CacheEntry) {
 	// Si la página ya está en caché, la actualiza y setea Referenced
 	if idx, ok := globals.ElCache.PaginaIndex[nueva.Pagina]; ok {
 		*globals.ElCache.Entries[idx] = *nueva
@@ -755,6 +752,7 @@ func InsertarOReemplazarEnCache(nueva *globals.CacheEntry) {
 		globals.ElCache.Entries = append(globals.ElCache.Entries, nueva)
 		globals.ElCache.PaginaIndex[nueva.Pagina] = len(globals.ElCache.Entries) - 1
 		slog.Debug(fmt.Sprint("Hay espacio en cache, inserto entrada"))
+		slog.Info(fmt.Sprintf("PID: %d - Cache Add - Pagina: %d", pid, nueva.Pagina))
 		return
 	}
 
@@ -779,13 +777,15 @@ func InsertarOReemplazarEnCache(nueva *globals.CacheEntry) {
 		entradas, _, _ := ExtraerEntradasYDesplazamiento(direccionLogica, globals.MemoriaConfig.Page_size, globals.MemoriaConfig.Entries_per_page, globals.MemoriaConfig.Number_of_levels)
 		direccionFisica, errorr := ConseguirDireccionFisica(victima.Pagina, 0, pid, entradas)
 		if errorr != nil {
-			log.Printf("⚠️ Error al conseguir la direccion fisica de la victima en InsertarOReemplazarEnCache")
+			slog.Debug(fmt.Sprintf("Error al conseguir la direccion fisica de la victima en InsertarOReemplazarEnCache"))
 		}
 		err := ActualizarPaginaMemoria(pid, direccionFisica, contenido)
 		if err != nil {
-			log.Printf("⚠️ Error al actualizar página modificada de PID %d, direccion %d: %v", pid, direccionFisica, err)
+			slog.Debug(fmt.Sprintf("Error al actualizar página modificada de PID %d, direccion %d: %v", pid, direccionFisica, err))
 		}
 		slog.Debug(fmt.Sprint("Se actualizo la pagina en memoria PID: ", pid))
+
+		slog.Info(fmt.Sprintf("PID: %d - Memory Update - Página:%d - Frame: %d", pid, nueva.Pagina, direccionFisica/globals.MemoriaConfig.Page_size))
 	}
 
 	// Eliminar la página víctima del índice
@@ -794,6 +794,8 @@ func InsertarOReemplazarEnCache(nueva *globals.CacheEntry) {
 	// Reemplazar entrada
 	globals.ElCache.Entries[victimaIdx] = nueva
 	globals.ElCache.PaginaIndex[nueva.Pagina] = victimaIdx
+
+	slog.Info(fmt.Sprintf("PID: %d - Cache Add - Pagina: %d", pid, nueva.Pagina))
 
 	// Avanzar el clock hand
 	globals.ElCache.ClockHand = (victimaIdx + 1) % len(globals.ElCache.Entries)
@@ -886,7 +888,7 @@ func ReemplazarEnTLB(nuevaEntrada globals.TLBentry, tlb *globals.TLB) error {
 }
 
 // (5) funcion que pida a memoria el marco de una pagina
-func PedirMarcoDePagina(pid int64, entradas []int64) (int64, error) {
+func PedirMarcoDePagina(pid int64, entradas []int64, pagina int64) (int64, error) {
 	solicitud := struct {
 		Pid      int64   `json:"pid"`
 		Entradas []int64 `json:"entradas"`
@@ -919,7 +921,9 @@ func PedirMarcoDePagina(pid int64, entradas []int64) (int64, error) {
 		return 0, fmt.Errorf("error al decodificar respuesta de Memoria: %w", err)
 	}
 
-	log.Printf("Marco recibido de Memoria: %d", respuesta.Marco)
+	slog.Info(fmt.Sprintf("PID: %d - OBTENER MARCO - Página: %d - Marco: %d", pid, pagina, respuesta.Marco))
+
+	slog.Debug(fmt.Sprintf("Marco recibido de Memoria: %d", respuesta.Marco))
 	return respuesta.Marco, nil
 }
 
@@ -983,6 +987,8 @@ func EscribirDatoMemoria(direccionFisica int64, dato string, pid int64) error {
 		return fmt.Errorf("memoria respondió con error: %d", resp.StatusCode)
 	}
 
+	slog.Info(fmt.Sprintf("PID: %d - Acción: ESCRIBIR - Dirección Física: %d - Valor: %s", pid, direccionFisica, dato))
+
 	return nil
 }
 
@@ -1011,6 +1017,8 @@ func LeerPaginaMemoria(direccionFisica int64, tamanio int64, pid int64) ([]byte,
 	if err != nil {
 		return []byte{}, fmt.Errorf("error al decodificar respuesta: %w", err)
 	}
+
+	slog.Info(fmt.Sprintf("PID: %d - Acción: LEER - Dirección Física: %d - Valor: %s", pid, direccionFisica, respuesta.Contenido))
 
 	return respuesta.Contenido, nil
 }
@@ -1074,24 +1082,24 @@ func CargarTLB(pV int64, marco int64, pid int64, tlb *globals.TLB) error {
 		Timestamp: time.Now().UnixNano(),
 	}
 	if _, found := tlb.PaginaIndex[pV]; found {
-		log.Printf("ADVERTENCIA TLB: Se intentó cargar página %d (PID %d) que ya está en TLB. Sobrescribiendo.", pV, pid)
+		slog.Debug(fmt.Sprintf("ADVERTENCIA TLB: Se intentó cargar página %d (PID %d) que ya está en TLB. Sobrescribiendo.", pV, pid))
 	}
 	if len(tlb.Entries) < int(tlb.Capacidad) {
 		// TLB no está llena: simplemente agrega la nueva entrada al final
 		tlb.Entries = append(tlb.Entries, nuevaEntrada)
 		// Registra la posición de la nueva entrada en el map auxiliar
 		tlb.PaginaIndex[nuevaEntrada.Pagina] = len(tlb.Entries) - 1
-		log.Printf("TLB: Entrada agregada (PID %d, Pag %d, Marco %d). TLB Size: %d/%d",
-			pid, pV, marco, len(tlb.Entries), tlb.Capacidad)
+		slog.Debug(fmt.Sprintf("TLB: Entrada agregada (PID %d, Pag %d, Marco %d). TLB Size: %d/%d",
+			pid, pV, marco, len(tlb.Entries), tlb.Capacidad))
 	} else {
 		// TLB está llena: llama a la lógica de reemplazo
-		log.Printf("TLB: Llena, aplicando algoritmo %s para reemplazar.", tlb.AlgoritmoReemplazo)
+		slog.Debug(fmt.Sprintf("TLB: Llena, aplicando algoritmo %s para reemplazar.", tlb.AlgoritmoReemplazo))
 		err := ReemplazarEnTLB(nuevaEntrada, tlb) // Llama a la función de reemplazo que ya hicimos
 		if err != nil {
 			return fmt.Errorf("fallo al reemplazar en TLB: %w", err)
 		}
-		log.Printf("TLB: Reemplazo exitoso (PID %d, Pag %d, Marco %d). Algoritmo: %s",
-			pid, pV, marco, tlb.AlgoritmoReemplazo)
+		slog.Debug(fmt.Sprintf("TLB: Reemplazo exitoso (PID %d, Pag %d, Marco %d). Algoritmo: %s",
+			pid, pV, marco, tlb.AlgoritmoReemplazo))
 	}
 
 	return nil
@@ -1100,6 +1108,8 @@ func CargarTLB(pV int64, marco int64, pid int64, tlb *globals.TLB) error {
 
 func EnviarPCBaKernel(pid int64, pc int64) error {
 	pcYpid := globals_cpu.PCyPID{Pid: pid, Pc: pc}
+
+	slog.Debug(fmt.Sprint("Enviando PCB a kernel"))
 
 	body, err := json.Marshal(pcYpid)
 	if err != nil {
@@ -1134,19 +1144,26 @@ func RecibirInterrupcion(w http.ResponseWriter, r *http.Request) {
 	var interrupt globals.Interrupcion
 	err := json.NewDecoder(r.Body).Decode(&interrupt)
 	if err != nil {
-		log.Printf("Error al decodificar PID: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar PID: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar PID"))
 		return
 	}
 
-	log.Printf("PID recibido para interrumpir: %d\n", interrupt.PID)
+	slog.Debug(fmt.Sprintf("PID recibido para interrumpir: %d\n", interrupt.PID))
+	slog.Info(fmt.Sprint("## Llega interrupción al puerto Interrupt"))
 
 	globals.HayInterrupcion = true
 
-	log.Print("Esperando que termine el ciclo de instruccion")
+	slog.Debug(fmt.Sprintf("Esperando que termine el ciclo de instruccion"))
 	Wait(globals.Sem_Interrupcion)
-	log.Print("Ya se interrumpio")
+	slog.Debug(fmt.Sprintf("Ya se interrumpio"))
+
+	if globals.EnvieSyscallBloqueante {
+		// Ya desaloje por syscall, no lo hago denuevo
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	respuesta := globals.RespuestaInterrupcion{
 		PC: globals.PC_Interrupcion,
@@ -1155,7 +1172,7 @@ func RecibirInterrupcion(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(respuesta)
 	if err != nil {
-		log.Printf("Error al codificar respuesta: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al codificar respuesta: %s\n", err.Error()))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

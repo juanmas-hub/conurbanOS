@@ -2,7 +2,6 @@ package planificadores
 
 import (
 	"fmt"
-	"log"
 	"log/slog"
 	"time"
 
@@ -206,7 +205,7 @@ func eliminarProcesoDeSuCola(pid int64, estadoViejo string) bool {
 			return true
 		}
 	default:
-		log.Printf("Error eliminando proceso PID: %d de su cola en EliminarDeSuCola", pid)
+		slog.Debug(fmt.Sprintf("Error eliminando proceso PID: %d de su cola en EliminarDeSuCola", pid))
 		return false
 	}
 	return false
