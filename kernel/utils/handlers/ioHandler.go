@@ -73,6 +73,14 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 			general.LogUnlockeo("MapaProcesos", "manejarFinIO")
 			return
 		}
+		switch globals.KernelConfig.Scheduler_algorithm {
+		case "FIFO", "SJF":
+			general.Signal(globals.Sem_ProcesosEnReady)
+		case "SRT":
+			slog.Debug(fmt.Sprintf("Notificando replanificación en agregarAListaCPUs - Nueva CPU Libre"))
+			general.NotificarReplanifSRT()
+		}
+		slog.Debug(fmt.Sprintf("Notificando replanificación en manejarFinIO - Llego un proceso a READY"))
 	}
 
 	globals.EstadosMutex.Unlock()
@@ -137,7 +145,7 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 
 	pidProceso := desconexionIO.PID
 
-	slog.Debug(fmt.Sprintf("Se desconecto el IO: %s, que tenia el proceso de PID: %d", desconexionIO.NombreIO, pidProceso))
+	//slog.Debug(fmt.Sprintf("Se desconecto el IO: %s, que tenia el proceso de PID: %d", desconexionIO.NombreIO, pidProceso))
 
 	// Saco la instancia de la cola de instancias
 	posInstanciaIo := BuscarInstanciaIO(desconexionIO.NombreIO, desconexionIO.NombreInstancia)
@@ -146,7 +154,7 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	}
 	io.Instancias = append(io.Instancias[:posInstanciaIo], io.Instancias[posInstanciaIo+1:]...)
 
-	slog.Debug(fmt.Sprint("Se saco la instancia de la cola de instancias: ", io.Instancias))
+	//slog.Debug(fmt.Sprint("Se saco la instancia de la cola de instancias: ", io.Instancias))
 
 	// Si habia proceso ejecutando
 	if pidProceso != -1 {

@@ -70,46 +70,32 @@ func planificadorSRT() {
 
 		// Chequeo los 4 posibles casos
 
+		general.LogIntentoLockeo("MapaProcesos", "planificadorSRT")
+		globals.MapaProcesosMutex.Lock()
+		general.LogLockeo("MapaProcesos", "planificadorSRT")
+		general.LogIntentoLockeo("Estados", "planificadorSRT")
+		globals.EstadosMutex.Lock()
+		general.LogLockeo("Estados", "planificadorSRT")
+
 		if hayProcesosEnReady() && hayCpusLibres() {
-			general.LogIntentoLockeo("MapaProcesos", "planificadorSRT")
-			globals.MapaProcesosMutex.Lock()
-			general.LogLockeo("MapaProcesos", "planificadorSRT")
-			general.LogIntentoLockeo("Estados", "planificadorSRT")
-			globals.EstadosMutex.Lock()
-			general.LogLockeo("Estados", "planificadorSRT")
 
 			slog.Debug(fmt.Sprint("SRT - Hay procesos en ready y hay cpus libres"))
 
 			ordenarReadyPorRafaga()
 			ejecutarUnProceso()
 
-			globals.EstadosMutex.Unlock()
-			general.LogUnlockeo("Estados", "planificadorSRT")
-			globals.MapaProcesosMutex.Unlock()
-			general.LogUnlockeo("MapaProcesos", "planificadorSRT")
 		}
 
 		if hayProcesosEnReady() && !hayCpusLibres() {
 			// Caso desalojo
 
-			general.LogIntentoLockeo("MapaProcesos", "planificadorSRT")
-			globals.MapaProcesosMutex.Lock()
-			general.LogLockeo("MapaProcesos", "planificadorSRT")
-			general.LogIntentoLockeo("Estados", "planificadorSRT")
-			globals.EstadosMutex.Lock()
-			general.LogLockeo("Estados", "planificadorSRT")
-
 			slog.Debug(fmt.Sprint("SRT - Hay procesos en ready y NO hay cpus libres"))
+
 			pidEnExec, hayQueDesalojar := verificarDesalojo()
 			if hayQueDesalojar {
 				slog.Debug(fmt.Sprint("SRT - PID elegido a deslojar: ", pidEnExec))
 				desalojarYEnviarProceso(pidEnExec)
 			}
-
-			globals.EstadosMutex.Unlock()
-			general.LogUnlockeo("Estados", "planificadorSRT")
-			globals.MapaProcesosMutex.Unlock()
-			general.LogUnlockeo("MapaProcesos", "planificadorSRT")
 		}
 
 		if !hayProcesosEnReady() && hayCpusLibres() {
@@ -121,12 +107,29 @@ func planificadorSRT() {
 			slog.Debug(fmt.Sprint("SRT - No hay ni procesos en ready ni cpus libres. No se hace nada"))
 			// No hacemos nada
 		}
+
+		/*
+			slog.Debug(fmt.Sprint("COLAS:"))
+			slog.Debug(fmt.Sprint("NEW:", globals.ESTADOS.NEW))
+			slog.Debug(fmt.Sprint("READY:", globals.ESTADOS.READY))
+			slog.Debug(fmt.Sprint("EXECUTE:", globals.ESTADOS.EXECUTE))
+			slog.Debug(fmt.Sprint("BLOCKED:", globals.ESTADOS.BLOCKED))
+			slog.Debug(fmt.Sprint("SUSP_READY:", globals.ESTADOS.SUSP_READY))
+			slog.Debug(fmt.Sprint("SUSP_BLOCKED:", globals.ESTADOS.SUSP_BLOCKED))
+		*/
+
+		globals.EstadosMutex.Unlock()
+		general.LogUnlockeo("Estados", "planificadorSRT")
+		globals.MapaProcesosMutex.Unlock()
+		general.LogUnlockeo("MapaProcesos", "planificadorSRT")
+
 	}
 }
 
 func ActualizarEstimado(pid int64, rafagaReal float64) {
 	// Me imagino que esto se usa cuando se termina de ejecutar un proceso
 
+	slog.Debug(fmt.Sprintf("Actualizando estimado: %d", pid))
 	slog.Debug(fmt.Sprintf("Rafaga real: %f", rafagaReal))
 
 	proceso := globals.MapaProcesos[pid]
@@ -144,7 +147,7 @@ func ActualizarEstimado(pid int64, rafagaReal float64) {
 	globals.MapaProcesos[pid] = proceso
 }
 
-func elegirCPUlibre() (string, int64, string) {
+func elegirCPUlibre() (string, int64, string, bool) {
 	globals.ListaCPUsMutex.Lock()
 	encontrado := false
 	var cpu globals.ListaCpu
@@ -163,11 +166,11 @@ func elegirCPUlibre() (string, int64, string) {
 	globals.ListaCPUsMutex.Unlock()
 	// Devolvemos IP y PUERTO
 	if encontrado {
-		return cpu.Handshake.IP, cpu.Handshake.Puerto, cpu.Handshake.Nombre
+		return cpu.Handshake.IP, cpu.Handshake.Puerto, cpu.Handshake.Nombre, true
 	} else {
 		// Si devuelve esto hay un error, porque esta funcion se tiene que ejecutar cuando el semaforo lo permita
 		log.Println("No se encontro CPU libre")
-		return "", -1, ""
+		return "", -1, "", false
 	}
 }
 
@@ -179,6 +182,7 @@ func hayCpusLibres() bool {
 	globals.ListaCPUsMutex.Lock()
 	defer globals.ListaCPUsMutex.Unlock()
 	for _, cpu := range globals.ListaCPUs {
+		//slog.Debug(fmt.Sprintf("CPU %s, estado: %t, PID: %d", cpu.Handshake.Nombre, cpu.EstaLibre, cpu.PIDActual))
 		if cpu.EstaLibre {
 			return true
 		}
@@ -190,63 +194,51 @@ func hayCpusLibres() bool {
 func verificarDesalojo() (int64, bool) {
 
 	ordenarReadyPorRafaga()
-	pidEnExec, restanteExec, encontro := buscarProcesoEnExecuteDeMenorRafagaRestante()
+	pidEnExec, restanteExec := buscarProcesoEnExecuteDeMenorRafagaRestante()
+	rafagaNuevo := globals.MapaProcesos[globals.ESTADOS.READY[0]].Rafaga.Est_Sgte
 
-	if encontro {
-		rafagaNuevo := globals.MapaProcesos[globals.ESTADOS.READY[0]].Rafaga.Est_Sgte
+	slog.Debug(fmt.Sprintf("VerificarDesalojo: rafagaNuevo (%f) - restanteExec (%f)", rafagaNuevo, restanteExec))
 
-		if rafagaNuevo < restanteExec {
-			return pidEnExec, true
-		}
+	if rafagaNuevo < restanteExec {
+		return pidEnExec, true
 	}
 
 	return -1, false
 
 }
 
-func buscarProcesoEnExecuteDeMenorRafagaRestante() (int64, float64, bool) {
+func buscarProcesoEnExecuteDeMenorRafagaRestante() (int64, float64) {
 	slog.Debug(fmt.Sprint("Buscando menor rafaga restante en EXECUTE: ", globals.ESTADOS.EXECUTE))
 
 	var pidMenorRafaga int64
-	var menorRafagaRestante float64
-	encontro := false
-
-	menorRafagaRestante = rafagaRestante(globals.MapaProcesos[globals.ESTADOS.EXECUTE[0]].Pcb.Pid)
-	for _, pidActual := range globals.ESTADOS.EXECUTE {
-		_, ok := globals.MapaProcesos[pidActual]
-		if !ok {
-			slog.Debug(fmt.Sprintf("PID %d no encontrado en MapaProcesos. Posiblemente finalizado.", pidActual))
-			continue
-		}
-
-		restante := rafagaRestante(pidActual)
-		if restante < menorRafagaRestante {
+	pidMenorRafaga = globals.ESTADOS.EXECUTE[0]
+	menorRafagaRestante := rafagaRestante(globals.ESTADOS.EXECUTE[0])
+	for i := range globals.ESTADOS.EXECUTE {
+		// Si la posicion i esta libre
+		pidActual := globals.ESTADOS.EXECUTE[i]
+		rafagaRestanteActual := rafagaRestante(pidActual)
+		slog.Debug(fmt.Sprintf(" - PID %d: %f", pidMenorRafaga, menorRafagaRestante))
+		if rafagaRestanteActual < menorRafagaRestante {
 			pidMenorRafaga = pidActual
-			menorRafagaRestante = restante
-			encontro = true
+			menorRafagaRestante = rafagaRestanteActual
 		}
 	}
 
-	if !encontro {
-		slog.Debug("No se encontró ningún proceso válido en EXECUTE para evaluar desalojo.")
-		return 0, 0, false
-	}
-
-	slog.Debug(fmt.Sprintf("PID de menor rafaga restante: %d, restante: %f", pidMenorRafaga, menorRafagaRestante))
-	return pidMenorRafaga, menorRafagaRestante, true
+	slog.Debug(fmt.Sprint(" --- Elegido para desalojar: ", pidMenorRafaga, menorRafagaRestante))
+	return pidMenorRafaga, menorRafagaRestante
 }
 
 func rafagaRestante(pid int64) float64 {
 
-	slog.Debug(fmt.Sprint("PID: ", pid))
+	//slog.Debug(fmt.Sprint("PID: ", pid))
 	proceso := globals.MapaProcesos[pid]
-	slog.Debug(fmt.Sprint("Proceso: ", proceso))
+	//slog.Debug(fmt.Sprint("Proceso: ", proceso))
 	rafaga := proceso.Rafaga.Est_Sgte
-	slog.Debug(fmt.Sprint("Rafaga: ", rafaga))                                       // float64
+	//slog.Debug(fmt.Sprint("Rafaga: ", rafaga))                                       // float64
 	tiempoPasado := float64(time.Since(proceso.UltimoCambioDeEstado).Milliseconds()) // tiempo en ms
-	slog.Debug(fmt.Sprint("Tiempo pasado: ", tiempoPasado))
+	//slog.Debug(fmt.Sprint("Tiempo pasado: ", tiempoPasado))
 
-	slog.Debug(fmt.Sprint("Rafaga restante: ", rafaga-tiempoPasado))
+	slog.Debug(fmt.Sprintf("PID %d - Rafaga restante: %f", pid, rafaga-tiempoPasado))
 	return rafaga - tiempoPasado
 }
 
@@ -276,10 +268,12 @@ func ordenarReadyPorRafaga() {
 func ejecutarUnProceso() {
 
 	procesoAEjecutar := globals.ESTADOS.READY[0]
-	ip, port, nombre := elegirCPUlibre()
-	proceso := globals.MapaProcesos[procesoAEjecutar]
-	general.EnviarProcesoAEjecutar_ACPU(ip, port, proceso.Pcb.Pid, proceso.Pcb.PC, nombre)
-	CambiarEstado(procesoAEjecutar, globals.READY, globals.EXECUTE)
+	ip, port, nombre, hayCPU := elegirCPUlibre()
+	if hayCPU {
+		proceso := globals.MapaProcesos[procesoAEjecutar]
+		general.EnviarProcesoAEjecutar_ACPU(ip, port, proceso.Pcb.Pid, proceso.Pcb.PC, nombre)
+		CambiarEstado(procesoAEjecutar, globals.READY, globals.EXECUTE)
+	}
 
 }
 
@@ -311,5 +305,5 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 	} else {
 		slog.Debug(fmt.Sprintf("No se encontró la CPU que ejecuta el PID %d al momento de desalojar", pidEnExec))
 	}
-	slog.Debug(fmt.Sprint("Notificado Replanificar SRT"))
+	//slog.Debug(fmt.Sprint("Notificado Replanificar SRT"))
 }

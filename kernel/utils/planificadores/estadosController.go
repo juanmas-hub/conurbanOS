@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
 	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
@@ -41,9 +42,9 @@ func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
 			slog.Debug(fmt.Sprintf("PID %d ya estaba en READY, se evitó duplicación", pid))
 		}
 
-		slog.Debug(fmt.Sprint("COLAS DESPUES DE UN CAMBIO DE ESTADO: "))
-		slog.Debug(fmt.Sprint(estadoViejo, ": ", globals.ESTADOS.NEW))
-		slog.Debug(fmt.Sprint(estadoNuevo, ": ", globals.ESTADOS.READY))
+		//slog.Debug(fmt.Sprint("COLAS DESPUES DE UN CAMBIO DE ESTADO: "))
+		//slog.Debug(fmt.Sprint(estadoViejo, ": ", globals.ESTADOS.NEW))
+		//slog.Debug(fmt.Sprint(estadoNuevo, ": ", globals.ESTADOS.READY))
 	} else if estadoNuevo == globals.EXIT {
 
 		eliminarProcesoDeSuCola(pid, proceso.Estado_Actual)
@@ -66,18 +67,9 @@ func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
 
 		moverEntreColas(proceso, colaVieja, colaNueva)
 
-		slog.Debug(fmt.Sprint("COLAS DESPUES DE UN CAMBIO DE ESTADO: "))
-		slog.Debug(fmt.Sprint(estadoViejo, ": ", colaVieja))
-		slog.Debug(fmt.Sprint(estadoNuevo, ": ", colaNueva))
-	}
-
-	if necesitaReplanificarCorto(estadoViejo, estadoNuevo) {
-		switch globals.KernelConfig.Scheduler_algorithm {
-		case "FIFO", "SJF":
-			general.Signal(globals.Sem_ProcesosEnReady)
-		case "SRT":
-			general.NotificarReplanifSRT()
-		}
+		//slog.Debug(fmt.Sprint("COLAS DESPUES DE UN CAMBIO DE ESTADO: "))
+		//slog.Debug(fmt.Sprint(estadoViejo, ": ", colaVieja))
+		//slog.Debug(fmt.Sprint(estadoNuevo, ": ", colaNueva))
 	}
 
 	if necesitaReplanificarLargo(estadoViejo, estadoNuevo) {
@@ -85,6 +77,11 @@ func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
 		globals.DeDondeSeLlamaPasarProcesosAReady = estadoNuevo
 		globals.DeDondeSeLlamaMutex.Unlock()
 		globals.SignalPasarProcesoAReady()
+	}
+
+	if necesitaActualizarEstimado(estadoViejo, estadoNuevo) {
+		rafagaReal := float64(time.Since(proceso.UltimoCambioDeEstado).Milliseconds())
+		ActualizarEstimado(proceso.Pcb.Pid, float64(rafagaReal))
 	}
 
 	proceso = general.ActualizarMetricas(proceso, estadoViejo)
@@ -95,6 +92,11 @@ func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado %s al estado %s", pid, estadoViejo, estadoNuevo))
 
 	return true
+}
+
+func necesitaActualizarEstimado(estadoViejo string, estadoNuevo string) bool {
+
+	return globals.KernelConfig.Scheduler_algorithm != "FIFO" && (estadoViejo == globals.EXECUTE && estadoNuevo == globals.BLOCKED)
 }
 
 func obtenerColaPorEstado(estado string) *[]int64 {
@@ -111,10 +113,6 @@ func obtenerColaPorEstado(estado string) *[]int64 {
 		return &globals.ESTADOS.SUSP_READY
 	}
 	return nil
-}
-
-func necesitaReplanificarCorto(estadoViejo string, estadoNuevo string) bool {
-	return (estadoViejo == globals.NEW && estadoNuevo == globals.READY) || (estadoViejo == globals.SUSP_READY && estadoNuevo == globals.READY) || (estadoViejo == globals.BLOCKED && estadoNuevo == globals.READY)
 }
 
 func necesitaReplanificarLargo(estadoViejo string, estadoNuevo string) bool {

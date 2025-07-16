@@ -75,6 +75,7 @@ func agregarAListaCPUs(handshake globals.Handshake) {
 	case "FIFO", "SJF":
 		general.Signal(globals.Sem_Cpus)
 	case "SRT":
+		slog.Debug(fmt.Sprintf("Notificando replanificación en agregarAListaCPUs - Nueva CPU Libre"))
 		general.NotificarReplanifSRT()
 	}
 }

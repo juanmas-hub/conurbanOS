@@ -146,6 +146,7 @@ func manejarIO(syscallIO globals.SyscallIO) {
 		slog.Debug(fmt.Sprintf("El proceso %d que solicito IO ya no existe en MapaProcesos. Probablemente finalizo", syscallIO.PID))
 	}
 	general.LiberarCPU(syscallIO.NombreCPU)
+
 }
 
 func manejarInit_Proc(syscallINIT globals.SyscallInit) {
@@ -200,7 +201,6 @@ func manejarDUMP_MEMORY(syscallDUMP globals.SyscallDump) {
 					return
 				}
 				globals.EstadosMutex.Unlock()
-				general.LogUnlockeo("Estados", "manejarDUMP_MEMORY")
 
 			}
 			globals.MapaProcesosMutex.Unlock()

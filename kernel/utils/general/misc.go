@@ -54,6 +54,7 @@ func LiberarCPU(nombreCPU string) {
 	case "FIFO", "SJF":
 		Signal(globals.Sem_Cpus)
 	case "SRT":
+		slog.Debug(fmt.Sprintf("Notificando replanificación en LiberarCPU - Nueva CPU Libre"))
 		NotificarReplanifSRT()
 	}
 }
@@ -173,15 +174,15 @@ func AvisarSwappeo(pid int64) {
 }
 
 func LogLockeo(semaforo string, funcion string) {
-	slog.Debug(fmt.Sprintf("Se lockeo %s en %s", semaforo, funcion))
+	//slog.Debug(fmt.Sprintf("Se lockeo %s en %s", semaforo, funcion))
 }
 
 func LogIntentoLockeo(semaforo string, funcion string) {
-	slog.Debug(fmt.Sprintf("Se quiere lockear %s en %s", semaforo, funcion))
+	//slog.Debug(fmt.Sprintf("Se quiere lockear %s en %s", semaforo, funcion))
 }
 
 func LogUnlockeo(semaforo string, funcion string) {
-	slog.Debug(fmt.Sprintf("Se unlockeo %s en %s", semaforo, funcion))
+	//slog.Debug(fmt.Sprintf("Se unlockeo %s en %s", semaforo, funcion))
 }
 
 func EstaEnCola(cola []int64, pid int64) bool {

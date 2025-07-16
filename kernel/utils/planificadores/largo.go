@@ -61,8 +61,6 @@ func pasarProcesosAReady() {
 			for lenghtSUSP_READY > 0 {
 				pid := globals.ESTADOS.SUSP_READY[0]
 				if general.SolicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid) == false {
-					globals.EstadosMutex.Unlock()
-					globals.MapaProcesosMutex.Unlock()
 					break
 				}
 
@@ -70,6 +68,14 @@ func pasarProcesosAReady() {
 
 				CambiarEstado(proceso.Pcb.Pid, globals.SUSP_READY, globals.READY)
 				lenghtSUSP_READY--
+
+				switch globals.KernelConfig.Scheduler_algorithm {
+				case "FIFO", "SJF":
+					general.Signal(globals.Sem_ProcesosEnReady)
+				case "SRT":
+					slog.Debug(fmt.Sprintf("Notificando replanificación en pasarProcesosAReady - Llego un proceso a READY"))
+					general.NotificarReplanifSRT()
+				}
 			}
 
 			if lenghtSUSP_READY == 0 {
@@ -80,12 +86,18 @@ func pasarProcesosAReady() {
 					procesoNuevo := globals.ESTADOS.NEW[0]
 
 					if general.SolicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
-						globals.EstadosMutex.Unlock()
-						globals.MapaProcesosMutex.Unlock()
 						break
 					}
 
 					CambiarEstado(procesoNuevo.Proceso.Pcb.Pid, globals.NEW, globals.READY)
+
+					switch globals.KernelConfig.Scheduler_algorithm {
+					case "FIFO", "SJF":
+						general.Signal(globals.Sem_ProcesosEnReady)
+					case "SRT":
+						slog.Debug(fmt.Sprintf("Notificando replanificación en pasarProcesosAReady - Llego un proceso a READY"))
+						general.NotificarReplanifSRT()
+					}
 
 				}
 			}
