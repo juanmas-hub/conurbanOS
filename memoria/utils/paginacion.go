@@ -84,6 +84,8 @@ func escribirPaginas(pid int, paginas []globals_memoria.Pagina, marcos []int) *[
 		slog.Debug(fmt.Sprint(paginas[i]))
 
 		globals_memoria.MemoriaMarcosOcupados[marcos[i]] = true
+
+		IncrementarMetrica("ESCRITURAS_MEMORIA", pid, 1)
 	}
 
 	return &paginasLinkeadas
@@ -161,7 +163,7 @@ func construirNivel(pid int, nivel int, entradasPorPagina int, frameIndex *int, 
 				tabla.Entradas = append(tabla.Entradas, entrada)
 				*frameIndex++
 			} else {
-				fmt.Printf("⚠️  No hay suficientes frames asignados para el PID %d\n", pid)
+				fmt.Printf("No hay suficientes frames asignados para el PID %d\n", pid)
 			}
 		} else {
 			// Nivel intermedio: crear subtabla
@@ -175,6 +177,7 @@ func construirNivel(pid int, nivel int, entradasPorPagina int, frameIndex *int, 
 		}
 	}
 
+	IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
 	return tabla
 }
 
@@ -266,9 +269,6 @@ func actualizarTablaPaginas(pid int, indices []int) {
 }*/
 
 func actualizarTablaPaginas(pid int, paginasLinkeadas []globals_memoria.PaginaLinkeada) {
-
-	IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
-
 	proceso := globals_memoria.Procesos[pid]
 
 	// Crea un mapa para acceso rápido por número de página
@@ -279,6 +279,7 @@ func actualizarTablaPaginas(pid int, paginasLinkeadas []globals_memoria.PaginaLi
 
 	var recorrerYActualizar func(tabla *globals_memoria.TablaPaginas)
 	recorrerYActualizar = func(tabla *globals_memoria.TablaPaginas) {
+		IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
 		for i := 0; i < len(tabla.Entradas); i++ {
 			entrada := &tabla.Entradas[i]
 
@@ -436,11 +437,17 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 		CantidadDePaginas: len(indicesDisponibles),
 	}
 
-	// Lo añado al mapa de procesos
+	// Lo aniado al mapa de procesos
 	globals_memoria.Procesos[pid] = proceso
+
+	// Aniado metricas del proceso
+	var metrica globals_memoria.Memoria_Metrica
+	globals_memoria.MetricasMap[pid] = metrica
+	slog.Debug(fmt.Sprintf("Metricas al crear el proceso %+v", globals_memoria.MetricasMap[pid]))
 
 	slog.Debug(fmt.Sprintf("Se creo la tabla de paginas del proceso %d:", pid))
 	logTablaDePaginas(pid)
+	slog.Debug(fmt.Sprintf("Se creo el proceso %d correctamente", pid))
 
 	return 0
 }
@@ -536,7 +543,7 @@ func eliminarMarcosFisicos(pid int) []globals_memoria.Pagina {
 	tabla := globals_memoria.Procesos[pid].TablaDePaginas
 
 	// Obtengo las paginas
-	recorrerTablaYLiberarMarcos(tabla, &paginas)
+	recorrerTablaYLiberarMarcos(pid, tabla, &paginas)
 
 	slog.Debug(fmt.Sprint("Frames eliminados del proceso: ", pid))
 	slog.Debug(fmt.Sprint("Paginas: ", paginas))
@@ -544,14 +551,15 @@ func eliminarMarcosFisicos(pid int) []globals_memoria.Pagina {
 	return paginas
 }
 
-func recorrerTablaYLiberarMarcos(tabla globals_memoria.TablaPaginas, paginas *[]globals_memoria.Pagina) {
+func recorrerTablaYLiberarMarcos(pid int, tabla globals_memoria.TablaPaginas, paginas *[]globals_memoria.Pagina) {
+	IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
 	pageSize := int(globals_memoria.MemoriaConfig.Page_size)
 	for i := 0; i < len(tabla.Entradas); i++ {
 		entrada := tabla.Entradas[i]
 
 		if entrada.SiguienteNivel != nil {
 			// Si hay siguiente nivel, seguimos recorriendo recursivamente
-			recorrerTablaYLiberarMarcos(*entrada.SiguienteNivel, paginas)
+			recorrerTablaYLiberarMarcos(pid, *entrada.SiguienteNivel, paginas)
 		} else {
 			// Último nivel: obtener frame asignado
 			frame := entrada.NumeroDeFrame
@@ -655,6 +663,7 @@ func generarMemoryDump(pid int) int {
 	// Recorremos la tabla y buscamos las páginas que están en memoria
 	var escribirContenido func(tabla *globals_memoria.TablaPaginas)
 	escribirContenido = func(tabla *globals_memoria.TablaPaginas) {
+		IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
 		for i := 0; i < len(tabla.Entradas); i++ {
 			entrada := &tabla.Entradas[i]
 
@@ -666,7 +675,7 @@ func generarMemoryDump(pid int) int {
 					contenido := globals_memoria.Memoria[inicio : inicio+pageSize]
 					_, err := archivo.Write(contenido)
 					if err != nil {
-						slog.Debug(fmt.Sprintf("❌ Error al escribir dump de PID %d: %v", pid, err))
+						slog.Debug(fmt.Sprintf("Error al escribir dump de PID %d: %v", pid, err))
 					}
 				}
 			}
@@ -675,6 +684,6 @@ func generarMemoryDump(pid int) int {
 
 	escribirContenido(&proceso.TablaDePaginas)
 
-	slog.Debug(fmt.Sprintf("✅ Memory dump generado correctamente: %s", nombreArchivo))
+	slog.Debug(fmt.Sprintf("Memory dump generado correctamente: %s", nombreArchivo))
 	return 0
 }

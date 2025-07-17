@@ -117,7 +117,7 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 
 	time.Sleep(time.Duration(delay) * time.Millisecond)
 
-	IncrementarMetrica("BAJADAS_SWAP", pid, 1)
+	
 
 	proceso := globals_memoria.Procesos[pid]
 
@@ -136,6 +136,8 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 	}
 
 	globals_memoria.Procesos[pid] = proceso
+
+	IncrementarMetrica("BAJADAS_SWAP", pid, 1)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
