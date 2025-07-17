@@ -14,13 +14,16 @@ func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
 
 	var proceso globals.Proceso
 	var presente bool
+	var ultimo_cambio_estado time.Time
 	if estadoViejo != globals.NEW {
 		proceso, presente = globals.MapaProcesos[pid]
 		if !presente {
 			slog.Debug(fmt.Sprintf("PID %d no se encontro en MapaProcesos en CambiarEstado. Posiblemente finalizo", pid))
 			return false
 		}
+		ultimo_cambio_estado = proceso.UltimoCambioDeEstado
 	}
+
 	// El resto de transiciones
 	var colaVieja *[]int64
 	var colaNueva *[]int64
@@ -76,7 +79,7 @@ func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
 	}
 
 	if necesitaActualizarEstimado(estadoViejo, estadoNuevo) {
-		rafagaReal := float64(time.Since(proceso.UltimoCambioDeEstado).Milliseconds())
+		rafagaReal := float64(time.Since(ultimo_cambio_estado).Milliseconds())
 		ActualizarEstimado(proceso.Pcb.Pid, float64(rafagaReal))
 	}
 	proceso.Estado_Actual = estadoNuevo
