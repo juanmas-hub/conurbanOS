@@ -202,7 +202,7 @@ func FinalizarProceso(pid int64, estadoAnterior string) {
 	general.LogIntentoLockeo("Estados", "FinalizarProceso")
 	globals.EstadosMutex.Lock()
 	general.LogLockeo("Estados", "FinalizarProceso")
-	ok = CambiarEstado(pid, "", globals.EXIT)
+	ok = CambiarEstado(pid, estadoAnterior, globals.EXIT)
 	globals.EstadosMutex.Unlock()
 	general.LogUnlockeo("Estados", "FinalizarProceso")
 
