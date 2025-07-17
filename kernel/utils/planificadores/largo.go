@@ -185,7 +185,7 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 
 }
 
-func FinalizarProceso(pid int64) {
+func FinalizarProceso(pid int64, estadoAnterior string) {
 	globals.MapaProcesosMutex.Lock()
 	defer globals.MapaProcesosMutex.Unlock()
 	general.LogLockeo("Mapa Procesos", "FinalizarProceso")

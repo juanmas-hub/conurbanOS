@@ -181,15 +181,24 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	// Si habia proceso ejecutando
 	if pidProceso != -1 {
 
+		proceso, existe := globals.MapaProcesos[pidProceso]
+		if !existe {
+			return
+		}
+
 		// Finalizo proceso que esta ejecuando en esa IO
-		planificadores.FinalizarProceso(pidProceso)
+		planificadores.FinalizarProceso(pidProceso, proceso.Estado_Actual)
 	}
 
 	// Si no quedan mas instancias
 	if len(io.Instancias) == 0 {
 		// Finalizo todos los procesos de la cola esperando esa IO
 		for i := range io.ColaProcesosEsperando {
-			planificadores.FinalizarProceso(io.ColaProcesosEsperando[i].PID)
+			proceso, existe := globals.MapaProcesos[io.ColaProcesosEsperando[i].PID]
+			if !existe {
+				return
+			}
+			planificadores.FinalizarProceso(io.ColaProcesosEsperando[i].PID, proceso.Estado_Actual)
 		}
 
 		// Elimino la entrada del mapa

@@ -114,7 +114,7 @@ func manejarIO(syscallIO globals.SyscallIO) {
 		slog.Debug(fmt.Sprint("No existe IO: ", syscallIO.NombreIO))
 		globals.MapaProcesosMutex.Unlock()
 		globals.ListaIOsMutex.Unlock()
-		planificadores.FinalizarProceso(syscallIO.PID)
+		planificadores.FinalizarProceso(syscallIO.PID, globals.EXECUTE)
 		general.LiberarCPU(syscallIO.NombreCPU)
 		return
 	}
@@ -226,7 +226,7 @@ func manejarDUMP_MEMORY(syscallDUMP globals.SyscallDump) {
 
 		} else {
 			// Si no se pudo dumpear
-			planificadores.FinalizarProceso(syscallDUMP.PID)
+			planificadores.FinalizarProceso(syscallDUMP.PID, globals.BLOCKED)
 		}
 	}
 
@@ -237,7 +237,7 @@ func manejarEXIT(syscallEXIT globals.SyscallExit) {
 
 	logSyscalls(syscallEXIT.PID, "EXIT")
 
-	planificadores.FinalizarProceso(syscallEXIT.PID)
+	planificadores.FinalizarProceso(syscallEXIT.PID, globals.EXECUTE)
 	general.LiberarCPU(syscallEXIT.NombreCPU)
 
 }
