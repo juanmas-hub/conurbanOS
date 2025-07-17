@@ -39,13 +39,16 @@ func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
 		okey := agregarProcesoACola(&globals.ESTADOS.READY, pid)
 		if !okey {
 			slog.Debug(fmt.Sprintf("PID %d ya estaba en READY, se evitó duplicación", pid))
+			return false
 		}
 
+		proceso = general.ActualizarMetricas(proceso, estadoViejo)
 		//slog.Debug(fmt.Sprint("COLAS DESPUES DE UN CAMBIO DE ESTADO: "))
 		//slog.Debug(fmt.Sprint(estadoViejo, ": ", globals.ESTADOS.NEW))
 		//slog.Debug(fmt.Sprint(estadoNuevo, ": ", globals.ESTADOS.READY))
 	} else if estadoNuevo == globals.EXIT {
 
+		proceso = general.ActualizarMetricas(proceso, estadoViejo)
 		eliminarProcesoDeSuCola(pid, proceso.Estado_Actual)
 		logExit(proceso)
 
@@ -64,6 +67,7 @@ func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
 			return false
 		}
 
+		proceso = general.ActualizarMetricas(proceso, estadoViejo)
 		moverEntreColas(proceso, colaVieja, colaNueva)
 
 		//slog.Debug(fmt.Sprint("COLAS DESPUES DE UN CAMBIO DE ESTADO: "))
@@ -71,24 +75,22 @@ func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
 		//slog.Debug(fmt.Sprint(estadoNuevo, ": ", colaNueva))
 	}
 
+	if necesitaActualizarEstimado(estadoViejo, estadoNuevo) {
+		rafagaReal := float64(time.Since(proceso.UltimoCambioDeEstado).Milliseconds())
+		ActualizarEstimado(proceso.Pcb.Pid, float64(rafagaReal))
+	}
+	proceso.Estado_Actual = estadoNuevo
+	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
+
+	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
+	slog.Info(fmt.Sprintf("## (%d) Pasa del estado %s al estado %s", pid, estadoViejo, estadoNuevo))
+
 	if necesitaReplanificarLargo(estadoViejo, estadoNuevo) {
 		globals.DeDondeSeLlamaMutex.Lock()
 		globals.DeDondeSeLlamaPasarProcesosAReady = estadoNuevo
 		globals.DeDondeSeLlamaMutex.Unlock()
 		globals.SignalPasarProcesoAReady()
 	}
-
-	if necesitaActualizarEstimado(estadoViejo, estadoNuevo) {
-		rafagaReal := float64(time.Since(proceso.UltimoCambioDeEstado).Milliseconds())
-		ActualizarEstimado(proceso.Pcb.Pid, float64(rafagaReal))
-	}
-
-	proceso = general.ActualizarMetricas(proceso, estadoViejo)
-	proceso.Estado_Actual = estadoNuevo
-	globals.MapaProcesos[proceso.Pcb.Pid] = proceso
-
-	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
-	slog.Info(fmt.Sprintf("## (%d) Pasa del estado %s al estado %s", pid, estadoViejo, estadoNuevo))
 
 	return true
 }
