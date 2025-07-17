@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 
@@ -17,15 +16,13 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 	var finalizacionIo globals.FinalizacionIO
 	err := decoder.Decode(&finalizacionIo)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar mensaje: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
 	}
 
-	go func() {
-		manejarFinIO(finalizacionIo)
-	}()
+	go manejarFinIO(finalizacionIo)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
@@ -34,11 +31,70 @@ func FinalizacionIO(w http.ResponseWriter, r *http.Request) {
 func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 
 	globals.ListaIOsMutex.Lock()
+	defer globals.ListaIOsMutex.Unlock()
+
+	general.LogIntentoLockeo("MapaProcesos", "manejarFinIO")
+	globals.MapaProcesosMutex.Lock()
+	general.LogLockeo("MapaProcesos", "manejarFinIO")
+	proceso, presente := globals.MapaProcesos[finalizacionIo.PID]
+	if !presente {
+		slog.Debug(fmt.Sprintf("El proceso %d que finalizo IO ya no existe en MapaProcesos. Probablemente finalizo", finalizacionIo.PID))
+		globals.MapaProcesosMutex.Unlock()
+		general.LogUnlockeo("MapaProcesos", "manejarFinIO")
+		return
+	}
+
+	var nuevo_estado string
+
+	general.LogIntentoLockeo("Estados", "manejarFinIO")
+	globals.EstadosMutex.Lock()
+	general.LogLockeo("Estados", "manejarFinIO")
+
+	// Si esta en Susp Blocked lo paso a Susp Ready
+	if proceso.Estado_Actual == globals.SUSP_BLOCKED {
+		nuevo_estado = globals.SUSP_READY
+		if !planificadores.CambiarEstado(proceso.Pcb.Pid, globals.SUSP_BLOCKED, globals.SUSP_READY) {
+			slog.Debug(fmt.Sprintf("El proceso %d que finalizo IO no pudo cambiar de estado. Quizas cambio antes.", finalizacionIo.PID))
+			globals.EstadosMutex.Unlock()
+			general.LogUnlockeo("Estados", "manejarFinIO")
+			globals.MapaProcesosMutex.Unlock()
+			general.LogUnlockeo("MapaProcesos", "manejarFinIO")
+			return
+		}
+	} else if proceso.Estado_Actual == globals.BLOCKED {
+		// Si esta en Blocked lo paso Ready (no lo dice el enunciado!¡)
+		nuevo_estado = globals.READY
+		if !planificadores.CambiarEstado(proceso.Pcb.Pid, globals.BLOCKED, globals.READY) {
+			slog.Debug(fmt.Sprintf("El proceso %d que finalizo IO no pudo cambiar de estado. Quizas cambio antes.", finalizacionIo.PID))
+			globals.EstadosMutex.Unlock()
+			general.LogUnlockeo("Estados", "manejarFinIO")
+			globals.MapaProcesosMutex.Unlock()
+			general.LogUnlockeo("MapaProcesos", "manejarFinIO")
+			return
+		}
+		switch globals.KernelConfig.Scheduler_algorithm {
+		case "FIFO", "SJF":
+			general.Signal(globals.Sem_ProcesosEnReady)
+		case "SRT":
+			general.NotificarReplanifSRT()
+		}
+		slog.Debug(fmt.Sprintf("Notificando replanificación en manejarFinIO - Llego un proceso a READY"))
+	}
+
+	globals.EstadosMutex.Unlock()
+	general.LogUnlockeo("Estados", "manejarFinIO")
+	globals.MapaProcesosMutex.Unlock()
+	general.LogUnlockeo("MapaProcesos", "manejarFinIO")
+
+	// LOG : Fin de IO: ## (<PID>) finalizó IO y pasa a READY
+	slog.Info(fmt.Sprintf("## (%d) finalizó IO y pasa a %s", finalizacionIo.PID, nuevo_estado))
+
 	io := globals.MapaIOs[finalizacionIo.NombreIO]
 	posInstanciaIo := BuscarInstanciaIO(finalizacionIo.NombreIO, finalizacionIo.NombreInstancia)
 
 	if posInstanciaIo == -1 {
-		log.Printf("Error buscando instancia de IO de nombre: %s, con el proceso: %d", finalizacionIo.NombreIO, finalizacionIo.PID)
+		slog.Debug(fmt.Sprintf("No se encontro la instancia de IO %s que tendria el PID: %d, probablemente porque se desconecto", finalizacionIo.NombreInstancia, finalizacionIo.PID))
+		return
 	}
 	instanciaIo := io.Instancias[posInstanciaIo]
 
@@ -47,29 +103,6 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 	io.Instancias[posInstanciaIo] = instanciaIo
 
 	globals.MapaIOs[finalizacionIo.NombreIO] = io
-
-	//log.Print("Se quiere loquear MapaProcesos en manejarFinIO")
-	globals.MapaProcesosMutex.Lock()
-	proceso := globals.MapaProcesos[finalizacionIo.PID]
-	globals.MapaProcesosMutex.Unlock()
-	//log.Print("Se unloquea MapaProcesos en manejarFinIO")
-
-	var nuevo_estado string
-
-	// Si esta en Susp Blocked lo paso a Susp Ready
-	if proceso.Estado_Actual == globals.SUSP_BLOCKED {
-		nuevo_estado = globals.SUSP_READY
-		planificadores.SuspBlockedASuspReady(proceso)
-	}
-
-	// Si esta en Blocked lo paso Ready (no lo dice el enunciado!¡)
-	if proceso.Estado_Actual == globals.BLOCKED {
-		nuevo_estado = globals.READY
-		planificadores.BlockedAReady(proceso)
-	}
-
-	// LOG : Fin de IO: ## (<PID>) finalizó IO y pasa a READY
-	slog.Info(fmt.Sprintf("## (%d) finalizó IO y pasa a %s", finalizacionIo.PID, nuevo_estado))
 
 	// Si hay procesos esperando IO, envio solicitud
 	if len(globals.MapaIOs[finalizacionIo.NombreIO].ColaProcesosEsperando) > 0 {
@@ -88,9 +121,31 @@ func manejarFinIO(finalizacionIo globals.FinalizacionIO) {
 
 	io.Instancias[posInstanciaIo] = instanciaIo
 	globals.MapaIOs[finalizacionIo.NombreIO] = io
-	globals.ListaIOsMutex.Unlock()
-
 }
+
+// Cuando se conecta una nueva IO, se fija si hay procesos esperando y los manda.
+/*func IntentarPasarAIO(nombreIO string, instanciaIO globals.InstanciaIO) {
+
+	globals.ListaIOsMutex.Lock()
+	defer globals.ListaIOsMutex.Unlock()
+
+	if len(globals.MapaIOs[nombreIO].ColaProcesosEsperando) > 0 {
+		procesoAIO := globals.MapaIOs[nombreIO].ColaProcesosEsperando[0]
+		instanciaIO.PidProcesoActual = procesoAIO.PID
+		general.EnviarSolicitudIO(
+			instanciaIO.Handshake.IP,
+			instanciaIO.Handshake.Puerto,
+			procesoAIO.PID,
+			procesoAIO.Tiempo,
+		)
+
+		io := globals.MapaIOs[nombreIO]
+		posInstanciaIo := BuscarInstanciaIO(nombreIO, instanciaIO.Handshake.NombreInstancia)
+		io.ColaProcesosEsperando = io.ColaProcesosEsperando[1:]
+		io.Instancias[posInstanciaIo] = instanciaIO
+		globals.MapaIOs[nombreIO] = io
+	}
+}*/
 
 func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	// Cuando se desconecta un IO, se pasa a exit el proceso que estaba en el IO.
@@ -99,7 +154,7 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 	var desconexionIO globals.DesconexionIO
 	err := decoder.Decode(&desconexionIO)
 	if err != nil {
-		log.Printf("Error al decodificar mensaje: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar mensaje: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar mensaje"))
 		return
@@ -112,29 +167,38 @@ func DesconexionIO(w http.ResponseWriter, r *http.Request) {
 
 	pidProceso := desconexionIO.PID
 
-	slog.Debug(fmt.Sprintf("Se desconecto el IO: %s, que tenia el proceso de PID: %d", desconexionIO.NombreIO, pidProceso))
+	//slog.Debug(fmt.Sprintf("Se desconecto el IO: %s, que tenia el proceso de PID: %d", desconexionIO.NombreIO, pidProceso))
 
 	// Saco la instancia de la cola de instancias
 	posInstanciaIo := BuscarInstanciaIO(desconexionIO.NombreIO, desconexionIO.NombreInstancia)
 	if posInstanciaIo < 0 {
-		log.Printf("Error buscando la instancia de IO de IP: %s, puerto: %d, que tendría el proceso: %d", desconexionIO.Ip, desconexionIO.Puerto, pidProceso)
+		slog.Debug(fmt.Sprintf("Error buscando la instancia de IO de IP: %s, puerto: %d, que tendría el proceso: %d", desconexionIO.Ip, desconexionIO.Puerto, pidProceso))
 	}
 	io.Instancias = append(io.Instancias[:posInstanciaIo], io.Instancias[posInstanciaIo+1:]...)
 
-	slog.Debug(fmt.Sprint("Se saco la instancia de la cola de instancias: ", io.Instancias))
+	//slog.Debug(fmt.Sprint("Se saco la instancia de la cola de instancias: ", io.Instancias))
 
 	// Si habia proceso ejecutando
 	if pidProceso != -1 {
 
+		proceso, existe := globals.MapaProcesos[pidProceso]
+		if !existe {
+			return
+		}
+
 		// Finalizo proceso que esta ejecuando en esa IO
-		planificadores.FinalizarProceso(pidProceso)
+		planificadores.FinalizarProceso(pidProceso, proceso.Estado_Actual)
 	}
 
 	// Si no quedan mas instancias
 	if len(io.Instancias) == 0 {
 		// Finalizo todos los procesos de la cola esperando esa IO
 		for i := range io.ColaProcesosEsperando {
-			planificadores.FinalizarProceso(io.ColaProcesosEsperando[i].PID)
+			proceso, existe := globals.MapaProcesos[io.ColaProcesosEsperando[i].PID]
+			if !existe {
+				return
+			}
+			planificadores.FinalizarProceso(io.ColaProcesosEsperando[i].PID, proceso.Estado_Actual)
 		}
 
 		// Elimino la entrada del mapa

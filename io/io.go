@@ -20,17 +20,17 @@ import (
 func main() {
 	// Handshake al kernel
 	if len(os.Args) != 3 {
-		log.Fatal("Error. El formato es: nombreInstanciaIO, prueba")
+		log.Println("Error. El formato es: nombreInstanciaIO, prueba")
 	}
 	globals.NombreInstancia = os.Args[1]
 	prueba := os.Args[2]
 
 	// Configuración
 	utils_logger.ConfigurarLogger(globals.NombreInstancia + ".log")
-	log.Print(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + globals.NombreInstancia + ".config")
+	//slog.Debug(fmt.Sprint(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + globals.NombreInstancia + ".config"))
 	globals.IoConfig = utils_io.IniciarConfiguracion(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + globals.NombreInstancia + ".config")
 	if globals.IoConfig == nil {
-		log.Fatal("No se pudo iniciar el config")
+		log.Println("No se pudo iniciar el config")
 	}
 
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals.IoConfig.LogLevel))
@@ -74,17 +74,17 @@ func main() {
 
 	// Ejecutar servidor en goroutine (no bloquea main)
 	go func() {
-		fmt.Println("Servidor escuchando en puerto", puerto)
+		slog.Debug(fmt.Sprint("Servidor escuchando en puerto", puerto))
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Error en servidor: %v\n", err)
+			slog.Debug(fmt.Sprintf("Error en servidor: %v\n", err))
 		}
 	}()
 
 	// Goroutine para manejar señales
 	go func() {
 		sig := <-sigs
-		fmt.Println()
-		fmt.Println("Señal recibida:", sig)
+		//fmt.Println()
+		slog.Debug(fmt.Sprint("Señal recibida:", sig))
 
 		utils_io.Desconectar(globals.IoConfig.IpKernel, globals.IoConfig.PortKernel, globals.PidProcesoActual)
 
@@ -93,9 +93,9 @@ func main() {
 		defer cancel()
 
 		if err := srv.Shutdown(ctx); err != nil {
-			log.Printf("Error al apagar servidor: %v\n", err)
+			slog.Debug(fmt.Sprintf("Error al apagar servidor: %v\n", err))
 		} else {
-			fmt.Println("Servidor apagado correctamente")
+			slog.Debug(fmt.Sprintf("Servidor apagado correctamente"))
 		}
 
 		done <- true

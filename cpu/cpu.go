@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -24,12 +25,16 @@ func main() {
 	utils_logger.ConfigurarLogger("cpu.log")
 	globals_cpu.CpuConfig = utils_cpu.IniciarConfiguracion(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + nombreCPU + ".config")
 	if globals_cpu.CpuConfig == nil {
-		log.Fatal("No se pudo iniciar el config")
+		log.Fatal("No se pudo iniciar el config de cpu")
+	}
+	globals_cpu.MemoriaConfig = utils_cpu.IniciarConfiguracionMemoria(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/Memoria.config")
+	if globals_cpu.MemoriaConfig == nil {
+		log.Fatal("No se pudo iniciar el config de memoria")
 	}
 
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals_cpu.CpuConfig.Log_level))
 
-	slog.Info(globals_cpu.CpuConfig.Log_level)
+	slog.Debug(globals_cpu.CpuConfig.Log_level)
 
 	utils_cpu.HandshakeAKernel(
 		globals_cpu.CpuConfig.Ip_kernel,
@@ -44,36 +49,54 @@ func main() {
 	}
 
 	if globals.CpuConfig.Tlb_entries > 0 {
-		utils_cpu.NuevaTLB(globals.CpuConfig.Tlb_entries, globals.CpuConfig.Cache_replacement)
+		utils_cpu.NuevaTLB(globals.CpuConfig.Tlb_entries, globals.CpuConfig.Tlb_replacement)
 	}
 
 	go func() {
 		for {
-			log.Println("hola")
+			slog.Debug(fmt.Sprintf("hola"))
 			utils_cpu.Wait(globals.Sem)
 			for pcb := range utils_cpu.ColaDeEjecucion {
-				log.Printf("Ejecutando PID %d en PC %d", pcb.Pid, pcb.PC)
+				slog.Debug(fmt.Sprintf("Ejecutando PID %d en PC %d", pcb.Pid, pcb.PC))
 				instruccion, err := utils_cpu.EnviarSolicitudInstruccion(pcb.Pid, pcb.PC) //solicitamos instruccion a memoria pasandole el pcb y pc
+
+				slog.Info(fmt.Sprintf("## PID: %d - FETCH - Program Counter: %d", pcb.Pid, pcb.PC))
+
 				if err != nil {
-					log.Printf("Error al pedir instrucción: %s", err)
+					slog.Debug(fmt.Sprintf("Error al pedir instrucción: %s", err))
 					continue
 				}
-				log.Printf("Instrucción: %s", instruccion)
+				slog.Debug(fmt.Sprintf("Instrucción: %s", instruccion))
 
 				instruccionDeco, err := utils_cpu.Decode(instruccion) //decodificamos la instruccion
 				if err != nil {
-					log.Printf("Error al decodificar instrucción: %s", err)
+					slog.Debug(fmt.Sprintf("Error al decodificar instrucción: %s", err))
 					continue
 				}
-				log.Printf("Instrucción decodificada correctamente: %+v", instruccionDeco)
+				slog.Debug(fmt.Sprintf("Instrucción decodificada correctamente: %+v", instruccionDeco))
+
+				slog.Info(fmt.Sprintf("## PID: %d- Ejecutando: %s - %v", pcb.Pid, instruccionDeco.Nombre, instruccionDeco.Parametros))
 
 				resultadoEjecucion, err := utils_cpu.Execute(instruccionDeco, &pcb) //ejecutamos instruccion
 
 				if err != nil {
-					log.Printf("Error al ejecutar instruccion: %s", err)
+					slog.Debug(fmt.Sprintf("Error al ejecutar instruccion: %s", err))
 					continue
 				}
-				log.Printf("Finalizado: nuevo PC = %d", pcb.PC)
+
+				slog.Debug(fmt.Sprintf("Finalizado: nuevo PC = %d", pcb.PC))
+
+				// Check interrupts
+				if globals.HayInterrupcion {
+					slog.Debug(fmt.Sprintf("Hay interrupcion"))
+					globals.PC_Interrupcion = pcb.PC
+					slog.Debug(fmt.Sprintf("PC: %d", globals.PC_Interrupcion))
+					utils_cpu.Signal(globals.Sem_Interrupcion)
+					slog.Debug(fmt.Sprintf("Señal enviada"))
+					resultadoEjecucion = utils_cpu.PONERSE_ESPERA
+				} else {
+					slog.Debug(fmt.Sprintf("No hubo interrupcion"))
+				}
 
 				switch resultadoEjecucion {
 				case utils_cpu.CONTINUAR_EJECUCION:
@@ -81,9 +104,19 @@ func main() {
 					continue // Volver al inicio del bucle para FETCH la siguiente instrucción del mismo PCB
 
 				case utils_cpu.PONERSE_ESPERA:
-					log.Printf("Proceso PID %d cede la CPU por Syscall: %s. PC actual: %d", pcb.Pid, instruccionDeco.Nombre, pcb.PC)
+					if globals.HayInterrupcion {
 
-					//pcb a kernel
+						if globals.EnvieSyscallBloqueante {
+							slog.Debug(fmt.Sprintf("Proceso PID %d cede la CPU por Syscall: %s. PC actual: %d", pcb.Pid, instruccionDeco.Nombre, pcb.PC))
+						} else {
+							slog.Debug(fmt.Sprintf("Se cede la CPU con PID: (%d) por Interrupcion. PC actual: %d", pcb.Pid, pcb.PC))
+						}
+						globals.HayInterrupcion = false
+
+					} else {
+						slog.Debug(fmt.Sprintf("Proceso PID %d cede la CPU por Syscall: %s. PC actual: %d", pcb.Pid, instruccionDeco.Nombre, pcb.PC))
+
+					}
 
 					break // Salir del switch, para que espere un nuevo PCB
 
@@ -91,7 +124,8 @@ func main() {
 
 					break
 				}
-
+				globals.EnvieSyscallBloqueante = false
+				//utils_cpu.EnviarPCBaKernel(pcb.Pid, pcb.Pid)
 			}
 		}
 	}()
@@ -101,7 +135,6 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/dispatchProceso", utils_cpu.RecibirProcesoAEjecutar)
-	mux.HandleFunc("/recibirPCB", utils_cpu.RecibirPCBDeKernel)
 	mux.HandleFunc("/interrumpir", utils_cpu.RecibirInterrupcion)
 
 	puerto := globals_cpu.CpuConfig.Port_cpu

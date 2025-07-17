@@ -47,7 +47,7 @@ func main() {
 	mux.HandleFunc("/leerPagina", utils_memoria.LeerPagina)
 	mux.HandleFunc("/actualizarPagina", utils_memoria.ActualizarPagina)
 	mux.HandleFunc("/obtenerInstruccion", utils_memoria.EnviarInstruccion)
-	mux.HandleFunc("/actualizarTablaDePaginas", utils_memoria.ActualizarTablaDePaginas)
+	//mux.HandleFunc("/actualizarTablaDePaginas", utils_memoria.ActualizarTablaDePaginas)
 
 	// Inicia un servidor que escuche en el puerto del config
 	var puerto int64 = globals.MemoriaConfig.Port_memory

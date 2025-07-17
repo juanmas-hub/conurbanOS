@@ -1,5 +1,10 @@
 package globals
 
+import (
+	"fmt"
+	"strings"
+)
+
 type Cpu_Config struct {
 	Port_cpu          int64  `json:"port_cpu"`
 	Ip_cpu            string `json:"ip_cpu"`
@@ -18,7 +23,48 @@ type Cpu_Config struct {
 var Tlb *TLB
 var ElCache *Cache
 
+// Para imprimir el cache (debug)
+func (c *Cache) String() string {
+	result := fmt.Sprintf("Cache (Capacidad: %d, Algoritmo: %s, ClockHand: %d)\n", c.Capacidad, c.AlgoritmoReemplazo, c.ClockHand)
+	for i, entry := range c.Entries {
+		result += fmt.Sprintf("  Entrada %d: PID=%d, Pagina=%d, R=%t, D=%t, Contenido=%v\n",
+			i, entry.PID, entry.Pagina, entry.R, entry.D, string(entry.Contenido))
+	}
+	return result
+}
+
+// Para imprimir la TLB (debug)
+func (t *TLB) String() string {
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("TLB (Capacidad: %d, Algoritmo: %s, FIFOindex: %d)\n", t.Capacidad, t.AlgoritmoReemplazo, t.FIFOindex))
+	sb.WriteString("Entradas:\n")
+
+	for i, entry := range t.Entries {
+		sb.WriteString(fmt.Sprintf("  [%d] Pagina: %d | Marco: %d | PID: %d | Timestamp: %d\n", i, entry.Pagina, entry.Marco, entry.PID, entry.Timestamp))
+	}
+
+	return sb.String()
+}
+
 var CpuConfig *Cpu_Config
+
+type Memoria_Config struct {
+	Port_memory      int64  `json:"port_memory"`
+	Memory_size      int64  `json:"memory_size"`
+	Ip_memory        string `json:"ip_memory"`
+	Page_size        int64  `json:"page_size"`
+	Entries_per_page int64  `json:"entries_per_page"`
+	Number_of_levels int64  `json:"number_of_levels"`
+	Memory_delay     int64  `json:"memory_delay"`
+	Swap_delay       int64  `json:"swap_delay"`
+	Swapfile_path    string `json:"swapfile_path"`
+	Log_level        string `json:"log_level"`
+	Dump_path        string `json:"dump_path"`
+	Scripts_path     string `json:"scripts_path"`
+}
+
+var MemoriaConfig *Memoria_Config
 
 type Mensaje struct {
 	Mensaje string `json:"mensaje"`
@@ -107,15 +153,15 @@ type TLBentry struct {
 }
 
 type CacheEntry struct {
-	Pagina    int64    //Numero de pagina virtual
-	Contenido [64]byte //contenido de la pagina
-	PID       int64    //PID para desalojar todas las paginas referidas a un proceso
-	R         bool     //bit Referenced de acceso a la pagina
-	D         bool     //bit Dirty de modificacion de la pagina
+	Pagina    int64  //Numero de pagina virtual
+	Contenido []byte //contenido de la pagina
+	PID       int64  //PID para desalojar todas las paginas referidas a un proceso
+	R         bool   //bit Referenced de acceso a la pagina
+	D         bool   //bit Dirty de modificacion de la pagina
 }
 
 type Cache struct {
-	Entries            []CacheEntry  //la lista de paginas
+	Entries            []*CacheEntry //la lista de paginas
 	PaginaIndex        map[int64]int //mapa auxiliar para buscar las paginas en la lista
 	Capacidad          int64         //Cantidad maxima de paginas
 	AlgoritmoReemplazo string        //CLOCK o CLOCK-M
@@ -140,14 +186,29 @@ type SolicitudPagina struct {
 
 // Para solicitudes con contenido de página
 type SolicitudPaginaContenido struct {
-	Pid       int64    `json:"pid"`
-	Pagina    int64    `json:"pagina"`
-	Contenido [64]byte `json:"contenido"`
+	Pid             int64  `json:"pid"`
+	DireccionFisica int64  `json:"direccion_fisica"`
+	Contenido       []byte `json:"contenido"`
 }
 
 // Para respuestas de contenido de página
 type RespuestaContenido struct {
-	Contenido [64]byte `json:"contenido"`
+	Contenido []byte `json:"contenido"`
+}
+
+type SolicitudEscritura struct {
+	Pid             int64  `json:"pid"`
+	DireccionFisica int64  `json:"posicion"`
+	Dato            string `json:"dato"`
+}
+type LeerPaginaDTO struct {
+	DireccionFisica int64 `json:"direccion_fisica"`
+}
+
+type SolicitudLectura struct {
+	Pid      int64 `json:"pid"`
+	Posicion int64 `json:"posicion"`
+	Tamanio  int64 `json:"tamanio"`
 }
 
 // Para respuestas de marco
@@ -167,11 +228,22 @@ func CrearSemaforo(maxTareas int) Semaforo {
 
 var Sem = CrearSemaforo(0)
 
-type RespuestaInterrupcion struct {
-	PC int64 `json:"pc"`
-}
-
 // Interrupcion
 type Interrupcion struct {
 	PID int64 `json:"pid"`
 }
+
+type PCyPID struct {
+	Pid int64 `json:"pid"`
+	Pc  int64 `json:"pc"`
+}
+
+type RespuestaInterrupcion struct {
+	PC int64 `json:"pc"`
+}
+
+var HayInterrupcion bool = false
+
+var Sem_Interrupcion = CrearSemaforo(0)
+var PC_Interrupcion int64 = -1
+var EnvieSyscallBloqueante bool = false

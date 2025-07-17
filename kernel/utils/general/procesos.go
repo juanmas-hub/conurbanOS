@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"time"
@@ -14,13 +13,9 @@ import (
 
 func ActualizarPC(pid int64, pc int64) {
 
-	//log.Print("Se quiere loquear MapaProcesos en ActualizarPC")
-	globals.MapaProcesosMutex.Lock()
 	proceso := globals.MapaProcesos[pid]
 	proceso.Pcb.PC = pc
 	globals.MapaProcesos[pid] = proceso
-	globals.MapaProcesosMutex.Unlock()
-	//log.Print("Se unloquea MapaProcesos en ActualizarPC")
 }
 
 func NotificarReplanifSRT() {
@@ -39,6 +34,8 @@ func ActualizarMetricas(proceso globals.Proceso, estadoAnterior string) globals.
 	MT := proceso.Pcb.MT
 	tiempoEnEstado := ahora.Sub(proceso.UltimoCambioDeEstado)
 
+	slog.Debug(fmt.Sprintf("Se llego a ActualizarMetricas. Estado anterior: %s. Tiempo: %d", estadoAnterior, tiempoEnEstado))
+
 	switch estadoAnterior {
 	case globals.NEW:
 		ME.New++
@@ -49,6 +46,7 @@ func ActualizarMetricas(proceso globals.Proceso, estadoAnterior string) globals.
 	case globals.EXECUTE:
 		ME.Execute++
 		MT.Execute += tiempoEnEstado
+		slog.Debug(fmt.Sprint("Se llego a globals.EXECUTE."))
 	case globals.BLOCKED:
 		ME.Blocked++
 		MT.Blocked += tiempoEnEstado
@@ -78,14 +76,14 @@ func EnviarProcesoAEjecutar_ACPU(ip string, puerto int64, pid int64, pc int64, n
 	//log.Printf("cpu libre elegida ip: %s, port: %d, pid: %d, pc: %d", ip, puerto, pid, pc)
 	body, err := json.Marshal(proc)
 	if err != nil {
-		log.Printf("error codificando proceso a ejecutar: %s", err.Error())
+		slog.Debug(fmt.Sprintf("error codificando proceso a ejecutar: %s", err.Error()))
 	}
 
 	// Posible problema con el int64 del puerto
 	url := fmt.Sprintf("http://%s:%d/dispatchProceso", ip, puerto)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		log.Printf("error enviando mensaje a ip:%s puerto:%d, error: %v", ip, puerto, err)
+		slog.Debug(fmt.Sprintf("error enviando mensaje a ip:%s puerto:%d, error: %v", ip, puerto, err))
 	}
 
 	slog.Debug(fmt.Sprintf("Proceso PID %d enviado a %s, respuesta: %s", pid, nombre, resp.Status))
@@ -113,17 +111,17 @@ func SolicitarInicializarProcesoAMemoria_DesdeNEW(proceso globals.Proceso_Nuevo)
 	}
 	body, err := json.Marshal(mensaje)
 	if err != nil {
-		log.Printf("error codificando mensaje: %s", err.Error())
+		slog.Debug(fmt.Sprintf("error codificando mensaje: %s", err.Error()))
 	}
 
 	// Posible problema con el int64 del puerto
 	url := fmt.Sprintf("http://%s:%d/iniciarProceso", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		log.Printf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
+		slog.Debug(fmt.Sprintf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory))
 	}
 
-	log.Printf("respuesta del servidor: %s", resp.Status)
+	slog.Debug(fmt.Sprintf("respuesta del servidor: %s", resp.Status))
 
 	if resp.Status == "200 OK" {
 		return true
@@ -139,16 +137,16 @@ func SolicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid int64) bool {
 
 	body, err := json.Marshal(mensaje)
 	if err != nil {
-		log.Printf("error codificando mensaje: %s", err.Error())
+		slog.Debug(fmt.Sprintf("error codificando mensaje: %s", err.Error()))
 	}
 
 	url := fmt.Sprintf("http://%s:%d/reanudarProceso", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		log.Printf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
+		slog.Debug(fmt.Sprintf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory))
 	}
 
-	log.Printf("respuesta del servidor: %s", resp.Status)
+	slog.Debug(fmt.Sprintf("respuesta del servidor: %s", resp.Status))
 
 	if resp.Status == "200 OK" {
 		return true

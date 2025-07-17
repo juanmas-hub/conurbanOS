@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -17,8 +18,8 @@ func IniciarConfiguracion(filePath string) *globals.Io_Config {
 	var config *globals.Io_Config
 	configFile, err := os.Open(filePath)
 	if err != nil {
-		log.Print("error: ", err)
-		log.Fatal(err.Error())
+		log.Println("error: ", err)
+		log.Println(err.Error())
 	}
 	defer configFile.Close()
 
@@ -38,7 +39,7 @@ func HandshakeAKernel(ip string, puerto int64, nombreIO string, ipIO string, pue
 	}
 	body, err := json.Marshal(handshake)
 	if err != nil {
-		log.Printf("error codificando mensaje: %s", err.Error())
+		slog.Debug(fmt.Sprintf("error codificando mensaje: %s", err.Error()))
 	}
 
 	url := fmt.Sprintf("http://%s:%d/handshakeIO", ip, puerto)
@@ -46,29 +47,30 @@ func HandshakeAKernel(ip string, puerto int64, nombreIO string, ipIO string, pue
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 
 	if err != nil {
-		log.Printf("error en el handshake a ip:%s puerto:%d", ip, puerto)
+		slog.Debug(fmt.Sprintf("error en el handshake a ip:%s puerto:%d", ip, puerto))
 	}
 
-	log.Printf("respuesta del servidor (handshake): %s", resp.Status)
+	slog.Debug(fmt.Sprintf("respuesta del servidor (handshake): %s", resp.Status))
 
 }
 
-// Todavia esta funcion no se usa
 func RecibirSolicitudDeKernel(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var solicitud globals.SolicitudIO
 	err := decoder.Decode(&solicitud)
 	if err != nil {
-		log.Printf("Error al decodificar solicitud de IO: %s\n", err.Error())
+		slog.Debug(fmt.Sprintf("Error al decodificar solicitud de IO: %s\n", err.Error()))
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Error al decodificar solicitud de IO"))
 		return
 	}
 
-	log.Println("Me llego solicitud de IO")
-	log.Printf("%+v\n", solicitud)
+	slog.Debug(fmt.Sprint("Me llego solicitud de IO"))
+	slog.Debug(fmt.Sprintf("%+v\n", solicitud))
 
 	globals.PidProcesoActual = solicitud.PID
+
+	slog.Info(fmt.Sprintf("## PID: %d - Inicio de IO - Tiempo: %d", solicitud.PID, solicitud.Tiempo))
 
 	go USleep(solicitud.Tiempo, solicitud.PID)
 
@@ -89,9 +91,12 @@ func EnviarFinalizacionIOAKernel(ip string, puerto int64, pid int64) {
 		NombreIO:        globals.IoConfig.NombreIO,
 		NombreInstancia: globals.NombreInstancia,
 	}
+
+	slog.Info(fmt.Sprintf("## PID: %d - Fin de IO", pid))
+
 	body, err := json.Marshal(mensaje)
 	if err != nil {
-		log.Printf("error codificando mensaje: %s", err.Error())
+		slog.Debug(fmt.Sprintf("error codificando mensaje: %s", err.Error()))
 	}
 
 	globals.PidProcesoActual = -1
@@ -102,10 +107,10 @@ func EnviarFinalizacionIOAKernel(ip string, puerto int64, pid int64) {
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 
 	if err != nil {
-		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+		slog.Debug(fmt.Sprintf("error enviando mensaje a ip:%s puerto:%d", ip, puerto))
 	}
 
-	log.Printf("respuesta del servidor: %s", resp.Status)
+	slog.Debug(fmt.Sprintf("respuesta del servidor: %s", resp.Status))
 
 }
 
@@ -120,7 +125,7 @@ func Desconectar(ip string, puerto int64, pid int64) {
 	}
 	body, err := json.Marshal(mensaje)
 	if err != nil {
-		log.Printf("error codificando mensaje: %s", err.Error())
+		slog.Debug(fmt.Sprintf("error codificando mensaje: %s", err.Error()))
 	}
 
 	// Posible problema con el int64 del puerto
@@ -129,9 +134,9 @@ func Desconectar(ip string, puerto int64, pid int64) {
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 
 	if err != nil {
-		log.Printf("error enviando mensaje a ip:%s puerto:%d", ip, puerto)
+		slog.Debug(fmt.Sprintf("error enviando mensaje a ip:%s puerto:%d", ip, puerto))
 	}
 
-	log.Printf("respuesta del servidor: %s", resp.Status)
+	slog.Debug(fmt.Sprintf("respuesta del servidor: %s", resp.Status))
 
 }

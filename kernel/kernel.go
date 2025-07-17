@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -28,19 +29,15 @@ func main() {
 	// INIT
 
 	if len(os.Args) != 4 {
-		log.Fatal("Uso: go run . archivo tamaño prueba")
+		slog.Debug(fmt.Sprintf("Uso: go run . archivo tamaño prueba"))
 	}
-
-	slog.Debug("    ")
-	slog.Debug("    ")
-	slog.Debug("    ")
 
 	archivo := os.Args[1]
 	tamanioStr := os.Args[2]
 	tamanioProceso, err := strconv.ParseInt(tamanioStr, 10, 64)
 
 	if err != nil {
-		log.Fatalf("Error al convertir el tamaño a int64: %v", err)
+		slog.Debug(fmt.Sprintf("Error al convertir el tamaño a int64: %v", err))
 	}
 
 	go planificadores.IniciarPlanificadorLargoPlazo(archivo, tamanioProceso)
