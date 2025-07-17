@@ -64,7 +64,7 @@ func HandshakeAKernel(ip string, puerto int64, nombreCPU string, ipCPU string, p
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 
 	if err != nil {
-		slog.Debug(fmt.Sprintf("error en el handshake a ip:%s puerto:%d", ip, puerto))
+		slog.Debug(fmt.Sprintf("error en el handshake a ip:%s puerto:%d, error: %+v", ip, puerto, err))
 		return
 	}
 	if resp == nil {
