@@ -11,6 +11,7 @@ import (
 )
 
 func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
+	
 	decoder := json.NewDecoder(r.Body)
 	var handshake globals.HandshakeIO
 	err := decoder.Decode(&handshake)
@@ -31,8 +32,14 @@ func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
 }
 
 func RecibirHandshakeCPU(w http.ResponseWriter, r *http.Request) {
+	
+	slog.Debug(fmt.Sprint("Me llego un handshaek de CPU"))
+	
 	decoder := json.NewDecoder(r.Body)
 	var handshake globals.Handshake
+	
+	slog.Debug(fmt.Sprint("Handshake: ", handshake))
+	
 	err := decoder.Decode(&handshake)
 	if err != nil {
 		slog.Debug(fmt.Sprintf("Error al decodificar handshake: %s\n", err.Error()))
