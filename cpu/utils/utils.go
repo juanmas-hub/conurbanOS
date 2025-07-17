@@ -65,8 +65,12 @@ func HandshakeAKernel(ip string, puerto int64, nombreCPU string, ipCPU string, p
 
 	if err != nil {
 		slog.Debug(fmt.Sprintf("error en el handshake a ip:%s puerto:%d", ip, puerto))
+		return
 	}
-
+	if resp == nil {
+	    slog.Debug("respuesta nula del servidor")
+	    return
+	}
 	slog.Debug(fmt.Sprintf("respuesta del servidor (handshake): %s", resp.Status))
 
 }
