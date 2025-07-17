@@ -30,62 +30,11 @@ type Memoria_Metrica struct {
 	EscriturasMemoria        int `json:"escrituras_memoria"`
 }
 
-/*
-type MetricasMap map[int]*Memoria_Metrica
-
-var Metricas *MetricasMap
-*/
 
 var MetricasMap map[int]Memoria_Metrica
 
 var Memoria []byte
 var MemoriaMarcosOcupados []bool
-
-/*
-// Entrada de una tabla de páginas
-type EntradaTablaPagina struct {
-	Nivel          int
-	Marco          int
-	Presencia      int
-	Uso            int
-	Modificado     int
-	SiguienteNivel *TablaDePaginas // Ya se inicializa por defecto como null
-}
-
-type TablaDePaginas struct {
-	Entradas []EntradaTablaPagina
-}
-
-type Manager map[int]*TablaDePaginas
-
-var Tablas *Manager
-
-
-type PaginaDTO struct {
-	Contenido string
-	Entrada   *EntradaTablaPagina
-}
-
-type Pagina struct {
-	Pid				   int
-	//NumeroDePagina	   int
-	IndiceAsignado     int
-	IndiceSwapAsignado int
-	EntradaAsignada    *EntradaTablaPagina
-}
-
-type Proceso struct {
-	Pseudocodigo    []string
-	MarcosAsignados []Pagina
-	Suspendido      bool
-	PaginasSWAP     []Pagina
-}
-
-type ProcesosMap map[int]*Proceso
-
-var Procesos ProcesosMap
-
-*/
 
 type IniciarProcesoDTO struct {
 	ArchivoPseudocodigo string `json:"archivo_pseudocodigo"`
@@ -134,12 +83,6 @@ type ActualizarPaginaDTO struct {
 }
 
 var Prueba string
-
-/*
-var ListaPaginasSwapDisponibles []Pagina
-
-var ProximoIndiceSwap int
-*/
 
 var IndicesSWAPOcupados []bool
 
@@ -243,5 +186,6 @@ Memory Dump:
 		entonces no tendria sentido tenerlo, porque solo voy a tener el contenido en un lugar
 	- Bit Presencia: si la pagina está en memoria (suspendido = false), todas las paginas estan en memoria. Si está suspendido, este bit no importa porque todas las paginas estan en swap
 
-- Nose que vendria a ser "Acceso a TP"
+- Nose que vendria a ser "Acceso a TP" 
+- ¿skibidi toilet?
 */

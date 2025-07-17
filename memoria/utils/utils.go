@@ -1,17 +1,12 @@
 package utils
 
 import (
-	//"encoding/json"
-	//"fmt"
 	"bufio"
 	"fmt"
 	"log/slog"
-
-	//"net/http"
 	"os"
 	"strings"
 
-	//globals "github.com/sisoputnfrba/tp-golang/globals/memoria"
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
@@ -96,27 +91,6 @@ func verificarPIDUnico(pid int) int {
 	}
 	return -1
 }
-
-/*
-func IncrementarMetrica(metrica string, pid int, cantidad int) {
-	switch metrica {
-	case "ACCESOS_TABLAS":
-		(*globals_memoria.Metricas)[pid].AccesosTablas += cantidad
-	case "INSTRUCCIONES_SOLICITADAS":
-		(*globals_memoria.Metricas)[pid].InstruccionesSolicitadas += cantidad
-	case "BAJADAS_SWAP":
-		(*globals_memoria.Metricas)[pid].BajadasSwap += cantidad
-	case "SUBIDAS_MEMORIA":
-		(*globals_memoria.Metricas)[pid].SubidasMemoria += cantidad
-	case "LECTURAS_MEMORIA":
-		(*globals_memoria.Metricas)[pid].LecturasMemoria += cantidad
-	case "ESCRITURAS_MEMORIA":
-		(*globals_memoria.Metricas)[pid].EscriturasMemoria += cantidad
-	default:
-		log.Printf("Métrica desconocida: %s\n", metrica)
-	}
-}
-*/
 
 func IncrementarMetrica(metrica string, pid int, cantidad int) {
 	metricas := globals_memoria.MetricasMap[pid]
