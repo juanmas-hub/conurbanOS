@@ -34,6 +34,8 @@ func ActualizarMetricas(proceso globals.Proceso, estadoAnterior string) globals.
 	MT := proceso.Pcb.MT
 	tiempoEnEstado := ahora.Sub(proceso.UltimoCambioDeEstado)
 
+	slog.Debug(fmt.Sprintf("Se llego a ActualizarMetricas. Estado anterior: %s. Tiempo: %d", estadoAnterior, tiempoEnEstado))
+
 	switch estadoAnterior {
 	case globals.NEW:
 		ME.New++
@@ -44,6 +46,7 @@ func ActualizarMetricas(proceso globals.Proceso, estadoAnterior string) globals.
 	case globals.EXECUTE:
 		ME.Execute++
 		MT.Execute += tiempoEnEstado
+		slog.Debug(fmt.Sprint("Se llego a globals.EXECUTE."))
 	case globals.BLOCKED:
 		ME.Blocked++
 		MT.Blocked += tiempoEnEstado

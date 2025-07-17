@@ -234,6 +234,7 @@ func manejarDUMP_MEMORY(syscallDUMP globals.SyscallDump) {
 }
 
 func manejarEXIT(syscallEXIT globals.SyscallExit) {
+
 	logSyscalls(syscallEXIT.PID, "EXIT")
 
 	planificadores.FinalizarProceso(syscallEXIT.PID)

@@ -51,7 +51,9 @@ func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
 		//slog.Debug(fmt.Sprint(estadoNuevo, ": ", globals.ESTADOS.READY))
 	} else if estadoNuevo == globals.EXIT {
 
+		slog.Debug(fmt.Sprint("Se llego a CambiarEstado"))
 		proceso = general.ActualizarMetricas(proceso, estadoViejo)
+		slog.Debug(fmt.Sprint("Actualizadas metricas."))
 		eliminarProcesoDeSuCola(pid, proceso.Estado_Actual)
 		logExit(proceso)
 
