@@ -22,20 +22,27 @@ func main() {
 	nombreCPU := os.Args[1]
 	prueba := os.Args[2]
 
+	slog.Debug(fmt.Sprint("NombreCPU: ", nombreCPU))
+	slog.Debug(fmt.Sprint("Prueba: ", prueba))
+
 	utils_logger.ConfigurarLogger("cpu.log")
 	globals_cpu.CpuConfig = utils_cpu.IniciarConfiguracion(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/" + nombreCPU + ".config")
 	if globals_cpu.CpuConfig == nil {
 		log.Fatal("No se pudo iniciar el config de cpu")
 	}
+
+	slog.Debug(fmt.Sprint("Paso config cpu"))
+	
 	globals_cpu.MemoriaConfig = utils_cpu.IniciarConfiguracionMemoria(utils_logger.CONFIGS_DIRECTORY + "/" + prueba + "/Memoria.config")
 	if globals_cpu.MemoriaConfig == nil {
 		log.Fatal("No se pudo iniciar el config de memoria")
 	}
+	slog.Debug(fmt.Sprint("Paso config memoria"))
 
 	slog.SetLogLoggerLevel(utils_logger.Log_level_from_string(globals_cpu.CpuConfig.Log_level))
 
 	slog.Debug(globals_cpu.CpuConfig.Log_level)
-
+	
 	utils_cpu.HandshakeAKernel(
 		globals_cpu.CpuConfig.Ip_kernel,
 		globals_cpu.CpuConfig.Port_kernel,
@@ -44,6 +51,8 @@ func main() {
 		globals_cpu.CpuConfig.Port_cpu,
 	)
 
+	slog.Debug(fmt.Sprint("Paso handshake"))
+	
 	if globals.CpuConfig.Cache_entries > 0 {
 		utils_cpu.NuevaCache(globals.CpuConfig.Cache_entries, globals.CpuConfig.Cache_replacement)
 	}
