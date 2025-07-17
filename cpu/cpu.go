@@ -75,14 +75,14 @@ func main() {
 				}
 				slog.Debug(fmt.Sprintf("Instrucción decodificada correctamente: %+v", instruccionDeco))
 
+				slog.Info(fmt.Sprintf("## PID: %d- Ejecutando: %s - %v", pcb.Pid, instruccionDeco.Nombre, instruccionDeco.Parametros))
+
 				resultadoEjecucion, err := utils_cpu.Execute(instruccionDeco, &pcb) //ejecutamos instruccion
 
 				if err != nil {
 					slog.Debug(fmt.Sprintf("Error al ejecutar instruccion: %s", err))
 					continue
 				}
-
-				slog.Info(fmt.Sprintf("## PID: %d- Ejecutando: %s - %v", pcb.Pid, instruccionDeco.Nombre, instruccionDeco.Parametros))
 
 				slog.Debug(fmt.Sprintf("Finalizado: nuevo PC = %d", pcb.PC))
 

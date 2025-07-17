@@ -1059,7 +1059,7 @@ func EscribirCache(entradaCache *globals.CacheEntry, desplazamiento int64, dato 
 	entradaCache.R = true
 	entradaCache.D = true
 
-	fmt.Printf("DEBUG: dirección entradaCache: %p\n", entradaCache)
+	//fmt.Printf("DEBUG: dirección entradaCache: %p\n", entradaCache)
 
 	return nil
 }
