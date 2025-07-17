@@ -47,6 +47,8 @@ func IniciarConfiguracionMemoria(filePath string) *globals.Memoria_Config {
 
 func HandshakeAKernel(ip string, puerto int64, nombreCPU string, ipCPU string, puertoCPU int64) {
 
+	slog.Debug(fmt.Sprintf("Parametros:", ip, " ", puerto, " ", nombreCPU, " ", ipCPU, " ", puertoCPU))
+	 
 	handshake := globals.HandshakeCPU{
 		Nombre: nombreCPU,
 		IP:     ipCPU,
