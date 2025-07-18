@@ -260,9 +260,7 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 }
 
 func obtenerMarcoDesdeTabla(pid int, entradas []int64) int {
-	//(*globals_memoria.Metricas)[pid].AccesosTablas++
-
-	IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
+	IncrementarMetrica("ACCESOS_TABLAS", pid, 5)
 
 	var NUMBER_OF_LEVELS int = int(globals_memoria.MemoriaConfig.Number_of_levels)
 	tabla := globals.Procesos[pid].TablaDePaginas
@@ -273,7 +271,6 @@ func obtenerMarcoDesdeTabla(pid int, entradas []int64) int {
 		indiceActual = int(entradas[i])
 		entrada := tabla.Entradas[indiceActual]
 		tabla = *entrada.SiguienteNivel
-
 	}
 
 	indiceActual = int(entradas[len(entradas)-1])
