@@ -106,13 +106,13 @@ func manejarIO(syscallIO globals.SyscallIO) {
 		globals.ListaIOsMutex.Unlock()
 		return
 	}
+	globals.MapaProcesosMutex.Unlock()
 
 	// Motivo de Bloqueo: ## (<PID>) - Bloqueado por IO: <DISPOSITIVO_IO>
 	slog.Info(fmt.Sprintf("## (%d) - Bloqueado por IO: %s", syscallIO.PID, syscallIO.NombreIO))
 
 	if !VerificarExistenciaIO(syscallIO.NombreIO) {
 		slog.Debug(fmt.Sprint("No existe IO: ", syscallIO.NombreIO))
-		globals.MapaProcesosMutex.Unlock()
 		globals.ListaIOsMutex.Unlock()
 		planificadores.FinalizarProceso(syscallIO.PID, globals.EXECUTE)
 		general.LiberarCPU(syscallIO.NombreCPU)
@@ -124,7 +124,6 @@ func manejarIO(syscallIO globals.SyscallIO) {
 	io := globals.MapaIOs[syscallIO.NombreIO]
 	general.ActualizarPC(syscallIO.PID, syscallIO.PC)
 
-	globals.MapaProcesosMutex.Unlock()
 	general.LogUnlockeo("MapaProcesos", "manejarIO")
 
 	// Si hay instancias libres, envio solicitud, sino agrego a la cola
