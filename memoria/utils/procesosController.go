@@ -3,10 +3,11 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"log/slog"
-	"time"
 	"log"
+	"log/slog"
 	"net/http"
+	"time"
+
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
 
@@ -28,8 +29,6 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 	var pid int = int(mensaje.Pid)
 	var tamanio int = int(mensaje.Tamanio)
 
-	var delay int64 = globals_memoria.MemoriaConfig.Memory_delay
-	time.Sleep(time.Duration(delay) * time.Millisecond)
 	if AlmacenarProceso(pid, tamanio, mensaje.ArchivoPseudocodigo) < 0 {
 		w.WriteHeader(http.StatusNotImplemented)
 		w.Write([]byte("notImplemented"))
@@ -59,8 +58,6 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 	var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
 
 	time.Sleep(time.Duration(delay) * time.Millisecond)
-
-	
 
 	proceso := globals_memoria.Procesos[pid]
 
@@ -103,16 +100,9 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 	var pid int = int(mensaje.Pid)
 
 	if globals_memoria.Procesos[pid].Suspendido {
-		var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
-		var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
-
-		time.Sleep(time.Duration(delay+delayMem) * time.Millisecond)
 		eliminarPaginasSWAP(pid)
 	} else {
 
-		var delay int64 = globals_memoria.MemoriaConfig.Memory_delay
-
-		time.Sleep(time.Duration(delay) * time.Millisecond)
 		eliminarMarcosFisicos(pid)
 	}
 

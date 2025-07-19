@@ -58,6 +58,11 @@ func pasarProcesosAReady() {
 
 			slog.Debug(fmt.Sprintf("Procesos en SUSP_READY: %d", len(globals.ESTADOS.SUSP_READY)))
 			for lenghtSUSP_READY > 0 {
+
+				if globals.KernelConfig.New_algorithm == "PMCP" {
+					ordenarSuspReadyPorTamanio()
+				}
+
 				pid := globals.ESTADOS.SUSP_READY[0]
 				if general.SolicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid) == false {
 					break
@@ -135,6 +140,7 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		Estado_Actual:        globals.NEW,
 		Rafaga:               nil,
 		UltimoCambioDeEstado: time.Now(),
+		Tamaño:               tamanio,
 	}
 
 	if globals.KernelConfig.Scheduler_algorithm != "FIFO" {
@@ -239,4 +245,11 @@ func enviarFinalizacionDeProceso_AMemoria(ip string, puerto int64, pid int64) bo
 		return true
 	}
 	return false
+}
+
+func ordenarSuspReadyPorTamanio() {
+	// Con ordenar por tamaño (mas chicho primero) ya el algoritmo PMCP estaria hecho
+	sort.Slice(globals.ESTADOS.SUSP_READY, func(i, j int) bool {
+		return globals.MapaProcesos[globals.ESTADOS.SUSP_READY[i]].Tamaño < globals.MapaProcesos[globals.ESTADOS.SUSP_READY[j]].Tamaño
+	})
 }

@@ -47,8 +47,8 @@ func IniciarConfiguracionMemoria(filePath string) *globals.Memoria_Config {
 
 func HandshakeAKernel(ip string, puerto int64, nombreCPU string, ipCPU string, puertoCPU int64) {
 
-	slog.Debug(fmt.Sprintf("Parametros:", ip, " ", puerto, " ", nombreCPU, " ", ipCPU, " ", puertoCPU))
-	 
+	slog.Debug(fmt.Sprint("Parametros:", ip, " ", puerto, " ", nombreCPU, " ", ipCPU, " ", puertoCPU))
+
 	handshake := globals.HandshakeCPU{
 		Nombre: nombreCPU,
 		IP:     ipCPU,
@@ -68,8 +68,8 @@ func HandshakeAKernel(ip string, puerto int64, nombreCPU string, ipCPU string, p
 		return
 	}
 	if resp == nil {
-	    slog.Debug("respuesta nula del servidor")
-	    return
+		slog.Debug("respuesta nula del servidor")
+		return
 	}
 	slog.Debug(fmt.Sprintf("respuesta del servidor (handshake): %s", resp.Status))
 
@@ -654,6 +654,9 @@ func NuevaTLB(capacidad int64, algoritmo string) { //CREA LA TLB
 
 func BuscarPaginaEnCache(paginaVirtual int64, pid int64) (*globals.CacheEntry, bool, error) {
 
+	var delay int64 = globals_cpu.CpuConfig.Cache_delay
+	time.Sleep(time.Duration(delay) * time.Millisecond)
+
 	// 1. Intentar encontrar la página virtual en el mapa auxiliar
 	index, found := globals.ElCache.PaginaIndex[paginaVirtual]
 
@@ -1056,6 +1059,10 @@ func ActualizarPaginaMemoria(pid int64, direccionFisica int64, contenido []byte)
 
 // (10) funcion que escriba en cache
 func EscribirCache(entradaCache *globals.CacheEntry, desplazamiento int64, dato string) error {
+
+	var delay int64 = globals_cpu.CpuConfig.Cache_delay
+	time.Sleep(time.Duration(delay) * time.Millisecond)
+
 	bytesAEscribir := []byte(dato)
 	tamanio := int64(len(bytesAEscribir))
 	if desplazamiento+tamanio > 64 {

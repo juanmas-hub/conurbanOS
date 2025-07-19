@@ -169,6 +169,7 @@ type Proceso struct {
 	Estado_Actual        string
 	Rafaga               *Rafagas
 	UltimoCambioDeEstado time.Time
+	Tamaño               int64
 }
 
 type Proceso_Nuevo struct {

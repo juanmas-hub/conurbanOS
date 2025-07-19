@@ -3,8 +3,9 @@ package utils
 import (
 	"fmt"
 	"log/slog"
-	"time"
 	"os"
+	"time"
+
 	globals "github.com/sisoputnfrba/tp-golang/globals/memoria"
 	globals_memoria "github.com/sisoputnfrba/tp-golang/globals/memoria"
 )
@@ -144,7 +145,6 @@ func buscarMarcosDisponibles(cantidad int) []int {
 	return nil
 }
 
-
 func actualizarTablaPaginas(pid int, paginasLinkeadas []globals_memoria.PaginaLinkeada) {
 	proceso := globals_memoria.Procesos[pid]
 
@@ -262,11 +262,11 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 func obtenerMarcoDesdeTabla(pid int, entradas []int64) int {
 	//(*globals_memoria.Metricas)[pid].AccesosTablas++
 
-	IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
-
 	var NUMBER_OF_LEVELS int = int(globals_memoria.MemoriaConfig.Number_of_levels)
 	tabla := globals.Procesos[pid].TablaDePaginas
 	var indiceActual int
+
+	IncrementarMetrica("ACCESOS_TABLAS", pid, NUMBER_OF_LEVELS)
 
 	for i := 0; i < NUMBER_OF_LEVELS-1; i++ {
 

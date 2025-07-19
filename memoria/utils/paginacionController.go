@@ -100,8 +100,11 @@ func ObtenerMarcoProceso(w http.ResponseWriter, r *http.Request) {
 	var marco int
 	var delayMem int64 = globals_memoria.MemoriaConfig.Memory_delay
 
-	time.Sleep(time.Duration(delayMem) * time.Millisecond)
 	marco = obtenerMarcoDesdeTabla(pid, entradas)
+
+	for i := 0; i < len(entradas); i++ {
+		time.Sleep(time.Duration(delayMem) * time.Millisecond)
+	}
 
 	if marco < 0 {
 		slog.Debug(fmt.Sprintf("Error al obtener marco"))
