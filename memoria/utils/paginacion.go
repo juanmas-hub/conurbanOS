@@ -125,7 +125,7 @@ func construirNivel(pid int, nivel int, entradasPorPagina int, frameIndex *int, 
 		}
 	}
 
-	IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
+	//IncrementarMetrica("ACCESOS_TABLAS", pid, 1)
 	return tabla
 }
 
