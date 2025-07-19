@@ -23,14 +23,13 @@ func EjecutarPlanificadorMedioPlazo(proceso globals.Proceso, razon string) bool 
 		return false
 	}
 
-	globals.CantidadSesionesIOMutex.Lock()
-	cantidadSesiones := globals.CantidadSesionesIO[proceso.Pcb.Pid]
-	globals.CantidadSesionesIOMutex.Unlock()
-
 	globals.EstadosMutex.Unlock()
 	general.LogUnlockeo("Estados", "EjecutarPlanificadorMedioPlazo")
 	globals.MapaProcesosMutex.Unlock()
 	general.LogUnlockeo("MapaProcesos", "EjecutarPlanificadorMedioPlazo")
+	globals.CantidadSesionesIOMutex.Lock()
+	cantidadSesiones := globals.CantidadSesionesIO[proceso.Pcb.Pid]
+	globals.CantidadSesionesIOMutex.Unlock()
 
 	// -- Timer hasta ser suspendido
 
@@ -75,14 +74,19 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 
 	//log.Printf("Cantidad sesiones actual: %d, previa: %d", cantidadSesionesActual, cantidadSesionesPrevia)
 
+	globals.MapaProcesosMutex.Unlock()
+	general.LogUnlockeo("MapaProcesos", "sigueBloqueado")
+	
 	if cantidadSesionesActual == cantidadSesionesPrevia && procesoActualmente.Estado_Actual == globals.BLOCKED {
 
 		// Cambio de estado
 		general.LogIntentoLockeo("Estados", "sigueBloqueado")
+		globals.MapaProcesosMutex.Lock()
 		globals.EstadosMutex.Lock()
 		general.LogLockeo("Estados", "sigueBloqueado")
 		ok := CambiarEstado(procesoActualmente.Pcb.Pid, globals.BLOCKED, globals.SUSP_BLOCKED)
 		globals.EstadosMutex.Unlock()
+		globals.MapaProcesosMutex.Unlock()
 		general.LogUnlockeo("Estados", "sigueBloqueado")
 
 		if ok {
@@ -99,6 +103,4 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 		}
 	}
 
-	globals.MapaProcesosMutex.Unlock()
-	general.LogUnlockeo("MapaProcesos", "sigueBloqueado")
 }
