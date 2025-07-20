@@ -6,11 +6,10 @@ import (
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
-	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
 )
 
 // Se tiene que llamar con Estados Mutex y Mapa Procesos lockeado
-func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
+/*func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
 
 	var proceso globals.Proceso
 	var presente bool
@@ -30,7 +29,7 @@ func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
 
 	// Transicion NEW -> READY
 	if estadoViejo == globals.NEW && estadoNuevo == globals.READY {
-		procesoEnNew := globals.ESTADOS.NEW[0]
+		procesoEnNew := globals.Cola_new[0]
 		proceso = globals.Proceso{
 			Pcb:                  procesoEnNew.Proceso.Pcb,
 			Estado_Actual:        globals.READY,
@@ -38,8 +37,8 @@ func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
 			UltimoCambioDeEstado: procesoEnNew.Proceso.UltimoCambioDeEstado,
 		}
 
-		globals.ESTADOS.NEW = globals.ESTADOS.NEW[1:]
-		okey := agregarProcesoACola(&globals.ESTADOS.READY, pid)
+		globals.Cola_new = globals.Cola_new[1:]
+		okey := agregarProcesoACola(&globals.Cola_ready, pid)
 		if !okey {
 			slog.Debug(fmt.Sprintf("PID %d ya estaba en READY, se evitó duplicación", pid))
 			return false
@@ -91,14 +90,11 @@ func CambiarEstado(pid int64, estadoViejo string, estadoNuevo string) bool {
 	slog.Info(fmt.Sprintf("## (%d) Pasa del estado %s al estado %s", pid, estadoViejo, estadoNuevo))
 
 	if necesitaReplanificarLargo(estadoViejo, estadoNuevo) {
-		globals.DeDondeSeLlamaMutex.Lock()
-		globals.DeDondeSeLlamaPasarProcesosAReady = estadoNuevo
-		globals.DeDondeSeLlamaMutex.Unlock()
 		globals.SignalPasarProcesoAReady()
 	}
 
 	return true
-}
+}*/
 
 func necesitaActualizarEstimado(estadoViejo string, estadoNuevo string) bool {
 
@@ -108,15 +104,15 @@ func necesitaActualizarEstimado(estadoViejo string, estadoNuevo string) bool {
 func obtenerColaPorEstado(estado string) *[]int64 {
 	switch estado {
 	case globals.READY:
-		return &globals.ESTADOS.READY
+		return &globals.Cola_ready
 	case globals.EXECUTE:
-		return &globals.ESTADOS.EXECUTE
+		return &globals.Cola_execute
 	case globals.BLOCKED:
-		return &globals.ESTADOS.BLOCKED
+		return &globals.Cola_blocked
 	case globals.SUSP_BLOCKED:
-		return &globals.ESTADOS.SUSP_BLOCKED
+		return &globals.Cola_susp_blocked
 	case globals.SUSP_READY:
-		return &globals.ESTADOS.SUSP_READY
+		return &globals.Cola_susp_ready
 	}
 	return nil
 }
@@ -125,6 +121,7 @@ func necesitaReplanificarLargo(estadoViejo string, estadoNuevo string) bool {
 	return (estadoViejo == globals.SUSP_BLOCKED && estadoNuevo == globals.SUSP_READY)
 }
 
+/*
 func moverEntreColas(proceso globals.Proceso, colaVieja *[]int64, colaNueva *[]int64) {
 
 	ok := eliminarProcesoDeCola(colaVieja, proceso.Pcb.Pid)
@@ -138,7 +135,7 @@ func moverEntreColas(proceso globals.Proceso, colaVieja *[]int64, colaNueva *[]i
 		slog.Debug(fmt.Sprintf("PID %d ya estaba en SUSP_BLOCKED, se evitó duplicación", proceso.Pcb.Pid))
 	}
 
-}
+}*/
 
 func agregarProcesoACola(cola *[]int64, pid int64) bool {
 	if _, found := BuscarPIDEnCola(*cola, pid); !found {
@@ -151,6 +148,7 @@ func agregarProcesoACola(cola *[]int64, pid int64) bool {
 }
 
 func eliminarProcesoDeCola(cola *[]int64, pid int64) bool {
+
 	pos, found := BuscarPIDEnCola(*cola, pid)
 	if found {
 		*cola = append((*cola)[:pos], (*cola)[pos+1:]...)
@@ -170,47 +168,63 @@ func BuscarPIDEnCola(cola []int64, pid int64) (int64, bool) {
 	return -1, false
 }
 
-func BuscarPIDEnNEW(pid int64) (int64, bool) {
-	for i, valor := range globals.ESTADOS.NEW {
-		if valor.Proceso.Pcb.Pid == pid {
-			return int64(i), true
-		}
-	}
-	return -1, false
-}
-
 // Busco la cola correspondiente y elimino el proceso
-func eliminarProcesoDeSuCola(pid int64, estadoViejo string) bool {
+func eliminar_proceso_de(pid int64, estadoViejo string) bool {
 	switch estadoViejo {
 	case globals.BLOCKED:
-		if eliminarProcesoDeCola(&globals.ESTADOS.BLOCKED, pid) {
+
+		globals.BlockedMutex.Lock()
+		if eliminarProcesoDeCola(&globals.Cola_blocked, pid) {
+			globals.BlockedMutex.Unlock()
 			return true
 		}
+		globals.BlockedMutex.Unlock()
+
 	case globals.EXECUTE:
-		if eliminarProcesoDeCola(&globals.ESTADOS.EXECUTE, pid) {
+
+		globals.ExecuteMutex.Lock()
+		if eliminarProcesoDeCola(&globals.Cola_execute, pid) {
+			globals.ExecuteMutex.Unlock()
 			return true
 		}
+		globals.ExecuteMutex.Unlock()
+
 	case globals.NEW:
-		pos, found := BuscarPIDEnNEW(pid)
-		if found {
-			globals.ESTADOS.NEW = append(globals.ESTADOS.NEW[:pos], globals.ESTADOS.NEW[pos+1:]...)
+
+		globals.NewMutex.Lock()
+		if eliminarProcesoDeCola(&globals.Cola_new, pid) {
+			globals.NewMutex.Unlock()
 			return true
-		} else {
-			slog.Debug(fmt.Sprintf("PID %d no se encontro en NEW en EliminarProcesoDeSuCola", pid))
-			return false
 		}
+		globals.NewMutex.Unlock()
+
 	case globals.SUSP_BLOCKED:
-		if eliminarProcesoDeCola(&globals.ESTADOS.SUSP_BLOCKED, pid) {
+
+		globals.SuspBlockedMutex.Lock()
+		if eliminarProcesoDeCola(&globals.Cola_susp_blocked, pid) {
+			globals.SuspBlockedMutex.Unlock()
 			return true
 		}
+		globals.SuspBlockedMutex.Unlock()
+
 	case globals.SUSP_READY:
-		if eliminarProcesoDeCola(&globals.ESTADOS.SUSP_READY, pid) {
+
+		globals.SuspReadyMutex.Lock()
+		if eliminarProcesoDeCola(&globals.Cola_susp_ready, pid) {
+			globals.SuspReadyMutex.Unlock()
 			return true
 		}
+		globals.SuspReadyMutex.Unlock()
+
 	case globals.READY:
-		if eliminarProcesoDeCola(&globals.ESTADOS.READY, pid) {
+
+		globals.ReadyMutex.Lock()
+		if eliminarProcesoDeCola(&globals.Cola_ready, pid) {
+			globals.ReadyMutex.Unlock()
 			return true
 		}
+		globals.ReadyMutex.Unlock()
+
 	default:
 		slog.Debug(fmt.Sprintf("Error eliminando proceso PID: %d de su cola en EliminarDeSuCola", pid))
 		return false
@@ -218,28 +232,259 @@ func eliminarProcesoDeSuCola(pid int64, estadoViejo string) bool {
 	return false
 }
 
-func logExit(proceso globals.Proceso) {
+func ready_a_execute(pid int64) bool {
+	globals.ProcesosMutex[pid].Lock()
 
-	// LOG Fin de Proceso: ## (<PID>) - Finaliza el proceso
-	slog.Info(fmt.Sprintf("## (%d) - Finaliza el proceso", proceso.Pcb.Pid))
+	globals.ReadyMutex.Lock()
+	found := eliminarProcesoDeCola(&globals.Cola_ready, pid)
+	if !found {
+		return false
+	}
+	globals.ReadyMutex.Unlock()
 
-	// Counts
-	newCount := proceso.Pcb.ME.New
-	readyCount := proceso.Pcb.ME.Ready
-	execCount := proceso.Pcb.ME.Execute
-	blockedCount := proceso.Pcb.ME.Blocked
-	suspblockedCount := proceso.Pcb.ME.Susp_Blocked
-	suspreadyCount := proceso.Pcb.ME.Susp_Ready
+	globals.ExecuteMutex.Lock()
+	ok := agregarProcesoACola(&globals.Cola_execute, pid)
+	if !ok {
+		globals.ExecuteMutex.Unlock()
+		return false
+	}
+	globals.ExecuteMutex.Unlock()
 
-	// Times
-	newTimes := proceso.Pcb.MT.New.Milliseconds()
-	readyTimes := proceso.Pcb.MT.Ready.Milliseconds()
-	execTimes := proceso.Pcb.MT.Execute.Milliseconds()
-	blockedTimes := proceso.Pcb.MT.Blocked.Milliseconds()
-	suspblockedTimes := proceso.Pcb.MT.Susp_Blocked.Milliseconds()
-	suspreadyTimes := proceso.Pcb.MT.Susp_Ready.Milliseconds()
+	cambiar_estado(pid, globals.READY, globals.EXECUTE)
 
-	// LOG Métricas de Estado: ## (<PID>) - Métricas de estado: NEW (NEW_COUNT) (NEW_TIME), READY (READY_COUNT) (READY_TIME), …
-	slog.Info(fmt.Sprintf("## (%d) - Métricas de estado: NEW %d %dms, READY %d %dms, EXECUTE %d %dms, BLOCKED %d %dms, SUSP_BLOCKED %d %dms, SUSP_READY %d %dms", proceso.Pcb.Pid, newCount, newTimes, readyCount, readyTimes, execCount, execTimes, blockedCount, blockedTimes, suspblockedCount, suspblockedTimes, suspreadyCount, suspreadyTimes))
+	globals.ProcesosMutex[pid].Unlock()
 
+	return true
+}
+
+func susp_ready_a_ready(pid int64) bool {
+	globals.ProcesosMutex[pid].Lock()
+
+	found := eliminarProcesoDeCola(&globals.Cola_susp_ready, pid)
+	if !found {
+		return false
+	}
+
+	globals.ReadyMutex.Lock()
+	ok := agregarProcesoACola(&globals.Cola_ready, pid)
+	if !ok {
+		globals.ReadyMutex.Unlock()
+		return false
+	}
+	globals.ReadyMutex.Unlock()
+
+	cambiar_estado(pid, globals.SUSP_READY, globals.READY)
+
+	globals.ProcesosMutex[pid].Unlock()
+
+	return true
+}
+
+func new_a_ready(pid int64) bool {
+	globals.ProcesosMutex[pid].Lock()
+
+	found := eliminarProcesoDeCola(&globals.Cola_new, pid)
+	if !found {
+		return false
+	}
+
+	globals.ReadyMutex.Lock()
+	ok := agregarProcesoACola(&globals.Cola_ready, pid)
+	if !ok {
+		globals.ReadyMutex.Unlock()
+		return false
+	}
+	globals.ReadyMutex.Unlock()
+
+	cambiar_estado(pid, globals.NEW, globals.READY)
+
+	globals.ProcesosMutex[pid].Unlock()
+
+	return true
+}
+
+func execute_a_blocked(pid int64) bool {
+	globals.ProcesosMutex[pid].Lock()
+
+	globals.ExecuteMutex.Lock()
+	found := eliminarProcesoDeCola(&globals.Cola_execute, pid)
+	if !found {
+		globals.ExecuteMutex.Unlock()
+		return false
+	}
+	globals.ExecuteMutex.Unlock()
+
+	globals.BlockedMutex.Lock()
+	ok := agregarProcesoACola(&globals.Cola_blocked, pid)
+	if !ok {
+		globals.BlockedMutex.Unlock()
+		return false
+	}
+	globals.BlockedMutex.Unlock()
+
+	if globals.KernelConfig.Scheduler_algorithm != "FIFO" {
+
+		proceso := globals.MapaProcesos[pid]
+		ultimo_cambio_estado := proceso.UltimoCambioDeEstado
+		rafagaReal := float64(time.Since(ultimo_cambio_estado).Milliseconds())
+		actualizar_rafagas(proceso, rafagaReal)
+
+	}
+
+	cambiar_estado(pid, globals.EXECUTE, globals.BLOCKED)
+
+	globals.ProcesosMutex[pid].Unlock()
+
+	return true
+}
+
+func blocked_a_susp_blocked(pid int64) bool {
+
+	globals.BlockedMutex.Lock()
+	found := eliminarProcesoDeCola(&globals.Cola_blocked, pid)
+	if !found {
+		globals.BlockedMutex.Unlock()
+		return false
+	}
+	globals.BlockedMutex.Unlock()
+
+	globals.SuspBlockedMutex.Lock()
+	ok := agregarProcesoACola(&globals.Cola_susp_blocked, pid)
+	if !ok {
+		globals.SuspBlockedMutex.Unlock()
+		return false
+	}
+	globals.SuspBlockedMutex.Unlock()
+
+	cambiar_estado(pid, globals.BLOCKED, globals.SUSP_BLOCKED)
+
+	return true
+}
+
+func execute_a_ready(pid int64) bool {
+
+	globals.ExecuteMutex.Lock()
+	found := eliminarProcesoDeCola(&globals.Cola_execute, pid)
+	if !found {
+		globals.ExecuteMutex.Unlock()
+		return false
+	}
+	globals.ExecuteMutex.Unlock()
+
+	globals.ReadyMutex.Lock()
+	ok := agregarProcesoACola(&globals.Cola_ready, pid)
+	if !ok {
+		globals.ReadyMutex.Unlock()
+		return false
+	}
+	globals.ReadyMutex.Unlock()
+
+	cambiar_estado(pid, globals.EXECUTE, globals.READY)
+
+	return true
+}
+
+func Blocked_a_ready(pid int64) bool {
+	globals.BlockedMutex.Lock()
+	found := eliminarProcesoDeCola(&globals.Cola_blocked, pid)
+	if !found {
+		globals.BlockedMutex.Unlock()
+		return false
+	}
+	globals.BlockedMutex.Unlock()
+
+	globals.ReadyMutex.Lock()
+	ok := agregarProcesoACola(&globals.Cola_ready, pid)
+	if !ok {
+		globals.ReadyMutex.Unlock()
+		return false
+	}
+	globals.ReadyMutex.Unlock()
+
+	cambiar_estado(pid, globals.BLOCKED, globals.READY)
+
+	return true
+}
+
+func Susp_blocked_a_Susp_ready(pid int64) bool {
+	globals.SuspBlockedMutex.Lock()
+	found := eliminarProcesoDeCola(&globals.Cola_susp_blocked, pid)
+	if !found {
+		globals.SuspBlockedMutex.Unlock()
+		return false
+	}
+	globals.SuspBlockedMutex.Unlock()
+
+	globals.SuspReadyMutex.Lock()
+	ok := agregarProcesoACola(&globals.Cola_susp_ready, pid)
+	if !ok {
+		globals.SuspReadyMutex.Unlock()
+		return false
+	}
+	globals.SuspReadyMutex.Unlock()
+
+	cambiar_estado(pid, globals.SUSP_BLOCKED, globals.SUSP_READY)
+
+	return true
+}
+
+func agregar_a_new(pid int64) {
+
+	globals.NewMutex.Lock()
+	globals.Cola_new = append(globals.Cola_new, pid)
+
+	//log.Printf("Después de agregar, NEW tiene %d procesos", len(globals.ESTADOS.NEW))
+	if globals.KernelConfig.New_algorithm == "PMCP" {
+		ordenar_new()
+	}
+	globals.NewMutex.Unlock()
+
+	// LOG Creación de Proceso: "## (<PID>) Se crea el proceso - Estado: NEW"
+	slog.Info(fmt.Sprintf("## (%d) Se crea el proceso - Estado: NEW", pid))
+
+}
+
+func actualizar_metricas(pid int64, estadoAnterior string) {
+
+	proceso, ok := globals.MapaProcesos[pid]
+	if !ok {
+		return
+	}
+
+	ahora := time.Now()
+	tiempoEnEstado := ahora.Sub(proceso.UltimoCambioDeEstado)
+
+	switch estadoAnterior {
+	case globals.NEW:
+		proceso.Pcb.ME.New++
+		proceso.Pcb.MT.New += tiempoEnEstado
+	case globals.READY:
+		proceso.Pcb.ME.Ready++
+		proceso.Pcb.MT.Ready += tiempoEnEstado
+	case globals.EXECUTE:
+		proceso.Pcb.ME.Execute++
+		proceso.Pcb.MT.Execute += tiempoEnEstado
+	case globals.BLOCKED:
+		proceso.Pcb.ME.Blocked++
+		proceso.Pcb.MT.Blocked += tiempoEnEstado
+	case globals.SUSP_BLOCKED:
+		proceso.Pcb.ME.Susp_Blocked++
+		proceso.Pcb.MT.Susp_Blocked += tiempoEnEstado
+	case globals.SUSP_READY:
+		proceso.Pcb.ME.Susp_Ready++
+		proceso.Pcb.MT.Susp_Ready += tiempoEnEstado
+	default:
+	}
+	proceso.UltimoCambioDeEstado = ahora
+
+}
+
+func cambiar_estado(pid int64, estado_viejo string, estado_nuevo string) {
+	proceso := globals.MapaProcesos[pid]
+	proceso.Estado_Actual = estado_nuevo
+
+	actualizar_metricas(pid, estado_viejo)
+
+	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
+	slog.Info(fmt.Sprintf("## (%d) Pasa del estado %s al estado %s", pid, estado_viejo, estado_nuevo))
 }

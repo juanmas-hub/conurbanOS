@@ -2,13 +2,11 @@ package planificadores
 
 import (
 	"bufio"
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
@@ -30,108 +28,87 @@ func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 	}
 
 	go EjecutarPlanificadorCortoPlazo()
-	go pasarProcesosAReady()
+	go pasar_procesos_a_ready()
 
 	CrearProcesoNuevo(archivo, tamanio) // Primer proceso
 }
 
-func pasarProcesosAReady() {
-	// Ejecuta en un hilo
+func pasar_procesos_a_ready() {
 	// Esta funcion se ejecuta cuando llega un proceso a NEW, a EXIT, a SUSP_BLOCKED y a SUSP_READY
 	// Voy a intentar pasar la mayor cantidad de procesos que pueda mientras memoria tenga espacio
 
 	for {
-		//general.Wait(globals.Sem_PasarProcesoAReady)
+
 		globals.WaitPasarProcesoAReady()
-		if globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED == false {
 
-			general.LogIntentoLockeo("MapaProcesos", "pasarProcesosAReady")
-			globals.MapaProcesosMutex.Lock()
-			general.LogLockeo("MapaProcesos", "pasarProcesosAReady")
-			general.LogIntentoLockeo("Estados", "pasarProcesosAReady")
-			globals.EstadosMutex.Lock()
-			general.LogLockeo("Estados", "pasarProcesosAReady")
+		globals.SuspReadyMutex.Lock()
 
-			slog.Debug(fmt.Sprintf("Intentando pasar procesos a ready porque llego un proceso a:  %s", globals.DeDondeSeLlamaPasarProcesosAReady))
+		pasar_desde_susp_ready()
+		susp_empty := len(globals.Cola_susp_ready) == 0
 
-			var lenghtSUSP_READY = len(globals.ESTADOS.SUSP_READY)
+		globals.SuspReadyMutex.Unlock()
 
-			slog.Debug(fmt.Sprintf("Procesos en SUSP_READY: %d", len(globals.ESTADOS.SUSP_READY)))
-			for lenghtSUSP_READY > 0 {
-
-				if globals.KernelConfig.New_algorithm == "PMCP" {
-					ordenarSuspReadyPorTamanio()
-				}
-
-				pid := globals.ESTADOS.SUSP_READY[0]
-				if general.SolicitarInicializarProcesoAMemoria_DesdeSUSP_READY(pid) == false {
-					break
-				}
-
-				proceso := globals.MapaProcesos[pid]
-
-				CambiarEstado(proceso.Pcb.Pid, globals.SUSP_READY, globals.READY)
-				lenghtSUSP_READY--
-
-				switch globals.KernelConfig.Scheduler_algorithm {
-				case "FIFO", "SJF":
-					general.Signal(globals.Sem_ProcesosEnReady)
-				case "SRT":
-					slog.Debug(fmt.Sprintf("Notificando replanificación en pasarProcesosAReady - Llego un proceso a READY"))
-					general.NotificarReplanifSRT()
-				}
-			}
-
-			if lenghtSUSP_READY == 0 {
-
-				slog.Debug(fmt.Sprintf("Procesos en NEW: %d", len(globals.ESTADOS.SUSP_READY)))
-				for len(globals.ESTADOS.NEW) > 0 {
-
-					procesoNuevo := globals.ESTADOS.NEW[0]
-
-					if general.SolicitarInicializarProcesoAMemoria_DesdeNEW(procesoNuevo) == false {
-						break
-					}
-
-					CambiarEstado(procesoNuevo.Proceso.Pcb.Pid, globals.NEW, globals.READY)
-
-					switch globals.KernelConfig.Scheduler_algorithm {
-					case "FIFO", "SJF":
-						general.Signal(globals.Sem_ProcesosEnReady)
-					case "SRT":
-						slog.Debug(fmt.Sprintf("Notificando replanificación en pasarProcesosAReady - Llego un proceso a READY"))
-						general.NotificarReplanifSRT()
-					}
-
-				}
-			}
-
-			globals.EstadosMutex.Unlock()
-			general.LogUnlockeo("Estados", "pasarProcesosAReady")
-			globals.MapaProcesosMutex.Unlock()
-			general.LogUnlockeo("MapaProcesos", "pasarProcesosAReady")
+		if susp_empty {
+			pasar_desde_new()
 		}
 	}
 }
 
-func ordenarNewPorTamanio() {
-
-	// Con ordenar por tamaño (mas chicho primero) ya el algoritmo PMCP estaria hecho (creo)
-	sort.Slice(globals.ESTADOS.NEW, func(i, j int) bool {
-		return globals.ESTADOS.NEW[i].Tamaño < globals.ESTADOS.NEW[j].Tamaño
-	})
-}
-
 func CrearProcesoNuevo(archivo string, tamanio int64) {
 
-	globals.PIDCounterMutex.Lock()
+	pid := asignar_pid()
+	agregar_a_mapa_mutex(pid)
+	agregar_a_mapa_procesos(pid)
+	crear_estructuras_proceso(pid, archivo, tamanio)
+	agregar_a_new(pid)
 
-	pid := globals.PIDCounter
-	globals.PIDCounter++
+	globals.SignalPasarProcesoAReady()
 
-	globals.PIDCounterMutex.Unlock()
+}
 
-	proceso := globals.Proceso{
+func FinalizarProceso(pid int64, estadoAnterior string) {
+
+	enviar_finalizacion_a_memoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, pid)
+	eliminar_proceso_de(pid, estadoAnterior)
+
+	globals.ProcesosMutex[pid].Lock()
+	actualizar_metricas(pid, estadoAnterior)
+	globals.ProcesosMutex[pid].Unlock()
+
+	log_exit(pid, estadoAnterior)
+	eliminar_de_mapa_procesos(pid)
+	globals.SignalPasarProcesoAReady()
+
+}
+
+// Auxiliares
+
+func eliminar_de_mapa_procesos(pid int64) {
+	globals.ProcesosMutex[pid].Lock()
+	delete(globals.MapaProcesos, pid)
+	globals.ProcesosMutex[pid].Unlock()
+}
+
+func agregar_a_mapa_mutex(pid int64) {
+	m, ok := globals.ProcesosMutex[pid]
+	if !ok {
+		m = &sync.Mutex{}
+		globals.ProcesosMutex[pid] = m
+	}
+}
+
+func agregar_a_mapa_procesos(pid int64) {
+	globals.ProcesosMutex[pid].Lock()
+	p, ok := globals.MapaProcesos[pid]
+	if !ok {
+		p = &globals.Proceso{}
+		globals.MapaProcesos[pid] = p
+	}
+	globals.ProcesosMutex[pid].Unlock()
+}
+
+func crear_estructuras_proceso(pid int64, archivo string, tamanio int64) {
+	proceso := &globals.Proceso{
 		Pcb: globals.PCB{
 			Pid: pid,
 			PC:  0,
@@ -141,6 +118,7 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		Rafaga:               nil,
 		UltimoCambioDeEstado: time.Now(),
 		Tamaño:               tamanio,
+		Archivo_Pseudocodigo: archivo,
 	}
 
 	if globals.KernelConfig.Scheduler_algorithm != "FIFO" {
@@ -153,103 +131,142 @@ func CrearProcesoNuevo(archivo string, tamanio int64) {
 		proceso.Rafaga = &rafaga
 	}
 
-	general.LogIntentoLockeo("Mapa Procesos", "CrearProcesoNuevo")
-	globals.MapaProcesosMutex.Lock()
-	general.LogLockeo("Mapa Procesos", "CrearProcesoNuevo")
+	globals.ProcesosMutex[pid].Lock()
 	globals.MapaProcesos[pid] = proceso
-	globals.MapaProcesosMutex.Unlock()
-	general.LogUnlockeo("Mapa Procesos", "CrearProcesoNuevo")
+	globals.ProcesosMutex[pid].Unlock()
+}
 
-	procesoNuevo := globals.Proceso_Nuevo{
-		Archivo_Pseudocodigo: archivo,
-		Tamaño:               tamanio,
-		Proceso:              proceso,
-	}
+func asignar_pid() int64 {
+	globals.PIDCounterMutex.Lock()
 
-	general.LogIntentoLockeo("Estados", "CrearProcesoNuevo")
-	globals.EstadosMutex.Lock()
-	general.LogLockeo("Estados", "CrearProcesoNuevo")
+	pid := globals.PIDCounter
+	globals.PIDCounter++
 
-	// Aca no hay metricas que actualizar
-	globals.ESTADOS.NEW = append(globals.ESTADOS.NEW, procesoNuevo)
+	globals.PIDCounterMutex.Unlock()
 
-	// LOG Creación de Proceso: "## (<PID>) Se crea el proceso - Estado: NEW"
-	slog.Info(fmt.Sprintf("## (%d) Se crea el proceso - Estado: NEW", pid))
+	return pid
+}
 
-	//log.Printf("Después de agregar, NEW tiene %d procesos", len(globals.ESTADOS.NEW))
-	if globals.KernelConfig.New_algorithm == "PMCP" {
-		ordenarNewPorTamanio()
-	}
+func log_exit(pid int64, estadoAnterior string) {
 
-	globals.EstadosMutex.Unlock()
-	general.LogUnlockeo("Estados", "CrearProcesoNuevo")
+	globals.ProcesosMutex[pid].Lock()
+	proceso := globals.MapaProcesos[pid]
+	globals.ProcesosMutex[pid].Unlock()
 
-	globals.DeDondeSeLlamaMutex.Lock()
-	globals.DeDondeSeLlamaPasarProcesosAReady = "New"
-	globals.DeDondeSeLlamaMutex.Unlock()
-	globals.SignalPasarProcesoAReady()
+	// LOG Cambio de Estado: ## (<PID>) Pasa del estado <ESTADO_ANTERIOR> al estado <ESTADO_ACTUAL>
+	slog.Info(fmt.Sprintf("## (%d) Pasa del estado %s al estado %s", pid, estadoAnterior, globals.EXIT))
+
+	// LOG Fin de Proceso: ## (<PID>) - Finaliza el proceso
+	slog.Info(fmt.Sprintf("## (%d) - Finaliza el proceso", proceso.Pcb.Pid))
+
+	// Counts
+	newCount := proceso.Pcb.ME.New
+	readyCount := proceso.Pcb.ME.Ready
+	execCount := proceso.Pcb.ME.Execute
+	blockedCount := proceso.Pcb.ME.Blocked
+	suspblockedCount := proceso.Pcb.ME.Susp_Blocked
+	suspreadyCount := proceso.Pcb.ME.Susp_Ready
+
+	// Times
+	newTimes := proceso.Pcb.MT.New.Milliseconds()
+	readyTimes := proceso.Pcb.MT.Ready.Milliseconds()
+	execTimes := proceso.Pcb.MT.Execute.Milliseconds()
+	blockedTimes := proceso.Pcb.MT.Blocked.Milliseconds()
+	suspblockedTimes := proceso.Pcb.MT.Susp_Blocked.Milliseconds()
+	suspreadyTimes := proceso.Pcb.MT.Susp_Ready.Milliseconds()
+
+	// LOG Métricas de Estado: ## (<PID>) - Métricas de estado: NEW (NEW_COUNT) (NEW_TIME), READY (READY_COUNT) (READY_TIME), …
+	slog.Info(fmt.Sprintf("## (%d) - Métricas de estado: NEW %d %dms, READY %d %dms, EXECUTE %d %dms, BLOCKED %d %dms, SUSP_BLOCKED %d %dms, SUSP_READY %d %dms", proceso.Pcb.Pid, newCount, newTimes, readyCount, readyTimes, execCount, execTimes, blockedCount, blockedTimes, suspblockedCount, suspblockedTimes, suspreadyCount, suspreadyTimes))
 
 }
 
-func FinalizarProceso(pid int64, estadoAnterior string) {
-	globals.MapaProcesosMutex.Lock()
-	defer globals.MapaProcesosMutex.Unlock()
-	general.LogLockeo("Mapa Procesos", "FinalizarProceso")
-	defer general.LogUnlockeo("Mapa Procesos", "FinalizarProceso")
-
-	// Enviar a memoria
-	ok := enviarFinalizacionDeProceso_AMemoria(globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory, pid)
-	if !ok {
-		slog.Debug(fmt.Sprintf("Memoria no pudo finalizar el proceso PID %d.", pid))
-		return
-	}
-
-	// Mover a EXIT
-	general.LogIntentoLockeo("Estados", "FinalizarProceso")
-	globals.EstadosMutex.Lock()
-	general.LogLockeo("Estados", "FinalizarProceso")
-	ok = CambiarEstado(pid, estadoAnterior, globals.EXIT)
-	globals.EstadosMutex.Unlock()
-	general.LogUnlockeo("Estados", "FinalizarProceso")
-
-	if ok {
-		// Eliminar del mapa de procesos
-		delete(globals.MapaProcesos, pid)
-
-		// Señal para ready
-		globals.DeDondeSeLlamaMutex.Lock()
-		globals.DeDondeSeLlamaPasarProcesosAReady = "Exit"
-		globals.DeDondeSeLlamaMutex.Unlock()
-		globals.SignalPasarProcesoAReady()
-	}
-
-}
-
-func enviarFinalizacionDeProceso_AMemoria(ip string, puerto int64, pid int64) bool {
-	mensaje := globals.PidJSON{PID: pid}
-	body, err := json.Marshal(mensaje)
-	if err != nil {
-		slog.Debug(fmt.Sprintf("error codificando mensaje: %s", err.Error()))
-	}
-
-	// Posible problema con el int64 del puerto
-	url := fmt.Sprintf("http://%s:%d/finalizarProceso", ip, puerto)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
-	if err != nil {
-		slog.Debug(fmt.Sprintf("error enviando mensaje a ip:%s puerto:%d", ip, puerto))
-	}
-
-	slog.Debug(fmt.Sprintf("Finalizacion PID %d enviada a memoria, respuesta: %s", pid, resp.Status))
-
-	if resp.StatusCode == http.StatusOK {
-		return true
-	}
-	return false
-}
-
-func ordenarSuspReadyPorTamanio() {
+func ordenar_susp_ready() {
 	// Con ordenar por tamaño (mas chicho primero) ya el algoritmo PMCP estaria hecho
-	sort.Slice(globals.ESTADOS.SUSP_READY, func(i, j int) bool {
-		return globals.MapaProcesos[globals.ESTADOS.SUSP_READY[i]].Tamaño < globals.MapaProcesos[globals.ESTADOS.SUSP_READY[j]].Tamaño
+	sort.Slice(globals.Cola_susp_ready, func(i, j int) bool {
+		globals.ProcesosMutex[int64(i)].Lock()
+		globals.ProcesosMutex[int64(j)].Lock()
+		b := globals.MapaProcesos[globals.Cola_susp_ready[i]].Tamaño < globals.MapaProcesos[globals.Cola_susp_ready[j]].Tamaño
+		globals.ProcesosMutex[int64(j)].Unlock()
+		globals.ProcesosMutex[int64(i)].Unlock()
+		return b
 	})
+}
+
+func ordenar_new() {
+
+	sort.Slice(globals.Cola_susp_ready, func(i, j int) bool {
+		globals.ProcesosMutex[int64(i)].Lock()
+		globals.ProcesosMutex[int64(j)].Lock()
+		b := globals.MapaProcesos[globals.Cola_new[i]].Tamaño < globals.MapaProcesos[globals.Cola_new[j]].Tamaño
+		globals.ProcesosMutex[int64(j)].Unlock()
+		globals.ProcesosMutex[int64(i)].Unlock()
+		return b
+	})
+
+}
+
+func pasar_desde_susp_ready() {
+
+	for len(globals.Cola_susp_ready) > 0 {
+
+		if globals.KernelConfig.New_algorithm == "PMCP" {
+			ordenar_susp_ready()
+		}
+
+		pid := globals.Cola_susp_ready[0]
+
+		if !enviar_reanudar_proceso_a_memoria(pid) {
+			break
+		}
+		susp_ready_a_ready(pid)
+		Avisar_proceso_en_ready()
+
+	}
+}
+
+func pasar_desde_new() {
+
+	globals.NewMutex.Lock()
+
+	for len(globals.Cola_new) > 0 {
+
+		// Si hay procesos en Susp Ready, tienen prioridad
+		/*globals.SuspReadyMutex.Lock()
+		if len(globals.Cola_susp_ready) > 0 {
+			globals.SignalPasarProcesoAReady()
+			globals.SuspReadyMutex.Unlock()
+			break
+		} else {
+			globals.SuspReadyMutex.Unlock()
+		}*/
+
+		if globals.KernelConfig.New_algorithm == "PMCP" {
+			ordenar_new()
+		}
+
+		pid := globals.Cola_new[0]
+
+		globals.ProcesosMutex[pid].Lock()
+		proceso := globals.MapaProcesos[pid]
+		globals.ProcesosMutex[pid].Unlock()
+
+		if !enviar_inicializar_proceso_a_memoria(*proceso) {
+			break
+		}
+
+		new_a_ready(pid)
+		Avisar_proceso_en_ready()
+
+	}
+
+	globals.NewMutex.Unlock()
+}
+
+func Avisar_proceso_en_ready() {
+	switch globals.KernelConfig.Scheduler_algorithm {
+	case "FIFO", "SJF":
+		general.Signal(globals.Sem_ProcesosEnReady)
+	case "SRT":
+		general.NotificarReplanifSRT()
+	}
 }

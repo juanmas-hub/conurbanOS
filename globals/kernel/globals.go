@@ -25,8 +25,6 @@ type Mensaje struct {
 }
 
 // Mutex
-var EstadosMutex sync.Mutex
-var MapaProcesosMutex sync.Mutex
 var PIDCounterMutex sync.Mutex
 var ListaCPUsMutex sync.Mutex
 var ListaIOsMutex sync.Mutex
@@ -169,16 +167,12 @@ type Proceso struct {
 	Estado_Actual        string
 	Rafaga               *Rafagas
 	UltimoCambioDeEstado time.Time
-	Tamaño               int64
-}
-
-type Proceso_Nuevo struct {
 	Archivo_Pseudocodigo string
 	Tamaño               int64
-	Proceso              Proceso
 }
 
-var MapaProcesos map[int64]Proceso = make(map[int64]Proceso)
+var MapaProcesos map[int64]*Proceso = make(map[int64]*Proceso)
+var ProcesosMutex map[int64]*sync.Mutex = make(map[int64]*sync.Mutex)
 
 type RespuestaInterrupcion struct {
 	PC int64 `json:"pc"`
@@ -186,16 +180,19 @@ type RespuestaInterrupcion struct {
 
 // Estructuras para los estados
 
-type Estados struct {
-	NEW          []Proceso_Nuevo
-	READY        []int64
-	EXECUTE      []int64
-	BLOCKED      []int64
-	SUSP_BLOCKED []int64
-	SUSP_READY   []int64
-}
+var Cola_new []int64
+var Cola_ready []int64
+var Cola_execute []int64
+var Cola_blocked []int64
+var Cola_susp_blocked []int64
+var Cola_susp_ready []int64
 
-var ESTADOS Estados
+var NewMutex sync.Mutex
+var ReadyMutex sync.Mutex
+var ExecuteMutex sync.Mutex
+var BlockedMutex sync.Mutex
+var SuspBlockedMutex sync.Mutex
+var SuspReadyMutex sync.Mutex
 
 // Solicitud y finalizacion IO
 type SolicitudIO struct {
@@ -251,16 +248,4 @@ type SolicitudIniciarProceso struct {
 	Tamanio              int64  `json:"tamanio"`
 	Pid                  int64  `json:"pid"`
 	Susp                 bool   `json:"susp"`
-}
-
-// Devolucion de proceso -- esto no se usa en las syscalls, para esas se usan las structs especificas de cada syscall
-// Las constantes strings son para poner el motivo
-var FIN_PROCESO string
-var REPLANIFICAR_PROCESO string // la verdad nose cuando se usa
-
-type DevolucionProceso struct {
-	Motivo     string `json:"string"`
-	Pid        int64  `json:"pid"`
-	PC         int64  `json:"pc"`
-	Nombre_CPU string `json:"nombre_cpu"` // el mismo que se envio en el handshake
 }

@@ -37,26 +37,7 @@ func planificadorFIFO() {
 		general.Wait(globals.Sem_Cpus)            // Espero a que haya Cpus libres
 		general.Wait(globals.Sem_ProcesosEnReady) // Espero a que haya procesos en Ready
 
-		slog.Debug(fmt.Sprint("Se llego a replanificar, antes de los semaforos"))
-
-		globals.MapaProcesosMutex.Lock()
-		globals.EstadosMutex.Lock()
-
-		slog.Debug(fmt.Sprint("Replanificando"))
-
-		ejecutarUnProceso()
-
-		slog.Debug(fmt.Sprint("COLAS:"))
-		slog.Debug(fmt.Sprint("NEW:", globals.ESTADOS.NEW))
-		slog.Debug(fmt.Sprint("READY:", globals.ESTADOS.READY))
-		slog.Debug(fmt.Sprint("EXECUTE:", globals.ESTADOS.EXECUTE))
-		slog.Debug(fmt.Sprint("BLOCKED:", globals.ESTADOS.BLOCKED))
-		slog.Debug(fmt.Sprint("SUSP_READY:", globals.ESTADOS.SUSP_READY))
-		slog.Debug(fmt.Sprint("SUSP_BLOCKED:", globals.ESTADOS.SUSP_BLOCKED))
-
-		globals.EstadosMutex.Unlock()
-		globals.MapaProcesosMutex.Unlock()
-
+		ejecutarUnProcesoFifo()
 	}
 }
 
@@ -65,46 +46,19 @@ func planificadorSJF() {
 		general.Wait(globals.Sem_Cpus)
 		general.Wait(globals.Sem_ProcesosEnReady)
 
-		globals.MapaProcesosMutex.Lock()
-		globals.EstadosMutex.Lock()
-
-		ordenarReadyPorRafaga()
-		ejecutarUnProceso()
-
-		slog.Debug(fmt.Sprint("COLAS:"))
-		slog.Debug(fmt.Sprint("NEW:", globals.ESTADOS.NEW))
-		slog.Debug(fmt.Sprint("READY:", globals.ESTADOS.READY))
-		slog.Debug(fmt.Sprint("EXECUTE:", globals.ESTADOS.EXECUTE))
-		slog.Debug(fmt.Sprint("BLOCKED:", globals.ESTADOS.BLOCKED))
-		slog.Debug(fmt.Sprint("SUSP_READY:", globals.ESTADOS.SUSP_READY))
-		slog.Debug(fmt.Sprint("SUSP_BLOCKED:", globals.ESTADOS.SUSP_BLOCKED))
-
-		globals.EstadosMutex.Unlock()
-		globals.MapaProcesosMutex.Unlock()
+		ejecutarUnProcesoSjf()
 	}
 }
 
 func planificadorSRT() {
 	for {
-		slog.Debug(fmt.Sprint("Esperando replanificacion"))
 		<-globals.SrtReplanificarChan
-		slog.Debug(fmt.Sprint("Replanificando"))
-
-		// Chequeo los 4 posibles casos
-
-		general.LogIntentoLockeo("MapaProcesos", "planificadorSRT")
-		globals.MapaProcesosMutex.Lock()
-		general.LogLockeo("MapaProcesos", "planificadorSRT")
-		general.LogIntentoLockeo("Estados", "planificadorSRT")
-		globals.EstadosMutex.Lock()
-		general.LogLockeo("Estados", "planificadorSRT")
 
 		if hayProcesosEnReady() && hayCpusLibres() {
 
 			slog.Debug(fmt.Sprint("SRT - Hay procesos en ready y hay cpus libres"))
 
-			ordenarReadyPorRafaga()
-			ejecutarUnProceso()
+			ejecutarUnProcesoSjf()
 
 		} else if hayProcesosEnReady() && !hayCpusLibres() {
 			// Caso desalojo
@@ -124,41 +78,7 @@ func planificadorSRT() {
 			// No hacemos nada
 		}
 
-		slog.Debug(fmt.Sprint("COLAS:"))
-		slog.Debug(fmt.Sprint("NEW:", globals.ESTADOS.NEW))
-		slog.Debug(fmt.Sprint("READY:", globals.ESTADOS.READY))
-		slog.Debug(fmt.Sprint("EXECUTE:", globals.ESTADOS.EXECUTE))
-		slog.Debug(fmt.Sprint("BLOCKED:", globals.ESTADOS.BLOCKED))
-		slog.Debug(fmt.Sprint("SUSP_READY:", globals.ESTADOS.SUSP_READY))
-		slog.Debug(fmt.Sprint("SUSP_BLOCKED:", globals.ESTADOS.SUSP_BLOCKED))
-
-		globals.EstadosMutex.Unlock()
-		general.LogUnlockeo("Estados", "planificadorSRT")
-		globals.MapaProcesosMutex.Unlock()
-		general.LogUnlockeo("MapaProcesos", "planificadorSRT")
-
 	}
-}
-
-func ActualizarEstimado(pid int64, rafagaReal float64) {
-	// Me imagino que esto se usa cuando se termina de ejecutar un proceso
-
-	slog.Debug(fmt.Sprintf("Actualizando estimado: %d", pid))
-	slog.Debug(fmt.Sprintf("Rafaga real: %f", rafagaReal))
-
-	proceso := globals.MapaProcesos[pid]
-
-	alpha := globals.KernelConfig.Alpha
-	est_ant := proceso.Rafaga.Est_Sgte
-
-	proceso.Rafaga.Est_Ant = est_ant
-	proceso.Rafaga.Raf_Ant = rafagaReal
-	proceso.Rafaga.Est_Sgte = rafagaReal*alpha + est_ant*(1-alpha)
-	// Est(n+1) =  R(n) + (1-) Est(n) ;    [0,1]
-
-	slog.Debug(fmt.Sprintf("Rafaga actualizada de PID %d: %f", proceso.Pcb.Pid, proceso.Rafaga))
-
-	globals.MapaProcesos[pid] = proceso
 }
 
 func elegirCPUlibre() (string, int64, string, bool) {
@@ -189,7 +109,7 @@ func elegirCPUlibre() (string, int64, string, bool) {
 }
 
 func hayProcesosEnReady() bool {
-	return len(globals.ESTADOS.READY) > 0
+	return len(globals.Cola_ready) > 0
 }
 
 func hayCpusLibres() bool {
@@ -209,7 +129,7 @@ func verificarDesalojo() (int64, bool) {
 
 	ordenarReadyPorRafaga()
 	pidEnExec, restanteExec := buscarProcesoEnExecuteDeMenorRafagaRestante()
-	rafagaNuevo := globals.MapaProcesos[globals.ESTADOS.READY[0]].Rafaga.Est_Sgte
+	rafagaNuevo := globals.MapaProcesos[globals.Cola_ready[0]].Rafaga.Est_Sgte
 
 	slog.Debug(fmt.Sprintf("VerificarDesalojo: rafagaNuevo (%f) - restanteExec (%f)", rafagaNuevo, restanteExec))
 
@@ -222,14 +142,14 @@ func verificarDesalojo() (int64, bool) {
 }
 
 func buscarProcesoEnExecuteDeMenorRafagaRestante() (int64, float64) {
-	slog.Debug(fmt.Sprint("Buscando menor rafaga restante en EXECUTE: ", globals.ESTADOS.EXECUTE))
+	slog.Debug(fmt.Sprint("Buscando menor rafaga restante en EXECUTE: ", globals.Cola_execute))
 
 	var pidMenorRafaga int64
-	pidMenorRafaga = globals.ESTADOS.EXECUTE[0]
-	menorRafagaRestante := rafagaRestante(globals.ESTADOS.EXECUTE[0])
-	for i := range globals.ESTADOS.EXECUTE {
+	pidMenorRafaga = globals.Cola_execute[0]
+	menorRafagaRestante := rafagaRestante(globals.Cola_execute[0])
+	for i := range globals.Cola_execute {
 		// Si la posicion i esta libre
-		pidActual := globals.ESTADOS.EXECUTE[i]
+		pidActual := globals.Cola_execute[i]
 		rafagaRestanteActual := rafagaRestante(pidActual)
 		slog.Debug(fmt.Sprintf(" - PID %d: %f", pidMenorRafaga, menorRafagaRestante))
 		if rafagaRestanteActual < menorRafagaRestante {
@@ -257,10 +177,11 @@ func rafagaRestante(pid int64) float64 {
 }
 
 func ordenarReadyPorRafaga() {
+
 	// sort.SLice compara pares de elementos (i y j) si i < j -> true, si j < i -> false
-	sort.Slice(globals.ESTADOS.READY, func(i, j int) bool {
-		pidI := globals.ESTADOS.READY[i]
-		pidJ := globals.ESTADOS.READY[j]
+	sort.Slice(globals.Cola_ready, func(i, j int) bool {
+		pidI := globals.Cola_ready[i]
+		pidJ := globals.Cola_ready[j]
 
 		// De cada par de procesos sacamos la rafaga que tiene cada uno
 		rafagaI := globals.MapaProcesos[pidI].Rafaga
@@ -270,33 +191,69 @@ func ordenarReadyPorRafaga() {
 	})
 
 	var rafagasReady []float64
-	for i := range globals.ESTADOS.READY {
+	for i := range globals.Cola_ready {
 		// Si la posicion i esta libre
-		pidActual := globals.ESTADOS.READY[i]
+		pidActual := globals.Cola_ready[i]
 		rafagasReady = append(rafagasReady, globals.MapaProcesos[pidActual].Rafaga.Est_Sgte)
 	}
-	slog.Debug(fmt.Sprintf("Ready ordenado por rafaga: %d, %f", globals.ESTADOS.READY, rafagasReady))
+	slog.Info(fmt.Sprintf("Ready ordenado por rafaga: %d, %f", globals.Cola_ready, rafagasReady))
 
 }
 
-func ejecutarUnProceso() {
+func ejecutarUnProcesoFifo() {
 
-	procesoAEjecutar := globals.ESTADOS.READY[0]
 	ip, port, nombre, hayCPU := elegirCPUlibre()
-	if hayCPU {
-		proceso := globals.MapaProcesos[procesoAEjecutar]
-		general.EnviarProcesoAEjecutar_ACPU(ip, port, proceso.Pcb.Pid, proceso.Pcb.PC, nombre)
-		CambiarEstado(procesoAEjecutar, globals.READY, globals.EXECUTE)
+	if !hayCPU {
+		return
 	}
 
+	globals.ReadyMutex.Lock()
+	pid := globals.Cola_ready[0]
+	globals.ReadyMutex.Unlock()
+
+	globals.ProcesosMutex[pid].Lock()
+	proceso, existe := globals.MapaProcesos[pid]
+	if !existe {
+		return
+	}
+	globals.ProcesosMutex[pid].Unlock()
+
+	Enviar_proceso_a_cpu(ip, port, pid, proceso.Pcb.PC, nombre)
+	ready_a_execute(pid)
+
 }
 
+func ejecutarUnProcesoSjf() {
+
+	ip, port, nombre, hayCPU := elegirCPUlibre()
+	if !hayCPU {
+		return
+	}
+
+	globals.ReadyMutex.Lock()
+	ordenarReadyPorRafaga()
+	pid := globals.Cola_ready[0]
+	globals.ReadyMutex.Unlock()
+
+	globals.ProcesosMutex[pid].Lock()
+	proceso, existe := globals.MapaProcesos[pid]
+	if !existe {
+		return
+	}
+	globals.ProcesosMutex[pid].Unlock()
+
+	Enviar_proceso_a_cpu(ip, port, pid, proceso.Pcb.PC, nombre)
+	ready_a_execute(pid)
+
+}
+
+/*
 func desalojarYEnviarProceso(pidEnExec int64) {
 
 	ipCPU, puertoCPU, nombreCPU, ok := general.BuscarCpuPorPID(pidEnExec)
 	slog.Debug(fmt.Sprint("SRT - CPU del proceso a desalojar: ", nombreCPU))
 	if ok {
-		pidProcesoAEjecutar := globals.ESTADOS.READY[0]
+		pidProcesoAEjecutar := globals.Cola_ready[0]
 		procesoAEjecutar := globals.MapaProcesos[pidProcesoAEjecutar]
 		pcProcesoAEjecutar := procesoAEjecutar.Pcb.PC
 
@@ -331,6 +288,58 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 		general.EnviarProcesoAEjecutar_ACPU(ipCPU, puertoCPU, pidProcesoAEjecutar, pcProcesoAEjecutar, nombreCPU)
 
 		CambiarEstado(pidProcesoAEjecutar, globals.READY, globals.EXECUTE)
+
+	} else {
+		slog.Debug(fmt.Sprintf("No se encontró la CPU que ejecuta el PID %d al momento de desalojar", pidEnExec))
+	}
+	//slog.Debug(fmt.Sprint("Notificado Replanificar SRT"))
+}*/
+
+func desalojarYEnviarProceso(pidEnExec int64) {
+
+	ipCPU, puertoCPU, nombreCPU, ok := general.BuscarCpuPorPID(pidEnExec)
+	slog.Debug(fmt.Sprint("SRT - CPU del proceso a desalojar: ", nombreCPU))
+	if ok {
+
+		globals.ReadyMutex.Lock()
+
+		pid_a_ejecutar := globals.Cola_ready[0]
+		globals.ProcesosMutex[pid_a_ejecutar].Lock()
+		pc_a_ejecutar := globals.MapaProcesos[pid_a_ejecutar].Pcb.PC
+		globals.ProcesosMutex[pid_a_ejecutar].Unlock()
+
+		globals.ReadyMutex.Unlock()
+
+		globals.ExecuteMutex.Lock()
+		globals.ProcesosMutex[pidEnExec].Lock()
+
+		proceso_en_exec, existe := globals.MapaProcesos[pidEnExec]
+		if !existe || proceso_en_exec.Estado_Actual != globals.EXECUTE {
+
+			Enviar_proceso_a_cpu(ipCPU, puertoCPU, pid_a_ejecutar, pc_a_ejecutar, nombreCPU)
+			ready_a_execute(pid_a_ejecutar)
+
+			return
+		}
+
+		globals.ProcesosMutex[pidEnExec].Unlock()
+		globals.ExecuteMutex.Unlock()
+
+		respuestaInterrupcion, err := enviar_interrupcion_a_cpu(ipCPU, puertoCPU, nombreCPU, pidEnExec)
+		if err != nil {
+			slog.Debug(fmt.Sprint("Error en interrupción:", err))
+		}
+
+		// LOG Desalojo: ## (<PID>) - Desalojado por algoritmo SJF/SRT
+		slog.Info(fmt.Sprintf("## (%d) - Desalojado por algoritmo SJF/SRT", pidEnExec))
+
+		globals.ProcesosMutex[pid_a_ejecutar].Lock()
+		general.ActualizarPC(pidEnExec, respuestaInterrupcion.PC)
+		globals.ProcesosMutex[pid_a_ejecutar].Unlock()
+
+		execute_a_ready(pidEnExec)
+		Enviar_proceso_a_cpu(ipCPU, puertoCPU, pid_a_ejecutar, pc_a_ejecutar, nombreCPU)
+		ready_a_execute(pid_a_ejecutar)
 
 	} else {
 		slog.Debug(fmt.Sprintf("No se encontró la CPU que ejecuta el PID %d al momento de desalojar", pidEnExec))

@@ -1,32 +1,41 @@
 package planificadores
 
 import (
+	"fmt"
+	"log/slog"
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
-	general "github.com/sisoputnfrba/tp-golang/kernel/utils/general"
 )
 
 // Se llama cuando un proceso de execute se bloquea (IO o DUMP)
+func BloquearProceso(pid int64) bool {
+
+	ok := execute_a_blocked(pid)
+	if !ok {
+		return false
+	}
+
+	globals.CantidadSesionesIOMutex.Lock()
+	cantidadSesiones := globals.CantidadSesionesIO[pid]
+	globals.CantidadSesionesIOMutex.Unlock()
+
+	go func() {
+		time.Sleep(time.Duration(globals.KernelConfig.Suspension_time) * time.Millisecond)
+		sigueBloqueado(pid, cantidadSesiones)
+	}()
+
+	return true
+}
+
+/*
 func EjecutarPlanificadorMedioPlazo(proceso globals.Proceso, razon string) bool {
 
-	general.LogIntentoLockeo("MapaProcesos", "EjecutarPlanificadorMedioPlazo")
-	globals.MapaProcesosMutex.Lock()
-	general.LogLockeo("MapaProcesos", "EjecutarPlanificadorMedioPlazo")
-	general.LogIntentoLockeo("Estados", "EjecutarPlanificadorMedioPlazo")
-	globals.EstadosMutex.Lock()
-	general.LogLockeo("Estados", "EjecutarPlanificadorMedioPlazo")
-
 	if !CambiarEstado(proceso.Pcb.Pid, globals.EXECUTE, globals.BLOCKED) {
-		globals.EstadosMutex.Unlock()
 		globals.MapaProcesosMutex.Unlock()
 		return false
 	}
 
-	globals.EstadosMutex.Unlock()
-	general.LogUnlockeo("Estados", "EjecutarPlanificadorMedioPlazo")
-	globals.MapaProcesosMutex.Unlock()
-	general.LogUnlockeo("MapaProcesos", "EjecutarPlanificadorMedioPlazo")
 	globals.CantidadSesionesIOMutex.Lock()
 	cantidadSesiones := globals.CantidadSesionesIO[proceso.Pcb.Pid]
 	globals.CantidadSesionesIOMutex.Unlock()
@@ -42,8 +51,9 @@ func EjecutarPlanificadorMedioPlazo(proceso globals.Proceso, razon string) bool 
 
 	return true
 
-}
+}*/
 
+/*
 func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 	// Si sigue bloqueado (en IO) hay que suspenderlo
 	// Para que no siga bloqueado, el proceso tuvo que terminar su IO (lo recibimos como mensaje desde IO, siendo kernel servidor)
@@ -51,15 +61,12 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 
 	//slog.Debug(fmt.Sprintf("Termino el timer del proceso %d", proceso.Pcb.Pid))
 
-	general.LogIntentoLockeo("MapaProcesos", "sigueBloqueado")
 	globals.MapaProcesosMutex.Lock()
-	general.LogLockeo("MapaProcesos", "sigueBloqueado")
 
 	procesoActualmente, presente := globals.MapaProcesos[proceso.Pcb.Pid]
 	if !presente {
 		//slog.Debug(fmt.Sprintf("PID %d no se encontro en MapaProcesos en sigueBloqueado. Probablemente finalizo", proceso.Pcb.Pid))
 		globals.MapaProcesosMutex.Unlock()
-		general.LogUnlockeo("MapaProcesos", "sigueBloqueado")
 
 		return
 	}
@@ -76,18 +83,13 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 
 	globals.MapaProcesosMutex.Unlock()
 	general.LogUnlockeo("MapaProcesos", "sigueBloqueado")
-	
+
 	if cantidadSesionesActual == cantidadSesionesPrevia && procesoActualmente.Estado_Actual == globals.BLOCKED {
 
 		// Cambio de estado
-		general.LogIntentoLockeo("Estados", "sigueBloqueado")
 		globals.MapaProcesosMutex.Lock()
-		globals.EstadosMutex.Lock()
-		general.LogLockeo("Estados", "sigueBloqueado")
 		ok := CambiarEstado(procesoActualmente.Pcb.Pid, globals.BLOCKED, globals.SUSP_BLOCKED)
-		globals.EstadosMutex.Unlock()
 		globals.MapaProcesosMutex.Unlock()
-		general.LogUnlockeo("Estados", "sigueBloqueado")
 
 		if ok {
 			// Aviso a memoria que hay que swappear
@@ -96,11 +98,54 @@ func sigueBloqueado(proceso globals.Proceso, cantidadSesionesPrevia int) {
 			//slog.Debug(fmt.Sprint("Ya termino el aviso de swappeo a memoria del proceso: ", procesoActualmente.Pcb.Pid))
 
 			// Libere espacio => llamo a nuevos procesos
-			globals.DeDondeSeLlamaMutex.Lock()
-			globals.DeDondeSeLlamaPasarProcesosAReady = "Susp Blocked"
-			globals.DeDondeSeLlamaMutex.Unlock()
 			globals.SignalPasarProcesoAReady()
 		}
 	}
 
+}*/
+
+func sigueBloqueado(pid int64, cantidadSesionesPrevia int) {
+
+	globals.ProcesosMutex[pid].Lock()
+	procesoActualmente, presente := globals.MapaProcesos[pid]
+	if !presente {
+		globals.ProcesosMutex[pid].Unlock()
+		return
+	}
+
+	// Comparo cantidad de sesiones:
+	// 		- Son iguales: es la misma sesion => me fijo si swappeo
+	//		- Son distintas: distintas sesiones => no hago nada
+
+	globals.CantidadSesionesIOMutex.Lock()
+	cantidadSesionesActual := globals.CantidadSesionesIO[procesoActualmente.Pcb.Pid]
+	globals.CantidadSesionesIOMutex.Unlock()
+
+	if cantidadSesionesActual == cantidadSesionesPrevia && procesoActualmente.Estado_Actual == globals.BLOCKED {
+
+		enviar_suspension_proceso_a_memoria(procesoActualmente.Pcb.Pid)
+		blocked_a_susp_blocked(pid)
+		globals.SignalPasarProcesoAReady()
+	}
+
+	globals.ProcesosMutex[pid].Unlock()
+
+}
+
+// Auxiliares
+
+func actualizar_rafagas(proceso *globals.Proceso, rafagaReal float64) {
+
+	slog.Info(fmt.Sprintf("Actualizando estimado: %d", proceso.Pcb.Pid))
+	slog.Info(fmt.Sprintf("Rafaga real: %f", rafagaReal))
+
+	alpha := globals.KernelConfig.Alpha
+	est_ant := proceso.Rafaga.Est_Sgte
+
+	proceso.Rafaga.Est_Ant = est_ant
+	proceso.Rafaga.Raf_Ant = rafagaReal
+	proceso.Rafaga.Est_Sgte = rafagaReal*alpha + est_ant*(1-alpha)
+	// Est(n+1) =  R(n) + (1-) Est(n) ;    [0,1]
+
+	slog.Info(fmt.Sprintf("Rafaga actualizada de PID %d: %f", proceso.Pcb.Pid, proceso.Rafaga))
 }

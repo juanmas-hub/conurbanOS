@@ -91,40 +91,39 @@ func RecibirEXIT(w http.ResponseWriter, r *http.Request) {
 func manejarIO(syscallIO globals.SyscallIO) {
 
 	globals.ListaIOsMutex.Lock()
-	globals.MapaProcesosMutex.Lock()
 
+	globals.ProcesosMutex[syscallIO.PID].Lock()
 	proceso, existe := globals.MapaProcesos[syscallIO.PID]
 	if !existe {
 		slog.Debug(fmt.Sprintf("No se atiende IO porque PID %d no existe. Posiblemente finalizo", syscallIO.PID))
-		globals.MapaProcesosMutex.Unlock()
+		globals.ProcesosMutex[syscallIO.PID].Unlock()
 		globals.ListaIOsMutex.Unlock()
 		return
 	}
 	if proceso.Estado_Actual != globals.EXECUTE {
 		slog.Debug(fmt.Sprintf("No se atiende IO porque PID %d no esta en EXECUTE. Posiblemente se interrumpio", syscallIO.PID))
-		globals.MapaProcesosMutex.Unlock()
+		globals.ProcesosMutex[syscallIO.PID].Unlock()
 		globals.ListaIOsMutex.Unlock()
 		return
 	}
-	globals.MapaProcesosMutex.Unlock()
+
+	logSyscalls(syscallIO.PID, "IO")
 
 	// Motivo de Bloqueo: ## (<PID>) - Bloqueado por IO: <DISPOSITIVO_IO>
 	slog.Info(fmt.Sprintf("## (%d) - Bloqueado por IO: %s", syscallIO.PID, syscallIO.NombreIO))
 
 	if !VerificarExistenciaIO(syscallIO.NombreIO) {
 		slog.Debug(fmt.Sprint("No existe IO: ", syscallIO.NombreIO))
+		globals.ProcesosMutex[syscallIO.PID].Unlock()
 		globals.ListaIOsMutex.Unlock()
 		planificadores.FinalizarProceso(syscallIO.PID, globals.EXECUTE)
 		general.LiberarCPU(syscallIO.NombreCPU)
 		return
 	}
 
-	logSyscalls(syscallIO.PID, "IO")
-
 	io := globals.MapaIOs[syscallIO.NombreIO]
-	general.ActualizarPC(syscallIO.PID, syscallIO.PC)
 
-	general.LogUnlockeo("MapaProcesos", "manejarIO")
+	general.ActualizarPC(syscallIO.PID, syscallIO.PC)
 
 	// Si hay instancias libres, envio solicitud, sino agrego a la cola
 	instanciaIo, pos, hayLibre := BuscarInstanciaIOLibre(syscallIO.NombreIO)
@@ -142,17 +141,9 @@ func manejarIO(syscallIO globals.SyscallIO) {
 	globals.MapaIOs[syscallIO.NombreIO] = io
 	globals.ListaIOsMutex.Unlock()
 
-	general.LogIntentoLockeo("MapaProcesos", "manejarIO")
-	globals.MapaProcesosMutex.Lock()
-	general.LogLockeo("MapaProcesos", "manejarIO")
-	proceso, presente := globals.MapaProcesos[syscallIO.PID]
-	globals.MapaProcesosMutex.Unlock()
-	general.LogUnlockeo("MapaProcesos", "manejarIO")
-	if presente {
-		planificadores.EjecutarPlanificadorMedioPlazo(proceso, "Syscall IO")
-	} else {
-		slog.Debug(fmt.Sprintf("El proceso %d que solicito IO ya no existe en MapaProcesos. Probablemente finalizo", syscallIO.PID))
-	}
+	globals.ProcesosMutex[syscallIO.PID].Unlock()
+
+	planificadores.BloquearProceso(syscallIO.PID)
 	general.LiberarCPU(syscallIO.NombreCPU)
 
 }
@@ -166,9 +157,10 @@ func manejarInit_Proc(syscallINIT globals.SyscallInit) {
 	posCpu := general.BuscarCpu(syscallINIT.Nombre_CPU)
 	cpu := globals.ListaCPUs[posCpu]
 	globals.ListaCPUsMutex.Unlock()
-	general.EnviarProcesoAEjecutar_ACPU(cpu.Handshake.IP, cpu.Handshake.Puerto, syscallINIT.Pid_proceso, syscallINIT.Pc, cpu.Handshake.Nombre)
+	planificadores.Enviar_proceso_a_cpu(cpu.Handshake.IP, cpu.Handshake.Puerto, syscallINIT.Pid_proceso, syscallINIT.Pc, cpu.Handshake.Nombre)
 }
 
+/*
 func manejarDUMP_MEMORY(syscallDUMP globals.SyscallDump) {
 	logSyscalls(syscallDUMP.PID, "DUMP_MEMORY")
 
@@ -198,19 +190,13 @@ func manejarDUMP_MEMORY(syscallDUMP globals.SyscallDump) {
 			} else {
 				general.ActualizarPC(syscallDUMP.PID, syscallDUMP.PC)
 
-				general.LogIntentoLockeo("Estados", "manejarDUMP_MEMORY")
-				globals.EstadosMutex.Lock()
-				general.LogLockeo("Estados", "manejarDUMP_MEMORY")
 				ok := planificadores.CambiarEstado(proceso.Pcb.Pid, globals.BLOCKED, globals.READY)
 				if !ok {
 					slog.Debug(fmt.Sprintf("El proceso %d que acaba de DUMPEAR no pudo cambiar de estado.", syscallDUMP.PID))
-					globals.EstadosMutex.Unlock()
 					globals.MapaProcesosMutex.Unlock()
 					general.LogUnlockeo("MapaProcesos", "manejarDUMP_MEMORY")
 					return
 				}
-				globals.EstadosMutex.Unlock()
-				slog.Debug(fmt.Sprint("Se llego hasta unlockear Estados Mutex"))
 				switch globals.KernelConfig.Scheduler_algorithm {
 				case "FIFO", "SJF":
 					slog.Debug(fmt.Sprintf("Notificando replanificación en manejarDUMP_MEMORY - Nuevo proceso en ready"))
@@ -227,6 +213,51 @@ func manejarDUMP_MEMORY(syscallDUMP globals.SyscallDump) {
 			// Si no se pudo dumpear
 			planificadores.FinalizarProceso(syscallDUMP.PID, globals.BLOCKED)
 		}
+	}
+
+	general.LiberarCPU(syscallDUMP.NombreCPU)
+}*/
+
+func manejarDUMP_MEMORY(syscallDUMP globals.SyscallDump) {
+	logSyscalls(syscallDUMP.PID, "DUMP_MEMORY")
+
+	globals.ProcesosMutex[syscallDUMP.PID].Lock()
+
+	proceso, presente := globals.MapaProcesos[syscallDUMP.PID]
+	if !presente {
+		slog.Debug(fmt.Sprintf("El proceso %d que solicito DUMP ya no existe en MapaProcesos. Probablemente finalizo", syscallDUMP.PID))
+		return
+	}
+
+	globals.ProcesosMutex[syscallDUMP.PID].Unlock()
+
+	if planificadores.BloquearProceso(syscallDUMP.PID) {
+
+		globals.ProcesosMutex[syscallDUMP.PID].Lock()
+		if general.EnviarDumpMemory(syscallDUMP.PID) {
+
+			proceso, presente = globals.MapaProcesos[syscallDUMP.PID]
+			if !presente {
+				slog.Debug(fmt.Sprintf("El proceso %d que acaba de DUMPEAR ya no existe en MapaProcesos. Probablemente finalizo", syscallDUMP.PID))
+			} else {
+				general.ActualizarPC(syscallDUMP.PID, syscallDUMP.PC)
+
+				ok := planificadores.Blocked_a_ready(proceso.Pcb.Pid)
+				if !ok {
+					slog.Debug(fmt.Sprintf("El proceso %d que acaba de DUMPEAR no pudo cambiar de estado.", syscallDUMP.PID))
+					globals.ProcesosMutex[syscallDUMP.PID].Unlock()
+					return
+				}
+
+				planificadores.Avisar_proceso_en_ready()
+			}
+
+		} else {
+			// Si no se pudo dumpear
+			planificadores.FinalizarProceso(syscallDUMP.PID, globals.BLOCKED)
+		}
+
+		globals.ProcesosMutex[syscallDUMP.PID].Unlock()
 	}
 
 	general.LiberarCPU(syscallDUMP.NombreCPU)
