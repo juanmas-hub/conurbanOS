@@ -136,8 +136,8 @@ func sigueBloqueado(pid int64, cantidadSesionesPrevia int) {
 
 func actualizar_rafagas(proceso *globals.Proceso, rafagaReal float64) {
 
-	slog.Info(fmt.Sprintf("Actualizando estimado: %d", proceso.Pcb.Pid))
-	slog.Info(fmt.Sprintf("Rafaga real: %f", rafagaReal))
+	slog.Debug(fmt.Sprintf("Actualizando estimado: %d", proceso.Pcb.Pid))
+	slog.Debug(fmt.Sprintf("Rafaga real: %f", rafagaReal))
 
 	alpha := globals.KernelConfig.Alpha
 	est_ant := proceso.Rafaga.Est_Sgte
@@ -147,5 +147,5 @@ func actualizar_rafagas(proceso *globals.Proceso, rafagaReal float64) {
 	proceso.Rafaga.Est_Sgte = rafagaReal*alpha + est_ant*(1-alpha)
 	// Est(n+1) =  R(n) + (1-) Est(n) ;    [0,1]
 
-	slog.Info(fmt.Sprintf("Rafaga actualizada de PID %d: %f", proceso.Pcb.Pid, proceso.Rafaga))
+	slog.Debug(fmt.Sprintf("Rafaga actualizada de PID %d: %f", proceso.Pcb.Pid, proceso.Rafaga))
 }

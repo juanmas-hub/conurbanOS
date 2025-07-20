@@ -379,7 +379,9 @@ func execute_a_ready(pid int64) bool {
 	}
 	globals.ReadyMutex.Unlock()
 
+	globals.ProcesosMutex[pid].Lock()
 	cambiar_estado(pid, globals.EXECUTE, globals.READY)
+	globals.ProcesosMutex[pid].Unlock()
 
 	return true
 }

@@ -213,6 +213,8 @@ func pasar_desde_susp_ready() {
 			ordenar_susp_ready()
 		}
 
+		slog.Info(fmt.Sprint("Sussp ready; ", globals.Cola_susp_ready))
+
 		pid := globals.Cola_susp_ready[0]
 
 		if !enviar_reanudar_proceso_a_memoria(pid) {
@@ -222,6 +224,8 @@ func pasar_desde_susp_ready() {
 		Avisar_proceso_en_ready()
 
 	}
+
+	slog.Info("Salio")
 }
 
 func pasar_desde_new() {
