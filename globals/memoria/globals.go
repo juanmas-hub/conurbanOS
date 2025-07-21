@@ -1,5 +1,8 @@
 package globals
 
+import (
+	"sync"
+)
 type Memoria_Config struct {
 	Port_memory      int64  `json:"port_memory"`
 	Memory_size      int64  `json:"memory_size"`
@@ -123,6 +126,13 @@ type PaginaLinkeada struct {
 	NumeroDePagina int
 	NumeroDeFrame  int
 }
+
+// MUTEX
+var MapaProcesosMutex sync.Mutex
+var IndicesSWAPOcupadosMutex sync.Mutex
+var MemoriaMutex sync.Mutex
+var MemoriaMarcosOcupadosMutex sync.Mutex
+var MetricasMutex sync.Mutex
 
 /*
 

@@ -14,11 +14,13 @@ func CalcularMock() int {
 	PAGE_SIZE := int(globals_memoria.MemoriaConfig.Page_size)
 	libres := 0
 
+	globals_memoria.MemoriaMarcosOcupadosMutex.Lock()
 	for _, estaOcupado := range globals_memoria.MemoriaMarcosOcupados {
 		if !estaOcupado {
 			libres++
 		}
 	}
+	globals_memoria.MemoriaMarcosOcupadosMutex.Unlock()
 	return libres * PAGE_SIZE
 }
 
@@ -76,23 +78,8 @@ func ObtenerInstruccionesDesdeArchivo(filename string) []string {
 	return instrucciones
 }
 
-/*
-func verificarPIDUnico(pid int) int {
-	if _, existe := (*globals_memoria.Tablas)[pid]; existe {
-		return 1
-	}
-	return 0
-}*/
-
-func verificarPIDUnico(pid int) int {
-	_, existeEntrada := globals_memoria.Procesos[pid]
-	if !existeEntrada {
-		return 0
-	}
-	return -1
-}
-
 func IncrementarMetrica(metrica string, pid int, cantidad int) {
+	globals_memoria.MetricasMutex.Lock()
 	metricas := globals_memoria.MetricasMap[pid]
 	switch metrica {
 	case "ACCESOS_TABLAS":
@@ -111,12 +98,15 @@ func IncrementarMetrica(metrica string, pid int, cantidad int) {
 		slog.Debug(fmt.Sprintf("Métrica desconocida: %s\n", metrica))
 	}
 	globals_memoria.MetricasMap[pid] = metricas
+	globals_memoria.MetricasMutex.Unlock()
 }
 
 func logTablaDePaginas(pid int) {
+	globals_memoria.MapaProcesosMutex.Lock()
 	proceso, ok := globals_memoria.Procesos[pid]
+	globals_memoria.MapaProcesosMutex.Unlock()
 	if !ok {
-		slog.Debug(fmt.Sprintf("❌ Proceso con PID %d no encontrado.", pid))
+		slog.Debug(fmt.Sprintf("Proceso con PID %d no encontrado.", pid))
 		return
 	}
 
