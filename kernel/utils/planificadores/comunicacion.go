@@ -56,7 +56,7 @@ func enviar_finalizacion_a_memoria(ip string, puerto int64, pid int64) bool {
 		slog.Debug(fmt.Sprintf("error enviando mensaje a ip:%s puerto:%d", ip, puerto))
 	}
 
-	slog.Debug(fmt.Sprintf("Finalizacion PID %d enviada a memoria, respuesta: %s", pid, resp.Status))
+	//slog.Debug(fmt.Sprintf("Finalizacion PID %d enviada a memoria, respuesta: %s", pid, resp.Status))
 
 	if resp.StatusCode == http.StatusOK {
 		return true
@@ -80,7 +80,7 @@ func enviar_reanudar_proceso_a_memoria(pid int64) bool {
 		slog.Debug(fmt.Sprintf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory))
 	}
 
-	slog.Debug(fmt.Sprintf("respuesta del servidor: %s", resp.Status))
+	//slog.Debug(fmt.Sprintf("respuesta del servidor: %s", resp.Status))
 
 	if resp.Status == "200 OK" {
 		return true
@@ -111,7 +111,7 @@ func enviar_inicializar_proceso_a_memoria(proceso globals.Proceso) bool {
 		slog.Debug(fmt.Sprintf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory))
 	}
 
-	slog.Debug(fmt.Sprintf("respuesta del servidor: %s", resp.Status))
+	//slog.Debug(fmt.Sprintf("respuesta del servidor: %s", resp.Status))
 
 	if resp.Status == "200 OK" {
 		return true
@@ -151,7 +151,7 @@ func enviar_interrupcion_a_cpu(ip string, puerto int64, nombre string, pid int64
 		slog.Debug(fmt.Sprintf("error enviando interrupción a ip:%s puerto:%d", ip, puerto))
 	}
 
-	slog.Debug(fmt.Sprintf("Interrupcion enviada a CPU: %s, resp: %s", nombre, resp.Status))
+	//slog.Debug(fmt.Sprintf("Interrupcion enviada a CPU: %s, resp: %s", nombre, resp.Status))
 
 	// Respuesta de CPU
 	var respuesta globals.RespuestaInterrupcion

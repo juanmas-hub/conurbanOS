@@ -19,7 +19,7 @@ func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 	slog.Info(" ---- Planificador de largo plazo en STOP, presionar ENTER: ")
 	for {
 		text, _ := reader.ReadString('\n')
-		slog.Debug(text)
+		//slog.Debug(text)
 
 		if text == "\n" {
 			globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED = false
@@ -39,7 +39,9 @@ func pasar_procesos_a_ready() {
 
 	for {
 
+		//slog.Info("# Esperando pasar procesos a Ready")
 		globals.WaitPasarProcesoAReady()
+		//slog.Info("# Intentando pasar procesos a Ready")
 
 		globals.SuspReadyMutex.Lock()
 
@@ -183,26 +185,36 @@ func log_exit(pid int64, estadoAnterior string) {
 func ordenar_susp_ready() {
 	// Con ordenar por tamaño (mas chicho primero) ya el algoritmo PMCP estaria hecho
 	sort.Slice(globals.Cola_susp_ready, func(i, j int) bool {
-		globals.ProcesosMutex[int64(i)].Lock()
-		globals.ProcesosMutex[int64(j)].Lock()
-		b := globals.MapaProcesos[globals.Cola_susp_ready[i]].Tamaño < globals.MapaProcesos[globals.Cola_susp_ready[j]].Tamaño
-		globals.ProcesosMutex[int64(j)].Unlock()
-		globals.ProcesosMutex[int64(i)].Unlock()
+
+		pidI := int64(globals.Cola_susp_ready[i])
+		pidJ := int64(globals.Cola_susp_ready[j])
+
+		globals.ProcesosMutex[pidI].Lock()
+		globals.ProcesosMutex[pidJ].Lock()
+		b := globals.MapaProcesos[pidI].Tamaño < globals.MapaProcesos[pidJ].Tamaño
+		globals.ProcesosMutex[pidJ].Unlock()
+		globals.ProcesosMutex[pidI].Unlock()
 		return b
 	})
+	//slog.Info(fmt.Sprint("ordenando new: ", globals.Cola_susp_ready))
 }
 
 func ordenar_new() {
 
-	sort.Slice(globals.Cola_susp_ready, func(i, j int) bool {
-		globals.ProcesosMutex[int64(i)].Lock()
-		globals.ProcesosMutex[int64(j)].Lock()
-		b := globals.MapaProcesos[globals.Cola_new[i]].Tamaño < globals.MapaProcesos[globals.Cola_new[j]].Tamaño
-		globals.ProcesosMutex[int64(j)].Unlock()
-		globals.ProcesosMutex[int64(i)].Unlock()
+	sort.Slice(globals.Cola_new, func(i, j int) bool {
+
+		pidI := int64(globals.Cola_new[i])
+		pidJ := int64(globals.Cola_new[j])
+
+		globals.ProcesosMutex[pidI].Lock()
+		globals.ProcesosMutex[pidJ].Lock()
+		b := globals.MapaProcesos[pidI].Tamaño < globals.MapaProcesos[pidJ].Tamaño
+		globals.ProcesosMutex[pidJ].Unlock()
+		globals.ProcesosMutex[pidI].Unlock()
 		return b
 	})
 
+	//slog.Info(fmt.Sprint("ordenando new: ", globals.Cola_new))
 }
 
 func pasar_desde_susp_ready() {
@@ -213,7 +225,7 @@ func pasar_desde_susp_ready() {
 			ordenar_susp_ready()
 		}
 
-		slog.Info(fmt.Sprint("Sussp ready; ", globals.Cola_susp_ready))
+		//slog.Info(fmt.Sprint("Sussp ready; ", globals.Cola_susp_ready))
 
 		pid := globals.Cola_susp_ready[0]
 
@@ -225,14 +237,15 @@ func pasar_desde_susp_ready() {
 
 	}
 
-	slog.Info("Salio")
 }
 
 func pasar_desde_new() {
 
 	globals.NewMutex.Lock()
+	//slog.Info("pasando desde new")
 
 	for len(globals.Cola_new) > 0 {
+		//slog.Info("entrando al ciclo de nwe")
 
 		// Si hay procesos en Susp Ready, tienen prioridad
 		/*globals.SuspReadyMutex.Lock()

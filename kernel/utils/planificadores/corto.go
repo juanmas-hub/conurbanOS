@@ -56,14 +56,14 @@ func planificadorSRT() {
 
 		if hayProcesosEnReady() && hayCpusLibres() {
 
-			slog.Debug(fmt.Sprint("SRT - Hay procesos en ready y hay cpus libres"))
+			//slog.Debug(fmt.Sprint("SRT - Hay procesos en ready y hay cpus libres"))
 
 			ejecutarUnProcesoSjf()
 
 		} else if hayProcesosEnReady() && !hayCpusLibres() {
 			// Caso desalojo
 
-			slog.Debug(fmt.Sprint("SRT - Hay procesos en ready y NO hay cpus libres"))
+			//slog.Debug(fmt.Sprint("SRT - Hay procesos en ready y NO hay cpus libres"))
 
 			pidEnExec, hayQueDesalojar := verificarDesalojo()
 			if hayQueDesalojar {
@@ -72,11 +72,11 @@ func planificadorSRT() {
 
 		} else if !hayProcesosEnReady() && hayCpusLibres() {
 
-			slog.Debug(fmt.Sprint("SRT - No hay procesos en ready y hay cpus libres. No se hace nada"))
+			//slog.Debug(fmt.Sprint("SRT - No hay procesos en ready y hay cpus libres. No se hace nada"))
 
 		} else if !hayProcesosEnReady() && !hayCpusLibres() {
 
-			slog.Debug(fmt.Sprint("SRT - No hay ni procesos en ready ni cpus libres. No se hace nada"))
+			//slog.Debug(fmt.Sprint("SRT - No hay ni procesos en ready ni cpus libres. No se hace nada"))
 
 		}
 
@@ -105,7 +105,7 @@ func elegirCPUlibre() (string, int64, string, bool) {
 		return cpu.Handshake.IP, cpu.Handshake.Puerto, cpu.Handshake.Nombre, true
 	} else {
 		// Si devuelve esto hay un error, porque esta funcion se tiene que ejecutar cuando el semaforo lo permita
-		slog.Debug(fmt.Sprintf("No se encontro CPU libre"))
+		//slog.Debug(fmt.Sprintf("No se encontro CPU libre"))
 		return "", -1, "", false
 	}
 }
@@ -139,7 +139,7 @@ func verificarDesalojo() (int64, bool) {
 	rafagaNuevo := globals.MapaProcesos[globals.Cola_ready[0]].Rafaga.Est_Sgte
 	globals.ReadyMutex.Unlock()
 
-	slog.Debug(fmt.Sprintf("VerificarDesalojo: rafagaNuevo (%f) - restanteExec (%f)", rafagaNuevo, restanteExec))
+	//slog.Debug(fmt.Sprintf("VerificarDesalojo: rafagaNuevo (%f) - restanteExec (%f)", rafagaNuevo, restanteExec))
 
 	if rafagaNuevo < restanteExec {
 		globals.ExecuteMutex.Unlock()
@@ -152,7 +152,7 @@ func verificarDesalojo() (int64, bool) {
 }
 
 func buscarProcesoEnExecuteDeMenorRafagaRestante() (int64, float64) {
-	slog.Debug(fmt.Sprint("Buscando menor rafaga restante en EXECUTE: ", globals.Cola_execute))
+	//slog.Debug(fmt.Sprint("Buscando menor rafaga restante en EXECUTE: ", globals.Cola_execute))
 
 	var pidMenorRafaga int64
 	pidMenorRafaga = globals.Cola_execute[0]
@@ -161,14 +161,14 @@ func buscarProcesoEnExecuteDeMenorRafagaRestante() (int64, float64) {
 		// Si la posicion i esta libre
 		pidActual := globals.Cola_execute[i]
 		rafagaRestanteActual := rafagaRestante(pidActual)
-		slog.Debug(fmt.Sprintf(" - PID %d: %f", pidMenorRafaga, menorRafagaRestante))
+		//slog.Debug(fmt.Sprintf(" - PID %d: %f", pidMenorRafaga, menorRafagaRestante))
 		if rafagaRestanteActual < menorRafagaRestante {
 			pidMenorRafaga = pidActual
 			menorRafagaRestante = rafagaRestanteActual
 		}
 	}
 
-	slog.Debug(fmt.Sprint(" --- Elegido para desalojar: ", pidMenorRafaga, menorRafagaRestante))
+	//slog.Debug(fmt.Sprint(" --- Elegido para desalojar: ", pidMenorRafaga, menorRafagaRestante))
 	return pidMenorRafaga, menorRafagaRestante
 }
 
@@ -182,7 +182,7 @@ func rafagaRestante(pid int64) float64 {
 	tiempoPasado := float64(time.Since(proceso.UltimoCambioDeEstado).Milliseconds()) // tiempo en ms
 	//slog.Debug(fmt.Sprint("Tiempo pasado: ", tiempoPasado))
 
-	slog.Debug(fmt.Sprintf("PID %d - Rafaga restante: %f", pid, rafaga-tiempoPasado))
+	//slog.Debug(fmt.Sprintf("PID %d - Rafaga restante: %f", pid, rafaga-tiempoPasado))
 	return rafaga - tiempoPasado
 }
 

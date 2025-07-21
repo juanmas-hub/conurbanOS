@@ -11,7 +11,7 @@ import (
 )
 
 func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
-	
+
 	decoder := json.NewDecoder(r.Body)
 	var handshake globals.HandshakeIO
 	err := decoder.Decode(&handshake)
@@ -23,7 +23,7 @@ func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
 	}
 
 	globals.ListaIOsMutex.Lock()
-	slog.Debug(fmt.Sprintf("Se levantó una nueva instancia: %s, de IO: %s", handshake.NombreInstancia, handshake.NombreIO))
+	//slog.Debug(fmt.Sprintf("Se levantó una nueva instancia: %s, de IO: %s", handshake.NombreInstancia, handshake.NombreIO))
 	agregarAInstanciasIOs(handshake)
 	globals.ListaIOsMutex.Unlock()
 
@@ -32,14 +32,14 @@ func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
 }
 
 func RecibirHandshakeCPU(w http.ResponseWriter, r *http.Request) {
-	
-	slog.Debug(fmt.Sprint("Me llego un handshaek de CPU"))
-	
+
+	//slog.Debug(fmt.Sprint("Me llego un handshaek de CPU"))
+
 	decoder := json.NewDecoder(r.Body)
 	var handshake globals.Handshake
-	
-	slog.Debug(fmt.Sprint("Handshake: ", handshake))
-	
+
+	//slog.Debug(fmt.Sprint("Handshake: ", handshake))
+
 	err := decoder.Decode(&handshake)
 	if err != nil {
 		slog.Debug(fmt.Sprintf("Error al decodificar handshake: %s\n", err.Error()))
@@ -49,7 +49,7 @@ func RecibirHandshakeCPU(w http.ResponseWriter, r *http.Request) {
 	}
 
 	globals.ListaCPUsMutex.Lock()
-	slog.Debug(fmt.Sprintf("Se levantó una nueva CPU: %s, IP: %s, Puerto: %d", handshake.Nombre, handshake.IP, handshake.Puerto))
+	//slog.Debug(fmt.Sprintf("Se levantó una nueva CPU: %s, IP: %s, Puerto: %d", handshake.Nombre, handshake.IP, handshake.Puerto))
 	agregarAListaCPUs(handshake)
 	globals.ListaCPUsMutex.Unlock()
 
