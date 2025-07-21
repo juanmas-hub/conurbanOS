@@ -28,7 +28,6 @@ func moverseAPaginaSWAP(inicioSwap int, numeroDePagina int, archivo *os.File) in
 	pageSize := globals_memoria.MemoriaConfig.Page_size
 	direccion := int64((inicioSwap + numeroDePagina) * int(pageSize))
 
-	// Posicionarse en la dirección deseada
 	_, err := archivo.Seek(direccion, 0)
 	if err != nil {
 		slog.Debug(fmt.Sprintf("Error al posicionarse en el archivo: %v", err))
@@ -56,6 +55,9 @@ func leerPaginaSWAP(pagina globals_memoria.Pagina, archivo *os.File) string {
 }*/
 
 func leerPaginaSWAP(inicioSwap int, numeroDePagina int, archivo *os.File) string {
+
+	globals_memoria.ArchivoSwapMutex.Lock()
+	defer globals_memoria.ArchivoSwapMutex.Unlock()
 
 	if moverseAPaginaSWAP(inicioSwap, numeroDePagina, archivo) == 1 {
 		return ""
@@ -147,11 +149,13 @@ func eliminarPaginasSWAP(pid int) []globals_memoria.Pagina {
 		}
 
 		// Marco los indices como libres
+		globals_memoria.IndicesSWAPOcupadosMutex.Lock()
 		for i := 0; i < cantidadPaginas; i++ {
 			if inicioSwap+i < len(globals_memoria.IndicesSWAPOcupados) {
 				globals_memoria.IndicesSWAPOcupados[inicioSwap+i] = false
 			}
 		}
+		globals_memoria.IndicesSWAPOcupadosMutex.Unlock()
 
 	}
 
@@ -175,6 +179,8 @@ func eliminarPaginasSWAP(pid int) []globals_memoria.Pagina {
 // Devuelve la posicion donde empezaria a escribir
 func obtenerIndiceSwapDisponible(cantPaginasNecesarias int) int {
 	// Buscar un bloque libre contiguo
+	globals_memoria.IndicesSWAPOcupadosMutex.Lock()
+	defer globals_memoria.IndicesSWAPOcupadosMutex.Unlock()
 	for i := 0; i <= len(globals_memoria.IndicesSWAPOcupados)-cantPaginasNecesarias; i++ {
 		encontrado := true
 		for j := 0; j < cantPaginasNecesarias; j++ {
@@ -296,9 +302,11 @@ func escribirEnSWAP(pid int, paginas []globals_memoria.Pagina) int {
 
 		// Cuando guardo la primer pagina, guardo su posicion como inicio del swap
 		if pagina.NumeroDePagina == 0 {
+			globals_memoria.ProcesosMutex[pid].Lock()
 			proceso := globals_memoria.Procesos[pid]
 			proceso.InicioSWAP = inicio
 			globals_memoria.Procesos[pid] = proceso
+			globals_memoria.ProcesosMutex[pid].Unlock()
 		}
 
 		slog.Debug(fmt.Sprintf("SWAP: PID %d, Página %d guardada en índice %d ", pid, pagina.NumeroDePagina, inicio+pagina.NumeroDePagina))

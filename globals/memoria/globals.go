@@ -129,6 +129,8 @@ type PaginaLinkeada struct {
 
 // MUTEX
 var MapaProcesosMutex sync.Mutex
+var ProcesosMutex map[int]*sync.Mutex = make(map[int]*sync.Mutex)
+var ArchivoSwapMutex sync.Mutex
 var IndicesSWAPOcupadosMutex sync.Mutex
 var MemoriaMutex sync.Mutex
 var MemoriaMarcosOcupadosMutex sync.Mutex
