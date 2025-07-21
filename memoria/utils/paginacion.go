@@ -13,9 +13,11 @@ import (
 func leer(direccion int, tamanio int) string {
 	var leido string = ""
 
+	globals_memoria.MemoriaMutex.Lock()
 	for i := 0; i < tamanio; i++ {
 		leido += string(globals_memoria.Memoria[direccion+i])
 	}
+	globals_memoria.MemoriaMutex.Lock()
 	return leido
 }
 
@@ -30,9 +32,11 @@ func escribir(direccion int, dato string) int {
 	}
 
 	// Se escribe el dato
+	globals_memoria.MemoriaMutex.Lock()
 	for i := 0; i < len(dato); i++ {
 		globals_memoria.Memoria[direccion+i] = dato[i]
 	}
+	globals_memoria.MemoriaMutex.Unlock()
 	return 0
 }
 
@@ -56,8 +60,9 @@ func escribirPaginas(pid int, paginas []globals_memoria.Pagina, marcos []int) *[
 		paginasLinkeadas = append(paginasLinkeadas, paginaLinkeada)
 
 		slog.Debug(fmt.Sprint(paginas[i]))
-
+		globals_memoria.MemoriaMarcosOcupadosMutex.Lock()
 		globals_memoria.MemoriaMarcosOcupados[marcos[i]] = true
+		globals_memoria.MemoriaMarcosOcupadosMutex.Unlock()
 
 		IncrementarMetrica("ESCRITURAS_MEMORIA", pid, 1)
 	}
@@ -67,10 +72,11 @@ func escribirPaginas(pid int, paginas []globals_memoria.Pagina, marcos []int) *[
 
 func actualizarPagina(indicePagina int, dato string) {
 	// Se sobrescribe el dato
+	globals_memoria.MemoriaMutex.Lock()
 	for i := 0; i < len(dato); i++ {
 		globals_memoria.Memoria[indicePagina+i] = dato[i]
 	}
-
+	globals_memoria.MemoriaMutex.Unlock()
 }
 
 func crearTabla(pid int, framesAsignados []int) globals_memoria.TablaPaginas {
@@ -132,6 +138,7 @@ func construirNivel(pid int, nivel int, entradasPorPagina int, frameIndex *int, 
 func buscarMarcosDisponibles(cantidad int) []int {
 	var result []int = make([]int, 0, cantidad)
 
+	globals_memoria.MemoriaMarcosOcupadosMutex.Lock()
 	for i := 0; i < len(globals_memoria.MemoriaMarcosOcupados); i++ {
 		if !globals_memoria.MemoriaMarcosOcupados[i] {
 			result = append(result, i)
@@ -140,12 +147,14 @@ func buscarMarcosDisponibles(cantidad int) []int {
 			}
 		}
 	}
+	globals_memoria.MemoriaMarcosOcupadosMutex.Unlock()
 
 	slog.Debug(fmt.Sprintf("no hay suficientes marcos libres: se encontraron %d de %d", len(result), cantidad))
 	return nil
 }
 
 func actualizarTablaPaginas(pid int, paginasLinkeadas []globals_memoria.PaginaLinkeada) {
+	globals_memoria.ProcesosMutex[pid].Lock()
 	proceso := globals_memoria.Procesos[pid]
 
 	// Crea un mapa para acceso rápido por número de página
@@ -179,6 +188,7 @@ func actualizarTablaPaginas(pid int, paginasLinkeadas []globals_memoria.PaginaLi
 
 	// Actualizar el proceso en la tabla global
 	globals_memoria.Procesos[pid] = proceso
+	globals_memoria.ProcesosMutex[pid].Unlock()
 
 	slog.Debug(fmt.Sprint("Tabla de paginas actualizada del proceso: ", pid))
 	logTablaDePaginas(pid)
@@ -187,10 +197,11 @@ func actualizarTablaPaginas(pid int, paginasLinkeadas []globals_memoria.PaginaLi
 
 func asignarFramesAProceso(numerosDeFrame []int) {
 
+	globals_memoria.MemoriaMarcosOcupadosMutex.Lock()
 	for _, frame := range numerosDeFrame {
 		globals_memoria.MemoriaMarcosOcupados[frame] = true
 	}
-
+	globals_memoria.MemoriaMarcosOcupadosMutex.Unlock()
 }
 
 func AlmacenarProceso(pid int, tamanio int, filename string) int {
@@ -245,11 +256,15 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	}
 
 	// Lo aniado al mapa de procesos
+	globals_memoria.ProcesosMutex[pid].Lock()
 	globals_memoria.Procesos[pid] = proceso
+	globals_memoria.ProcesosMutex[pid].Unlock()
 
 	// Aniado metricas del proceso
 	var metrica globals_memoria.Memoria_Metrica
+	globals_memoria.MetricasMutex.Lock()
 	globals_memoria.MetricasMap[pid] = metrica
+	globals_memoria.MetricasMutex.Lock()
 	slog.Debug(fmt.Sprintf("Metricas al crear el proceso %+v", globals_memoria.MetricasMap[pid]))
 
 	slog.Debug(fmt.Sprintf("Se creo la tabla de paginas del proceso %d:", pid))
@@ -263,6 +278,8 @@ func obtenerMarcoDesdeTabla(pid int, entradas []int64) int {
 	//(*globals_memoria.Metricas)[pid].AccesosTablas++
 
 	var NUMBER_OF_LEVELS int = int(globals_memoria.MemoriaConfig.Number_of_levels)
+	globals_memoria.ProcesosMutex[pid].Lock()
+	defer globals_memoria.ProcesosMutex[pid].Unlock()
 	tabla := globals.Procesos[pid].TablaDePaginas
 	var indiceActual int
 
@@ -292,10 +309,12 @@ func eliminarMarcosFisicos(pid int) []globals_memoria.Pagina {
 	var paginas []globals_memoria.Pagina
 
 	// Obtener la tabla de páginas multinivel del proceso
+	globals_memoria.ProcesosMutex[pid].Lock()
 	tabla := globals_memoria.Procesos[pid].TablaDePaginas
 
 	// Obtengo las paginas
 	recorrerTablaYLiberarMarcos(pid, tabla, &paginas)
+	globals_memoria.ProcesosMutex[pid].Unlock()
 
 	slog.Debug(fmt.Sprint("Frames eliminados del proceso: ", pid))
 	slog.Debug(fmt.Sprint("Paginas: ", paginas))
@@ -319,6 +338,7 @@ func recorrerTablaYLiberarMarcos(pid int, tabla globals_memoria.TablaPaginas, pa
 				inicio := frame * pageSize
 
 				// Leer contenido de la memoria en ese marco
+				globals_memoria.MemoriaMutex.Lock()
 				contenido := make([]byte, pageSize)
 				copy(contenido, globals_memoria.Memoria[inicio:inicio+pageSize])
 
@@ -333,16 +353,21 @@ func recorrerTablaYLiberarMarcos(pid int, tabla globals_memoria.TablaPaginas, pa
 				for j := 0; j < pageSize; j++ {
 					globals_memoria.Memoria[inicio+j] = 0
 				}
+				globals_memoria.MemoriaMutex.Unlock()
 
 				// Marcar marco como libre
+				globals_memoria.MemoriaMarcosOcupadosMutex.Lock()
 				globals_memoria.MemoriaMarcosOcupados[frame] = false
-
+				globals_memoria.MemoriaMarcosOcupadosMutex.Unlock()
 			}
 		}
 	}
 }
 
 func generarMemoryDump(pid int) int {
+	globals_memoria.ProcesosMutex[pid].Lock()
+	defer globals_memoria.ProcesosMutex[pid].Unlock()
+
 	proceso, ok := globals_memoria.Procesos[pid]
 	if !ok {
 		slog.Debug(fmt.Sprintf("PID %d no encontrado", pid))
@@ -358,13 +383,13 @@ func generarMemoryDump(pid int) int {
 	// Crear carpeta si no existe
 	err := os.MkdirAll(directorio, os.ModePerm)
 	if err != nil {
-		slog.Debug(fmt.Sprintf("❌ Error al crear directorio de dump: %v", err))
+		slog.Debug(fmt.Sprintf("Error al crear directorio de dump: %v", err))
 		return -1
 	}
 
 	archivo, err := os.Create(nombreArchivo)
 	if err != nil {
-		slog.Debug(fmt.Sprintf("❌ Error al crear archivo dump: %v", err))
+		slog.Debug(fmt.Sprintf("Error al crear archivo dump: %v", err))
 		return -1
 	}
 	defer archivo.Close()
