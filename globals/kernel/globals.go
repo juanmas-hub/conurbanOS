@@ -1,6 +1,7 @@
 package globals
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -112,6 +113,7 @@ var ProcesosAFinalizar []int64
 // var Sem_PasarProcesoAReady = CrearSemaforo(0)
 var Sem_PasarProcesoAReady chan struct{} = make(chan struct{}, 1000) // buffer grande = acumulador de signals
 func SignalPasarProcesoAReady() {
+	slog.Info("SignalPasarProcesoAReady() llamada")
 	Sem_PasarProcesoAReady <- struct{}{}
 }
 

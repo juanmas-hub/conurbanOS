@@ -50,13 +50,13 @@ func LiberarCPU(nombreCPU string) {
 	posCpu := BuscarCpu(nombreCPU)
 	globals.ListaCPUs[posCpu].EstaLibre = true
 	globals.ListaCPUsMutex.Unlock()
-	slog.Debug(fmt.Sprint("CPU liberada"))
+	//slog.Debug(fmt.Sprint("CPU liberada"))
 	switch globals.KernelConfig.Scheduler_algorithm {
 	case "FIFO", "SJF":
-		slog.Debug(fmt.Sprintf("Notificando replanificación en LiberarCPU - Nueva CPU Libre"))
+		//slog.Debug(fmt.Sprintf("Notificando replanificación en LiberarCPU - Nueva CPU Libre"))
 		Signal(globals.Sem_Cpus)
 	case "SRT":
-		slog.Debug(fmt.Sprintf("Notificando replanificación en LiberarCPU - Nueva CPU Libre"))
+		//slog.Debug(fmt.Sprintf("Notificando replanificación en LiberarCPU - Nueva CPU Libre"))
 		NotificarReplanifSRT()
 	}
 }
@@ -97,7 +97,7 @@ func EnviarInterrupcionACPU(ip string, puerto int64, nombre string, pid int64) (
 		slog.Debug(fmt.Sprintf("error enviando interrupción a ip:%s puerto:%d", ip, puerto))
 	}
 
-	slog.Debug(fmt.Sprintf("Interrupcion enviada a CPU: %s, resp: %s", nombre, resp.Status))
+	//slog.Debug(fmt.Sprintf("Interrupcion enviada a CPU: %s, resp: %s", nombre, resp.Status))
 
 	// Respuesta de CPU
 	var respuesta globals.RespuestaInterrupcion
@@ -122,7 +122,7 @@ func EnviarDumpMemory(pid int64) bool {
 		slog.Debug(fmt.Sprintf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory))
 	}
 
-	slog.Debug(fmt.Sprintf("Enviado DUMP MEMORY a memoria, resp: %s", resp.Status))
+	//slog.Debug(fmt.Sprintf("Enviado DUMP MEMORY a memoria, resp: %s", resp.Status))
 
 	if resp.StatusCode == http.StatusOK {
 		return true
@@ -144,7 +144,7 @@ func EnviarSolicitudIO(ipIO string, puertoIO int64, pid int64, tiempo int64) {
 
 	url := fmt.Sprintf("http://%s:%d/solicitudDeIo", ipIO, puertoIO)
 
-	slog.Debug(fmt.Sprintf("Solicitud IO enviada al modulo IO - PID: %d, Tiempo: %dms", pid, tiempo))
+	//slog.Debug(fmt.Sprintf("Solicitud IO enviada al modulo IO - PID: %d, Tiempo: %dms", pid, tiempo))
 
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
@@ -176,15 +176,15 @@ func AvisarSwappeo(pid int64) {
 }
 
 func LogLockeo(semaforo string, funcion string) {
-	slog.Debug(fmt.Sprintf("Se lockeo %s en %s", semaforo, funcion))
+	//slog.Debug(fmt.Sprintf("Se lockeo %s en %s", semaforo, funcion))
 }
 
 func LogIntentoLockeo(semaforo string, funcion string) {
-	slog.Debug(fmt.Sprintf("Se quiere lockear %s en %s", semaforo, funcion))
+	//slog.Debug(fmt.Sprintf("Se quiere lockear %s en %s", semaforo, funcion))
 }
 
 func LogUnlockeo(semaforo string, funcion string) {
-	slog.Debug(fmt.Sprintf("Se unlockeo %s en %s", semaforo, funcion))
+	//slog.Debug(fmt.Sprintf("Se unlockeo %s en %s", semaforo, funcion))
 }
 
 func EstaEnCola(cola []int64, pid int64) bool {

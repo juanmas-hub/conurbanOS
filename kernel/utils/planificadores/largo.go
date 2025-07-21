@@ -19,7 +19,7 @@ func IniciarPlanificadorLargoPlazo(archivo string, tamanio int64) {
 	slog.Info(" ---- Planificador de largo plazo en STOP, presionar ENTER: ")
 	for {
 		text, _ := reader.ReadString('\n')
-		slog.Debug(text)
+		//slog.Debug(text)
 
 		if text == "\n" {
 			globals.PLANIFICADOR_LARGO_PLAZO_BLOCKED = false
@@ -39,17 +39,16 @@ func pasar_procesos_a_ready() {
 
 	for {
 
+		//slog.Info("# Esperando pasar procesos a Ready")
 		globals.WaitPasarProcesoAReady()
-		slog.Info("intentando pasar procesos")
+		//slog.Info("# Intentando pasar procesos a Ready")
 
 		globals.SuspReadyMutex.Lock()
-		slog.Info("paso el lock")
 
 		pasar_desde_susp_ready()
 		susp_empty := len(globals.Cola_susp_ready) == 0
 
 		globals.SuspReadyMutex.Unlock()
-		slog.Info("paso el unlock")
 
 		if susp_empty {
 			pasar_desde_new()
@@ -197,7 +196,7 @@ func ordenar_susp_ready() {
 		globals.ProcesosMutex[pidI].Unlock()
 		return b
 	})
-	slog.Info(fmt.Sprint("ordenando new: ", globals.Cola_susp_ready))
+	//slog.Info(fmt.Sprint("ordenando new: ", globals.Cola_susp_ready))
 }
 
 func ordenar_new() {
@@ -215,7 +214,7 @@ func ordenar_new() {
 		return b
 	})
 
-	slog.Info(fmt.Sprint("ordenando new: ", globals.Cola_new))
+	//slog.Info(fmt.Sprint("ordenando new: ", globals.Cola_new))
 }
 
 func pasar_desde_susp_ready() {
@@ -226,7 +225,7 @@ func pasar_desde_susp_ready() {
 			ordenar_susp_ready()
 		}
 
-		slog.Info(fmt.Sprint("Sussp ready; ", globals.Cola_susp_ready))
+		//slog.Info(fmt.Sprint("Sussp ready; ", globals.Cola_susp_ready))
 
 		pid := globals.Cola_susp_ready[0]
 
@@ -243,10 +242,10 @@ func pasar_desde_susp_ready() {
 func pasar_desde_new() {
 
 	globals.NewMutex.Lock()
-	slog.Info("pasando desde new")
+	//slog.Info("pasando desde new")
 
 	for len(globals.Cola_new) > 0 {
-		slog.Info("entrando al ciclo de nwe")
+		//slog.Info("entrando al ciclo de nwe")
 
 		// Si hay procesos en Susp Ready, tienen prioridad
 		/*globals.SuspReadyMutex.Lock()

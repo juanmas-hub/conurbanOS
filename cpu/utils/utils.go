@@ -794,7 +794,7 @@ func InsertarOReemplazarEnCache(pid int64, nueva *globals.CacheEntry) {
 		}
 		slog.Debug(fmt.Sprint("Se actualizo la pagina en memoria PID: ", pid))
 
-		slog.Info(fmt.Sprintf("PID: %d - Memory Update - Página:%d - Frame: %d", pid, nueva.Pagina, direccionFisica/globals.MemoriaConfig.Page_size))
+		slog.Info(fmt.Sprintf("PID: %d - Memory Update - Página:%d - Frame: %d", pid, victima.Pagina, direccionFisica/globals.MemoriaConfig.Page_size))
 	}
 
 	// Eliminar la página víctima del índice

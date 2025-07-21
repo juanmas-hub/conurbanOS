@@ -129,7 +129,7 @@ func manejarIO(syscallIO globals.SyscallIO) {
 	instanciaIo, pos, hayLibre := BuscarInstanciaIOLibre(syscallIO.NombreIO)
 
 	if hayLibre {
-		slog.Debug(fmt.Sprint("Seleccionada IO libre: ", instanciaIo))
+		//slog.Debug(fmt.Sprint("Seleccionada IO libre: ", instanciaIo))
 		instanciaIo.PidProcesoActual = syscallIO.PID
 		general.EnviarSolicitudIO(instanciaIo.Handshake.IP, instanciaIo.Handshake.Puerto, syscallIO.PID, syscallIO.Tiempo)
 		io.Instancias[pos] = instanciaIo
@@ -137,7 +137,7 @@ func manejarIO(syscallIO globals.SyscallIO) {
 		io.ColaProcesosEsperando = append(io.ColaProcesosEsperando, syscallIO)
 	}
 
-	slog.Debug(fmt.Sprintf("Tiempo de IO de PID (%d): %d", syscallIO.PID, syscallIO.Tiempo))
+	//slog.Debug(fmt.Sprintf("Tiempo de IO de PID (%d): %d", syscallIO.PID, syscallIO.Tiempo))
 	globals.MapaIOs[syscallIO.NombreIO] = io
 	globals.ListaIOsMutex.Unlock()
 
@@ -159,64 +159,6 @@ func manejarInit_Proc(syscallINIT globals.SyscallInit) {
 	globals.ListaCPUsMutex.Unlock()
 	planificadores.Enviar_proceso_a_cpu(cpu.Handshake.IP, cpu.Handshake.Puerto, syscallINIT.Pid_proceso, syscallINIT.Pc, cpu.Handshake.Nombre)
 }
-
-/*
-func manejarDUMP_MEMORY(syscallDUMP globals.SyscallDump) {
-	logSyscalls(syscallDUMP.PID, "DUMP_MEMORY")
-
-	general.LogIntentoLockeo("MapaProcesos", "manejarDUMP_MEMORY")
-	globals.MapaProcesosMutex.Lock()
-	general.LogLockeo("MapaProcesos", "manejarDUMP_MEMORY")
-	proceso, presente := globals.MapaProcesos[syscallDUMP.PID]
-	if !presente {
-		slog.Debug(fmt.Sprintf("El proceso %d que solicito DUMP ya no existe en MapaProcesos. Probablemente finalizo", syscallDUMP.PID))
-		return
-	}
-	globals.MapaProcesosMutex.Unlock()
-	general.LogUnlockeo("MapaProcesos", "manejarDUMP_MEMORY")
-
-	// Si se pudo bloquear
-	if planificadores.EjecutarPlanificadorMedioPlazo(proceso, "Syscall Dump") {
-
-		// Si se pudo dumpear
-		if general.EnviarDumpMemory(syscallDUMP.PID) {
-
-			general.LogIntentoLockeo("MapaProcesos", "manejarDUMP_MEMORY")
-			globals.MapaProcesosMutex.Lock()
-			general.LogLockeo("MapaProcesos", "manejarDUMP_MEMORY")
-			proceso, presente = globals.MapaProcesos[syscallDUMP.PID]
-			if !presente {
-				slog.Debug(fmt.Sprintf("El proceso %d que acaba de DUMPEAR ya no existe en MapaProcesos. Probablemente finalizo", syscallDUMP.PID))
-			} else {
-				general.ActualizarPC(syscallDUMP.PID, syscallDUMP.PC)
-
-				ok := planificadores.CambiarEstado(proceso.Pcb.Pid, globals.BLOCKED, globals.READY)
-				if !ok {
-					slog.Debug(fmt.Sprintf("El proceso %d que acaba de DUMPEAR no pudo cambiar de estado.", syscallDUMP.PID))
-					globals.MapaProcesosMutex.Unlock()
-					general.LogUnlockeo("MapaProcesos", "manejarDUMP_MEMORY")
-					return
-				}
-				switch globals.KernelConfig.Scheduler_algorithm {
-				case "FIFO", "SJF":
-					slog.Debug(fmt.Sprintf("Notificando replanificación en manejarDUMP_MEMORY - Nuevo proceso en ready"))
-					general.Signal(globals.Sem_ProcesosEnReady)
-				case "SRT":
-					slog.Debug(fmt.Sprintf("Notificando replanificación en manejarDUMP_MEMORY - Nuevo proceso en ready"))
-					general.NotificarReplanifSRT()
-				}
-			}
-			globals.MapaProcesosMutex.Unlock()
-			general.LogUnlockeo("MapaProcesos", "manejarDUMP_MEMORY")
-
-		} else {
-			// Si no se pudo dumpear
-			planificadores.FinalizarProceso(syscallDUMP.PID, globals.BLOCKED)
-		}
-	}
-
-	general.LiberarCPU(syscallDUMP.NombreCPU)
-}*/
 
 func manejarDUMP_MEMORY(syscallDUMP globals.SyscallDump) {
 	logSyscalls(syscallDUMP.PID, "DUMP_MEMORY")
