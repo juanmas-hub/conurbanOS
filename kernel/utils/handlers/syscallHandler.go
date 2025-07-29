@@ -141,9 +141,10 @@ func manejarIO(syscallIO globals.SyscallIO) {
 	globals.MapaIOs[syscallIO.NombreIO] = io
 	globals.ListaIOsMutex.Unlock()
 
+	planificadores.BloquearProceso(syscallIO.PID)
+
 	globals.ProcesosMutex[syscallIO.PID].Unlock()
 
-	planificadores.BloquearProceso(syscallIO.PID)
 	general.LiberarCPU(syscallIO.NombreCPU)
 
 }

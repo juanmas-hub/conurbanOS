@@ -56,14 +56,14 @@ func planificadorSRT() {
 
 		if hayProcesosEnReady() && hayCpusLibres() {
 
-			//slog.Debug(fmt.Sprint("SRT - Hay procesos en ready y hay cpus libres"))
+			//slog.Info(fmt.Sprint("SRT - Hay procesos en ready y hay cpus libres"))
 
 			ejecutarUnProcesoSjf()
 
 		} else if hayProcesosEnReady() && !hayCpusLibres() {
 			// Caso desalojo
 
-			//slog.Debug(fmt.Sprint("SRT - Hay procesos en ready y NO hay cpus libres"))
+			//slog.Info(fmt.Sprint("SRT - Hay procesos en ready y NO hay cpus libres"))
 
 			pidEnExec, hayQueDesalojar := verificarDesalojo()
 			if hayQueDesalojar {
@@ -72,11 +72,11 @@ func planificadorSRT() {
 
 		} else if !hayProcesosEnReady() && hayCpusLibres() {
 
-			//slog.Debug(fmt.Sprint("SRT - No hay procesos en ready y hay cpus libres. No se hace nada"))
+			//slog.Info(fmt.Sprint("SRT - No hay procesos en ready y hay cpus libres. No se hace nada"))
 
 		} else if !hayProcesosEnReady() && !hayCpusLibres() {
 
-			//slog.Debug(fmt.Sprint("SRT - No hay ni procesos en ready ni cpus libres. No se hace nada"))
+			//slog.Info(fmt.Sprint("SRT - No hay ni procesos en ready ni cpus libres. No se hace nada"))
 
 		}
 
@@ -243,6 +243,7 @@ func ejecutarUnProcesoSjf() {
 	globals.ReadyMutex.Lock()
 	ordenarReadyPorRafaga()
 	pid := globals.Cola_ready[0]
+	slog.Info(fmt.Sprint("SJF == > Ready ordenado por rafaga: ", globals.Cola_ready))
 	globals.ReadyMutex.Unlock()
 
 	globals.ProcesosMutex[pid].Lock()
@@ -257,151 +258,6 @@ func ejecutarUnProcesoSjf() {
 
 }
 
-/*
-func desalojarYEnviarProceso(pidEnExec int64) {
-
-	ipCPU, puertoCPU, nombreCPU, ok := general.BuscarCpuPorPID(pidEnExec)
-	slog.Debug(fmt.Sprint("SRT - CPU del proceso a desalojar: ", nombreCPU))
-	if ok {
-		pidProcesoAEjecutar := globals.Cola_ready[0]
-		procesoAEjecutar := globals.MapaProcesos[pidProcesoAEjecutar]
-		pcProcesoAEjecutar := procesoAEjecutar.Pcb.PC
-
-		procesoEnExec, existe := globals.MapaProcesos[pidEnExec]
-		if !existe {
-			slog.Debug(fmt.Sprint("El proceso ya no existe, probablemente finalizo"))
-			general.EnviarProcesoAEjecutar_ACPU(ipCPU, puertoCPU, pidProcesoAEjecutar, pcProcesoAEjecutar, nombreCPU)
-			CambiarEstado(pidProcesoAEjecutar, globals.READY, globals.EXECUTE)
-			return
-		}
-
-		if procesoEnExec.Estado_Actual != globals.EXECUTE {
-			slog.Debug(fmt.Sprint("El proceso ya no esta en EXECUTE, probablemente solicito Syscall"))
-			general.EnviarProcesoAEjecutar_ACPU(ipCPU, puertoCPU, pidProcesoAEjecutar, pcProcesoAEjecutar, nombreCPU)
-			CambiarEstado(pidProcesoAEjecutar, globals.READY, globals.EXECUTE)
-			return
-		}
-
-		respuestaInterrupcion, err := general.EnviarInterrupcionACPU(ipCPU, puertoCPU, nombreCPU, pidEnExec)
-		if err != nil {
-			slog.Debug(fmt.Sprint("Error en interrupción:", err))
-		}
-		general.ActualizarPC(pidEnExec, respuestaInterrupcion.PC)
-
-		procesoDesalojado := globals.MapaProcesos[pidEnExec]
-
-		CambiarEstado(procesoDesalojado.Pcb.Pid, globals.EXECUTE, globals.READY)
-
-		// LOG Desalojo: ## (<PID>) - Desalojado por algoritmo SJF/SRT
-		slog.Info(fmt.Sprintf("## (%d) - Desalojado por algoritmo SJF/SRT", procesoDesalojado.Pcb.Pid))
-
-		general.EnviarProcesoAEjecutar_ACPU(ipCPU, puertoCPU, pidProcesoAEjecutar, pcProcesoAEjecutar, nombreCPU)
-
-		CambiarEstado(pidProcesoAEjecutar, globals.READY, globals.EXECUTE)
-
-	} else {
-		slog.Debug(fmt.Sprintf("No se encontró la CPU que ejecuta el PID %d al momento de desalojar", pidEnExec))
-	}
-	//slog.Debug(fmt.Sprint("Notificado Replanificar SRT"))
-}
-
-func desalojarYEnviarProceso(pidEnExec int64) {
-
-	ipCPU, puertoCPU, nombreCPU, ok := general.BuscarCpuPorPID(pidEnExec)
-	slog.Debug(fmt.Sprint("SRT - CPU del proceso a desalojar: ", nombreCPU))
-	if ok {
-
-		globals.ReadyMutex.Lock()
-
-		pid_a_ejecutar := globals.Cola_ready[0]
-		globals.ProcesosMutex[pid_a_ejecutar].Lock()
-		pc_a_ejecutar := globals.MapaProcesos[pid_a_ejecutar].Pcb.PC
-		globals.ProcesosMutex[pid_a_ejecutar].Unlock()
-
-		globals.ReadyMutex.Unlock()
-
-		globals.ExecuteMutex.Lock()
-		globals.ProcesosMutex[pidEnExec].Lock()
-
-		proceso_en_exec, existe := globals.MapaProcesos[pidEnExec]
-		if !existe || proceso_en_exec.Estado_Actual != globals.EXECUTE {
-
-			Enviar_proceso_a_cpu(ipCPU, puertoCPU, pid_a_ejecutar, pc_a_ejecutar, nombreCPU)
-			ready_a_execute(pid_a_ejecutar)
-
-			return
-		}
-
-		globals.ProcesosMutex[pidEnExec].Unlock()
-		globals.ExecuteMutex.Unlock()
-
-		respuestaInterrupcion, err := enviar_interrupcion_a_cpu(ipCPU, puertoCPU, nombreCPU, pidEnExec)
-		if err != nil {
-			slog.Debug(fmt.Sprint("Error en interrupción:", err))
-		}
-
-		// LOG Desalojo: ## (<PID>) - Desalojado por algoritmo SJF/SRT
-		slog.Info(fmt.Sprintf("## (%d) - Desalojado por algoritmo SJF/SRT", pidEnExec))
-
-		globals.ProcesosMutex[pid_a_ejecutar].Lock()
-		general.ActualizarPC(pidEnExec, respuestaInterrupcion.PC)
-		globals.ProcesosMutex[pid_a_ejecutar].Ufunc desalojarYEnviarProceso(pidEnExec int64) {
-
-			ipCPU, puertoCPU, nombreCPU, ok := general.BuscarCpuPorPID(pidEnExec)
-			slog.Debug(fmt.Sprint("SRT - CPU del proceso a desalojar: ", nombreCPU))
-			if ok {
-
-				globals.ReadyMutex.Lock()
-
-				pid_a_ejecutar := globals.Cola_ready[0]
-				globals.ProcesosMutex[pid_a_ejecutar].Lock()
-				pc_a_ejecutar := globals.MapaProcesos[pid_a_ejecutar].Pcb.PC
-				globals.ProcesosMutex[pid_a_ejecutar].Unlock()
-
-				globals.ReadyMutex.Unlock()
-
-				globals.ExecuteMutex.Lock()
-				globals.ProcesosMutex[pidEnExec].Lock()
-
-				proceso_en_exec, existe := globals.MapaProcesos[pidEnExec]
-				if !existe || proceso_en_exec.Estado_Actual != globals.EXECUTE {
-
-					Enviar_proceso_a_cpu(ipCPU, puertoCPU, pid_a_ejecutar, pc_a_ejecutar, nombreCPU)
-					ready_a_execute(pid_a_ejecutar)
-
-					return
-				}
-
-				globals.ProcesosMutex[pidEnExec].Unlock()
-				globals.ExecuteMutex.Unlock()
-
-				respuestaInterrupcion, err := enviar_interrupcion_a_cpu(ipCPU, puertoCPU, nombreCPU, pidEnExec)
-				if err != nil {
-					slog.Debug(fmt.Sprint("Error en interrupción:", err))
-				}
-
-				// LOG Desalojo: ## (<PID>) - Desalojado por algoritmo SJF/SRT
-				slog.Info(fmt.Sprintf("## (%d) - Desalojado por algoritmo SJF/SRT", pidEnExec))
-
-				globals.ProcesosMutex[pid_a_ejecutar].Lock()
-				general.ActualizarPC(pidEnExec, respuestaInterrupcion.PC)
-				globals.ProcesosMutex[pid_a_ejecutar].Unlock()
-
-				execute_a_ready(pidEnExec)
-				Enviar_proceso_a_cpu(ipCPU, puertoCPU, pid_a_ejecutar, pc_a_ejecutar, nombreCPU)
-				ready_a_execute(pid_a_ejecutar)
-
-			} else {
-				slog.Debug(fmt.Sprintf("No se encontró la CPU que ejecuta el PID %d al momento de desalojar", pidEnExec))
-			}
-			//slog.Debug(fmt.Sprint("Notificado Replanificar SRT"))
-		}
-
-		slog.Debug(fmt.Sprintf("No se encontró la CPU que ejecuta el PID %d al momento de desalojar", pidEnExec))
-	}
-	//slog.Debug(fmt.Sprint("Notificado Replanificar SRT"))
-}*/
-
 func desalojarYEnviarProceso(pidEnExec int64) {
 
 	ipCPU, puertoCPU, nombreCPU, ok := general.BuscarCpuPorPID(pidEnExec)
@@ -417,11 +273,14 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 
 		globals.ReadyMutex.Unlock()
 
-		globals.ExecuteMutex.Lock()
 		globals.ProcesosMutex[pidEnExec].Lock()
+		globals.ExecuteMutex.Lock()
 
 		proceso_en_exec, existe := globals.MapaProcesos[pidEnExec]
 		if !existe || proceso_en_exec.Estado_Actual != globals.EXECUTE {
+
+			globals.ExecuteMutex.Unlock()
+			globals.ProcesosMutex[pidEnExec].Unlock()
 
 			Enviar_proceso_a_cpu(ipCPU, puertoCPU, pid_a_ejecutar, pc_a_ejecutar, nombreCPU)
 			ready_a_execute(pid_a_ejecutar)
@@ -429,13 +288,35 @@ func desalojarYEnviarProceso(pidEnExec int64) {
 			return
 		}
 
-		globals.ProcesosMutex[pidEnExec].Unlock()
 		globals.ExecuteMutex.Unlock()
+		globals.ProcesosMutex[pidEnExec].Unlock()
 
 		respuestaInterrupcion, err := enviar_interrupcion_a_cpu(ipCPU, puertoCPU, nombreCPU, pidEnExec)
+		//slog.Info(fmt.Sprint("Respuesta interrupcion"))
 		if err != nil {
 			slog.Debug(fmt.Sprint("Error en interrupción:", err))
 		}
+
+		// Por si el proceso ya no esta en exec (ejecuto una syscall)
+		globals.ProcesosMutex[pidEnExec].Lock()
+		globals.ExecuteMutex.Lock()
+		proceso_en_exec, existe = globals.MapaProcesos[pidEnExec]
+		//slog.Info(fmt.Sprint("existe?: ", existe))
+		//slog.Info(fmt.Sprint("estado: ", proceso_en_exec.Estado_Actual))
+		if !existe || proceso_en_exec.Estado_Actual != globals.EXECUTE {
+
+			globals.ExecuteMutex.Unlock()
+			globals.ProcesosMutex[pidEnExec].Unlock()
+
+			//slog.Info(fmt.Sprint("No existe o no esta en execute"))
+
+			//Enviar_proceso_a_cpu(ipCPU, puertoCPU, pid_a_ejecutar, pc_a_ejecutar, nombreCPU)
+			//ready_a_execute(pid_a_ejecutar)
+
+			return
+		}
+		globals.ExecuteMutex.Unlock()
+		globals.ProcesosMutex[pidEnExec].Unlock()
 
 		// LOG Desalojo: ## (<PID>) - Desalojado por algoritmo SJF/SRT
 		slog.Info(fmt.Sprintf("## (%d) - Desalojado por algoritmo SJF/SRT", pidEnExec))

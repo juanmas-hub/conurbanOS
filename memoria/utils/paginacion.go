@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/memoria"
@@ -17,7 +18,7 @@ func leer(direccion int, tamanio int) string {
 	for i := 0; i < tamanio; i++ {
 		leido += string(globals_memoria.Memoria[direccion+i])
 	}
-	globals_memoria.MemoriaMutex.Lock()
+	globals_memoria.MemoriaMutex.Unlock()
 	return leido
 }
 
@@ -139,10 +140,12 @@ func buscarMarcosDisponibles(cantidad int) []int {
 	var result []int = make([]int, 0, cantidad)
 
 	globals_memoria.MemoriaMarcosOcupadosMutex.Lock()
+
 	for i := 0; i < len(globals_memoria.MemoriaMarcosOcupados); i++ {
 		if !globals_memoria.MemoriaMarcosOcupados[i] {
 			result = append(result, i)
 			if len(result) >= cantidad {
+				globals_memoria.MemoriaMarcosOcupadosMutex.Unlock()
 				return result
 			}
 		}
@@ -210,6 +213,7 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 		log.Printf("el proceso con PID %d ya existia", pid)
 		return -1
 	}*/
+
 	var pageSize int
 	var indicesNecesarios int
 	var indicesDisponibles []int
@@ -256,6 +260,11 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	}
 
 	// Lo aniado al mapa de procesos
+	m, ok := globals_memoria.ProcesosMutex[pid]
+	if !ok {
+		m = &sync.Mutex{}
+		globals_memoria.ProcesosMutex[pid] = m
+	}
 	globals_memoria.ProcesosMutex[pid].Lock()
 	globals_memoria.Procesos[pid] = proceso
 	globals_memoria.ProcesosMutex[pid].Unlock()
@@ -264,7 +273,7 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	var metrica globals_memoria.Memoria_Metrica
 	globals_memoria.MetricasMutex.Lock()
 	globals_memoria.MetricasMap[pid] = metrica
-	globals_memoria.MetricasMutex.Lock()
+	globals_memoria.MetricasMutex.Unlock()
 	slog.Debug(fmt.Sprintf("Metricas al crear el proceso %+v", globals_memoria.MetricasMap[pid]))
 
 	slog.Debug(fmt.Sprintf("Se creo la tabla de paginas del proceso %d:", pid))

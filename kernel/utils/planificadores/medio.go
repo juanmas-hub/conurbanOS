@@ -1,6 +1,8 @@
 package planificadores
 
 import (
+	"fmt"
+	"log/slog"
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
@@ -8,6 +10,8 @@ import (
 
 // Se llama cuando un proceso de execute se bloquea (IO o DUMP)
 func BloquearProceso(pid int64) bool {
+
+	//slog.Info("Se llamo a bloquear proceso")
 
 	ok := execute_a_blocked(pid)
 	if !ok {
@@ -70,4 +74,7 @@ func actualizar_rafagas(proceso *globals.Proceso, rafagaReal float64) {
 	// Est(n+1) =  R(n) + (1-) Est(n) ;    [0,1]
 
 	//slog.Debug(fmt.Sprintf("Rafaga actualizada de PID %d: %f", proceso.Pcb.Pid, proceso.Rafaga))
+
+	slog.Info(fmt.Sprintf("SJF/SRT == > Rafaga actualizada de: %d. Rafaga Anterior: %f. Rafaga Estimada: %f", proceso.Pcb.Pid, rafagaReal, proceso.Rafaga.Est_Sgte))
+
 }

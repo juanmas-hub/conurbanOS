@@ -64,14 +64,17 @@ func eliminarProcesoDeCola(cola *[]int64, pid int64) bool {
 	pos, found := BuscarPIDEnCola(*cola, pid)
 	if found {
 		*cola = append((*cola)[:pos], (*cola)[pos+1:]...)
+		//slog.Info(fmt.Sprint("Eliminado proceso de Cola: ", cola))
 		return true
 	} else {
-		slog.Debug(fmt.Sprintf("PID %d no se encontro en la cola, no se elimino denuevo", pid))
+		//slog.Info(fmt.Sprintf("PID %d no se encontro en la cola, no se elimino denuevo", pid))
 		return false
 	}
+
 }
 
 func BuscarPIDEnCola(cola []int64, pid int64) (int64, bool) {
+	//slog.Info(fmt.Sprint("Buscando pid en cola: ", cola, pid))
 	for i, valor := range cola {
 		if valor == pid {
 			return int64(i), true
@@ -216,12 +219,14 @@ func new_a_ready(pid int64) bool {
 }
 
 func execute_a_blocked(pid int64) bool {
-	globals.ProcesosMutex[pid].Lock()
+
+	//slog.Info("Se llamo a execute a blocked")
 
 	globals.ExecuteMutex.Lock()
 	found := eliminarProcesoDeCola(&globals.Cola_execute, pid)
 	if !found {
 		globals.ExecuteMutex.Unlock()
+		//slog.Info("Execute Mutex pasado en execute_a_blocked")
 		return false
 	}
 	globals.ExecuteMutex.Unlock()
@@ -245,8 +250,7 @@ func execute_a_blocked(pid int64) bool {
 
 	cambiar_estado(pid, globals.EXECUTE, globals.BLOCKED)
 
-	globals.ProcesosMutex[pid].Unlock()
-
+	//slog.Info("Se termino execute a blocked")
 	return true
 }
 

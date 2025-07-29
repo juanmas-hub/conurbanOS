@@ -22,7 +22,7 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Debug(fmt.Sprint("Me llego para iniciar un proceso"))
+	slog.Info(fmt.Sprint("Me llego para iniciar un proceso"))
 	slog.Debug(fmt.Sprintf("%+v\n", mensaje))
 
 	// Aca empieza la logica

@@ -102,9 +102,9 @@ func IncrementarMetrica(metrica string, pid int, cantidad int) {
 }
 
 func logTablaDePaginas(pid int) {
-	globals_memoria.MapaProcesosMutex.Lock()
+	globals_memoria.ProcesosMutex[pid].Lock()
 	proceso, ok := globals_memoria.Procesos[pid]
-	globals_memoria.MapaProcesosMutex.Unlock()
+	globals_memoria.ProcesosMutex[pid].Unlock()
 	if !ok {
 		slog.Debug(fmt.Sprintf("Proceso con PID %d no encontrado.", pid))
 		return

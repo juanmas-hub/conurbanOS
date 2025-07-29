@@ -3,6 +3,7 @@ package globals
 import (
 	"sync"
 )
+
 type Memoria_Config struct {
 	Port_memory      int64  `json:"port_memory"`
 	Memory_size      int64  `json:"memory_size"`
@@ -32,7 +33,6 @@ type Memoria_Metrica struct {
 	LecturasMemoria          int `json:"lecturas_memoria"`
 	EscriturasMemoria        int `json:"escrituras_memoria"`
 }
-
 
 var MetricasMap map[int]Memoria_Metrica
 
@@ -128,7 +128,6 @@ type PaginaLinkeada struct {
 }
 
 // MUTEX
-var MapaProcesosMutex sync.Mutex
 var ProcesosMutex map[int]*sync.Mutex = make(map[int]*sync.Mutex)
 var ArchivoSwapMutex sync.Mutex
 var IndicesSWAPOcupadosMutex sync.Mutex
@@ -198,6 +197,6 @@ Memory Dump:
 		entonces no tendria sentido tenerlo, porque solo voy a tener el contenido en un lugar
 	- Bit Presencia: si la pagina está en memoria (suspendido = false), todas las paginas estan en memoria. Si está suspendido, este bit no importa porque todas las paginas estan en swap
 
-- Nose que vendria a ser "Acceso a TP" 
+- Nose que vendria a ser "Acceso a TP"
 - ¿skibidi toilet?
 */

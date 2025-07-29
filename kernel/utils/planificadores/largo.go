@@ -242,7 +242,6 @@ func pasar_desde_susp_ready() {
 func pasar_desde_new() {
 
 	globals.NewMutex.Lock()
-	//slog.Info("pasando desde new")
 
 	for len(globals.Cola_new) > 0 {
 		//slog.Info("entrando al ciclo de nwe")
