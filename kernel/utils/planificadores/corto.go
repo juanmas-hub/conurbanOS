@@ -243,7 +243,7 @@ func ejecutarUnProcesoSjf() {
 	globals.ReadyMutex.Lock()
 	ordenarReadyPorRafaga()
 	pid := globals.Cola_ready[0]
-	slog.Info(fmt.Sprint("SJF == > Ready ordenado por rafaga: ", globals.Cola_ready))
+	//slog.Info(fmt.Sprint("SJF == > Ready ordenado por rafaga: ", globals.Cola_ready))
 	globals.ReadyMutex.Unlock()
 
 	globals.ProcesosMutex[pid].Lock()

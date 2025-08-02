@@ -79,6 +79,8 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 
 	IncrementarMetrica("BAJADAS_SWAP", pid, 1)
 
+	//time.Sleep(time.Duration(delay) * time.Millisecond) // PRUEBA
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }

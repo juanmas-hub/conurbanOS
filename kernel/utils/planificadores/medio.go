@@ -1,8 +1,6 @@
 package planificadores
 
 import (
-	"fmt"
-	"log/slog"
 	"time"
 
 	globals "github.com/sisoputnfrba/tp-golang/globals/kernel"
@@ -49,6 +47,8 @@ func sigueBloqueado(pid int64, cantidadSesionesPrevia int) {
 
 	if cantidadSesionesActual == cantidadSesionesPrevia && procesoActualmente.Estado_Actual == globals.BLOCKED {
 
+		//go enviar_suspension_proceso_a_memoria(procesoActualmente.Pcb.Pid) // PRUEBA
+		//blocked_a_susp_blocked(pid)                                        // PRUEBA
 		enviar_suspension_proceso_a_memoria(procesoActualmente.Pcb.Pid)
 		blocked_a_susp_blocked(pid)
 		globals.SignalPasarProcesoAReady()
@@ -75,6 +75,6 @@ func actualizar_rafagas(proceso *globals.Proceso, rafagaReal float64) {
 
 	//slog.Debug(fmt.Sprintf("Rafaga actualizada de PID %d: %f", proceso.Pcb.Pid, proceso.Rafaga))
 
-	slog.Info(fmt.Sprintf("SJF/SRT == > Rafaga actualizada de: %d. Rafaga Anterior: %f. Rafaga Estimada: %f", proceso.Pcb.Pid, rafagaReal, proceso.Rafaga.Est_Sgte))
+	//slog.Info(fmt.Sprintf("SJF/SRT == > Rafaga actualizada de: %d. Rafaga Anterior: %f. Rafaga Estimada: %f", proceso.Pcb.Pid, rafagaReal, proceso.Rafaga.Est_Sgte))
 
 }
