@@ -44,7 +44,6 @@ The IO module handles I/O-bound processes and simulates peripherals.
 The entire system takes advantage of **Go's concurrency primitives**, using:
 
 - **Goroutines** for parallelism across modules.
-- **Channels** for communication between components.
 - **Semaphores and mutexes** for critical sections and synchronization.
 
 This design ensures accurate simulation of race conditions, deadlocks, and synchronization challenges in operating systems.
@@ -55,7 +54,8 @@ This design ensures accurate simulation of race conditions, deadlocks, and synch
 
 - **Language**: Go (Golang)
 - **Concurrency**: Goroutines, channels, semaphores
-- **Architecture**: Modular (Kernel, Memory, CPU, IO)
+- **microservices-style architecture**: Where each component (Kernel, CPU, Memory, IO) runs as a separate service and communicates through defined interfaces.
+
 - **Data structures**: N-ary trees, queues, buffers
 
 ## Execution order
