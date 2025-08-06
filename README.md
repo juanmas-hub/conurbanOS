@@ -59,7 +59,7 @@ This design ensures accurate simulation of race conditions, deadlocks, and synch
 ## How to run the project
     1 - Clone the Repository.
     
-    ```bash
+    ```
     git clone https://github.com/juanmas-hub/conurbanOS.git
     cd <your-repo>
     ```
