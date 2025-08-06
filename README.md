@@ -63,31 +63,32 @@ This design ensures accurate simulation of race conditions, deadlocks, and synch
     git clone https://github.com/juanmas-hub/conurbanOS.git
     cd <your-repo>
     ```
+    
     2 - Build each module and run them from separate terminals.
     memory:
     
-    ```bash
+    ```
     go build memoria
     ./memoria test_name
     ```
     
     kernel:
     
-    ```bash
+    ```
     go build kernel
     ./kernel test_name
     ```
     
     cpu:
     
-    ```bash
+    ```
     go build cpu
     ./cpu cpu_name test_name
     ```
     
     io:
     
-    ```bash
+    ```
     go build io
     ./io io_name discos
     ```
