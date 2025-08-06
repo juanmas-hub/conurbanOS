@@ -1,10 +1,12 @@
 # OS Simulation in Go
 
-This repository contains a full Operating System simulation developed in Go, structured around four main modules: **Kernel**, **Memory**, **CPU**, and **IO**. The simulation replicates fundamental behaviors of a modern OS, including process scheduling, memory management, inter-module communication, and synchronization — all implemented using Go's powerful concurrency features.
+Full Operating System simulation developed in Go, structured around four main modules: **Kernel**, **Memory**, **CPU**, and **IO**. The simulation replicates fundamental behaviors of a modern OS, including process scheduling, memory management, inter-module communication, and synchronization — all implemented using Go's powerful concurrency features.
+
+Each module is implemented as a standalone **HTTP API** using Go’s standard `net/http` package, allowing for clean inter-module communication and loose coupling. The system follows a **microservices-style architecture** where services run independently and interact over the network.
 
 ---
 
-## 🧩 Modules Overview
+## 🧩 Modules
 
 ### 🧠 Kernel
 The Kernel acts as the central coordinator of the system, handling process lifecycle, scheduling, and interactions between other modules.
@@ -13,29 +15,35 @@ The Kernel acts as the central coordinator of the system, handling process lifec
   - **Short-term scheduler** for CPU dispatch.
   - **Medium-term scheduler** for suspended processes.
   - **Long-term scheduler** for process admission.
-- Communicates with Memory and CPU via sockets or channels.
 - Implements semaphores and mutexes for inter-process synchronization.
 
 ### 🧮 Memory
-The Memory module is responsible for managing process address spaces and page tables.
 
-- **Page tables** implemented as **n-ary trees** to efficiently represent hierarchical memory structures.
-- Supports dynamic memory allocation, frame management, and page replacement policies.
-- Interfaces with CPU and Kernel for memory access and swapping.
+The Memory module is responsible for managing both **virtual** and **physical memory** in the system. It handles address translation, memory allocation, and page replacement, playing a key role in the OS simulation.
+
+- Implements a **multi-level page table** structure using **n-ary trees**, allowing efficient representation of complex virtual memory mappings.
+- Supports **virtual memory** through the use of a **swap file** (a binary file on disk) to store pages that don't fit in physical memory.
+- Manages **physical memory** with frame allocation, page loading, and eviction policies.
+- Handles page faults and responds to memory access requests from the CPU module.
+- Coordinates with the Kernel for memory initialization and process management.
 
 ### ⚙️ CPU
+
 The CPU module simulates process execution and manages low-level memory interactions.
 
-- Implements **TLB (Translation Lookaside Buffer)** for fast address translation.
+- Multiple CPU instances can run in **parallel**, allowing the simulation of a **multi-core environment**. Each CPU acts as an independent service, concurrently executing processes and communicating with shared modules.
+- Implements a **TLB (Translation Lookaside Buffer)** for fast address translation.
 - Uses **cache mechanisms** to improve memory access performance.
-- Handles page faults by interacting with Memory.
-- Uses **Go routines** and **channels** for concurrent execution.
+- Handles page faults by interacting with the Memory module.
+- Utilizes **goroutines** for internal concurrency and process scheduling within each CPU instance.
 
 ### 🔌 IO
+
 The IO module handles I/O-bound processes and simulates peripherals.
 
-- Supports basic device simulation and manages blocked processes.
-- Coordinates with the Kernel to reintegrate processes after I/O completion.
+- Multiple IO modules can run in parallel, each simulating a separate device or set of devices. This allows concurrent handling of multiple I/O operations across the system.
+- Supports basic device simulation and manages blocked processes waiting for I/O.
+- Coordinates with the Kernel to reintegrate processes into the scheduling cycle after I/O completion.
 
 ---
 
@@ -49,14 +57,6 @@ The entire system takes advantage of **Go's concurrency primitives**, using:
 This design ensures accurate simulation of race conditions, deadlocks, and synchronization challenges in operating systems.
 
 ---
-
-## 🚀 Technologies
-
-- **Language**: Go (Golang)
-- **Concurrency**: Goroutines, channels, semaphores
-- **microservices-style architecture**: Where each component (Kernel, CPU, Memory, IO) runs as a separate service and communicates through defined interfaces.
-
-- **Data structures**: N-ary trees, queues, buffers
 
 ## Execution order
 
