@@ -66,22 +66,22 @@ This design ensures accurate simulation of race conditions, deadlocks, and synch
 2 - Build each module and run them from separate terminals.
 memory:
     
-    go build memoria
+    go build memoria.go
     ./memoria test_name
     
 kernel:
     
-    go build kernel
+    go build kernel.go
     ./kernel test_name
     
 cpu:
     
-    go build cpu
+    go build cpu.go
     ./cpu cpu_name test_name
     
 io:
     
-    go build io
+    go build io.go
     ./io io_name discos
     
 io names: DISCO1, DISCO2, DISCO3, DISCO4
