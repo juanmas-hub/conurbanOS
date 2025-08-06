@@ -15,7 +15,6 @@ The Kernel acts as the central coordinator of the system, handling process lifec
   - **Short-term scheduler** for CPU dispatch.
   - **Medium-term scheduler** for suspended processes.
   - **Long-term scheduler** for process admission.
-- Implements semaphores and mutexes for inter-process synchronization.
 
 ### 🧮 Memory
 
@@ -35,7 +34,6 @@ The CPU module simulates process execution and manages low-level memory interact
 - Implements a **TLB (Translation Lookaside Buffer)** for fast address translation.
 - Uses **cache mechanisms** to improve memory access performance.
 - Handles page faults by interacting with the Memory module.
-- Utilizes **goroutines** for internal concurrency and process scheduling within each CPU instance.
 
 ### 🔌 IO
 
@@ -58,6 +56,35 @@ This design ensures accurate simulation of race conditions, deadlocks, and synch
 
 ---
 
+## How to run the project
+    1 - Clone the Repository.
+    ```bash
+git clone https://github.com/juanmas-hub/conurbanOS.git
+cd <your-repo>
+    ```
+    2 - Build each module and run them from separate terminals.
+    memory:
+    ```bash
+go build memoria
+./memoria test_name
+    ```
+    kernel:
+    ```bash
+  go build kernel
+  ./kernel test_name
+    ```
+    cpu:
+    ```bash
+  go build cpu
+  ./cpu cpu_name test_name
+    ```
+    io:
+    ```bash
+  go build io
+  ./io io_name discos
+    ```
+  io names: DISCO1, DISCO2, DISCO3, DISCO4
+  
 ## Execution order
 
     1 - Memoria
