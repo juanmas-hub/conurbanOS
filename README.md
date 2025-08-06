@@ -84,7 +84,7 @@ io:
     go build io.go
     ./io io_name discos
     
-io names: DISCO1, DISCO2, DISCO3, DISCO4
+io names: DISCO1, DISCO2, DISCO3, DISCO4, DISCO5, DISCO6, DISCO7, DISCO8
   
   
 ## Execution order
