@@ -59,39 +59,39 @@ This design ensures accurate simulation of race conditions, deadlocks, and synch
 ## How to run the project
     1 - Clone the Repository.
     
-    ```
-    git clone https://github.com/juanmas-hub/conurbanOS.git
-    cd <your-repo>
-    ```
+      ```
+      git clone https://github.com/juanmas-hub/conurbanOS.git
+      cd <your-repo>
+      ```
     
     2 - Build each module and run them from separate terminals.
     memory:
     
-    ```
-    go build memoria
-    ./memoria test_name
-    ```
+      ```
+      go build memoria
+      ./memoria test_name
+      ```
     
     kernel:
     
-    ```
-    go build kernel
-    ./kernel test_name
-    ```
+      ```
+      go build kernel
+      ./kernel test_name
+      ```
     
     cpu:
     
-    ```
-    go build cpu
-    ./cpu cpu_name test_name
-    ```
+      ```
+      go build cpu
+      ./cpu cpu_name test_name
+      ```
     
     io:
     
-    ```
-    go build io
-    ./io io_name discos
-    ```
+      ```
+      go build io
+      ./io io_name discos
+      ```
     
   io names: DISCO1, DISCO2, DISCO3, DISCO4
   
