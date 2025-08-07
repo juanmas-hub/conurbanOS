@@ -64,6 +64,7 @@ This design ensures accurate simulation of race conditions, deadlocks, and synch
     
     
 2 - Build each module and run them from separate terminals.
+
 memory:
     
     go build memoria.go
@@ -72,7 +73,7 @@ memory:
 kernel:
     
     go build kernel.go
-    ./kernel test_name
+    ./kernel file_name size test_name
     
 cpu:
     
@@ -85,11 +86,3 @@ io:
     ./io io_name discos
     
 io names: DISCO1, DISCO2, DISCO3, DISCO4, DISCO5, DISCO6, DISCO7, DISCO8
-  
-  
-## Execution order
-
-    1 - Memoria
-    2 - Kernel
-    3 - Cpu
-    4 - Io
