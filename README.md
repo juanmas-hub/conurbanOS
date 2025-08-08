@@ -63,7 +63,7 @@ This design ensures accurate simulation of race conditions, deadlocks, and synch
     cd conurbanOS
     
     
-2 - Build each module and run them from separate terminals.
+2 - Build each module and run them on different terminals.
 
 memory:
     
