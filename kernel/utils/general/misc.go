@@ -50,13 +50,10 @@ func LiberarCPU(nombreCPU string) {
 	posCpu := BuscarCpu(nombreCPU)
 	globals.ListaCPUs[posCpu].EstaLibre = true
 	globals.ListaCPUsMutex.Unlock()
-	//slog.Debug(fmt.Sprint("CPU liberada"))
 	switch globals.KernelConfig.Scheduler_algorithm {
 	case "FIFO", "SJF":
-		//slog.Debug(fmt.Sprintf("Notificando replanificación en LiberarCPU - Nueva CPU Libre"))
 		Signal(globals.Sem_Cpus)
 	case "SRT":
-		//slog.Debug(fmt.Sprintf("Notificando replanificación en LiberarCPU - Nueva CPU Libre"))
 		NotificarReplanifSRT()
 	}
 }
@@ -90,16 +87,12 @@ func EnviarInterrupcionACPU(ip string, puerto int64, nombre string, pid int64) (
 		slog.Debug(fmt.Sprintf("error codificando mensaje: %s", err.Error()))
 	}
 
-	// Posible problema con el int64 del puerto
 	url := fmt.Sprintf("http://%s:%d/interrumpir", ip, puerto)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		slog.Debug(fmt.Sprintf("error enviando interrupción a ip:%s puerto:%d", ip, puerto))
 	}
 
-	//slog.Debug(fmt.Sprintf("Interrupcion enviada a CPU: %s, resp: %s", nombre, resp.Status))
-
-	// Respuesta de CPU
 	var respuesta globals.RespuestaInterrupcion
 	if err := json.NewDecoder(resp.Body).Decode(&respuesta); err != nil {
 		slog.Debug(fmt.Sprintf("error decodificando respuesta de la CPU: %s", err.Error()))
@@ -115,14 +108,11 @@ func EnviarDumpMemory(pid int64) bool {
 		slog.Debug(fmt.Sprintf("error codificando mensaje: %s", err.Error()))
 	}
 
-	// Posible problema con el int64 del puerto
 	url := fmt.Sprintf("http://%s:%d/memoryDump", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		slog.Debug(fmt.Sprintf("error enviando mensaje a ip:%s puerto:%d", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory))
 	}
-
-	//slog.Debug(fmt.Sprintf("Enviado DUMP MEMORY a memoria, resp: %s", resp.Status))
 
 	if resp.StatusCode == http.StatusOK {
 		return true
@@ -144,8 +134,6 @@ func EnviarSolicitudIO(ipIO string, puertoIO int64, pid int64, tiempo int64) {
 
 	url := fmt.Sprintf("http://%s:%d/solicitudDeIo", ipIO, puertoIO)
 
-	//slog.Debug(fmt.Sprintf("Solicitud IO enviada al modulo IO - PID: %d, Tiempo: %dms", pid, tiempo))
-
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		slog.Debug(fmt.Sprintf("Error enviando solicitud IO a ipIO:%s puertoIO:%d", ipIO, puertoIO))
@@ -165,7 +153,6 @@ func AvisarSwappeo(pid int64) {
 		slog.Debug(fmt.Sprintf("error codificando mensaje: %s", err.Error()))
 	}
 
-	// Posible problema con el int64 del puerto
 	url := fmt.Sprintf("http://%s:%d/suspenderProceso", globals.KernelConfig.Ip_memory, globals.KernelConfig.Port_memory)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil {
