@@ -23,7 +23,6 @@ func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
 	}
 
 	globals.ListaIOsMutex.Lock()
-	//slog.Debug(fmt.Sprintf("Se levantó una nueva instancia: %s, de IO: %s", handshake.NombreInstancia, handshake.NombreIO))
 	agregarAInstanciasIOs(handshake)
 	globals.ListaIOsMutex.Unlock()
 
@@ -32,13 +31,8 @@ func RecibirHandshakeIO(w http.ResponseWriter, r *http.Request) {
 }
 
 func RecibirHandshakeCPU(w http.ResponseWriter, r *http.Request) {
-
-	//slog.Debug(fmt.Sprint("Me llego un handshaek de CPU"))
-
 	decoder := json.NewDecoder(r.Body)
 	var handshake globals.Handshake
-
-	//slog.Debug(fmt.Sprint("Handshake: ", handshake))
 
 	err := decoder.Decode(&handshake)
 	if err != nil {
@@ -49,7 +43,6 @@ func RecibirHandshakeCPU(w http.ResponseWriter, r *http.Request) {
 	}
 
 	globals.ListaCPUsMutex.Lock()
-	//slog.Debug(fmt.Sprintf("Se levantó una nueva CPU: %s, IP: %s, Puerto: %d", handshake.Nombre, handshake.IP, handshake.Puerto))
 	agregarAListaCPUs(handshake)
 	globals.ListaCPUsMutex.Unlock()
 
@@ -69,7 +62,6 @@ func agregarAInstanciasIOs(handshake globals.HandshakeIO) {
 	io.Instancias = append(io.Instancias, elementoAAgregar)
 	globals.MapaIOs[handshake.NombreIO] = io
 
-	//IntentarPasarAIO(handshake.NombreIO, elementoAAgregar)
 }
 
 func agregarAListaCPUs(handshake globals.Handshake) {
@@ -82,8 +74,5 @@ func agregarAListaCPUs(handshake globals.Handshake) {
 	switch globals.KernelConfig.Scheduler_algorithm {
 	case "FIFO", "SJF":
 		general.Signal(globals.Sem_Cpus)
-	case "SRT":
-		//slog.Debug(fmt.Sprintf("Notificando replanificación en agregarAListaCPUs - Nueva CPU Libre"))
-		//general.NotificarReplanifSRT()
 	}
 }
