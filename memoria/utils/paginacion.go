@@ -32,7 +32,6 @@ func escribir(direccion int, dato string) int {
 		return -1
 	}
 
-	// Se escribe el dato
 	globals_memoria.MemoriaMutex.Lock()
 	for i := 0; i < len(dato); i++ {
 		globals_memoria.Memoria[direccion+i] = dato[i]
@@ -72,7 +71,6 @@ func escribirPaginas(pid int, paginas []globals_memoria.Pagina, marcos []int) *[
 }
 
 func actualizarPagina(indicePagina int, dato string) {
-	// Se sobrescribe el dato
 	globals_memoria.MemoriaMutex.Lock()
 	for i := 0; i < len(dato); i++ {
 		globals_memoria.Memoria[indicePagina+i] = dato[i]
@@ -91,8 +89,7 @@ func crearTabla(pid int, framesAsignados []int) globals_memoria.TablaPaginas {
 
 func construirNivel(pid int, nivel int, entradasPorPagina int, frameIndex *int, framesAsignados []int) globals_memoria.TablaPaginas {
 	cantPaginasRestantes := len(framesAsignados) - *frameIndex
-
-	// ¿Cuántas entradas necesitamos en este nivel?
+	
 	cantEntradas := (cantPaginasRestantes + entradasPorPagina - 1) / entradasPorPagina
 	if nivel == 1 {
 		if cantPaginasRestantes > entradasPorPagina {
@@ -189,7 +186,6 @@ func actualizarTablaPaginas(pid int, paginasLinkeadas []globals_memoria.PaginaLi
 
 	recorrerYActualizar(&proceso.TablaDePaginas)
 
-	// Actualizar el proceso en la tabla global
 	globals_memoria.Procesos[pid] = proceso
 	globals_memoria.ProcesosMutex[pid].Unlock()
 
@@ -208,12 +204,6 @@ func asignarFramesAProceso(numerosDeFrame []int) {
 }
 
 func AlmacenarProceso(pid int, tamanio int, filename string) int {
-
-	/*if verificarPIDUnico(pid) != 0 {
-		log.Printf("el proceso con PID %d ya existia", pid)
-		return -1
-	}*/
-
 	var pageSize int
 	var indicesNecesarios int
 	var indicesDisponibles []int
@@ -234,24 +224,19 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	var instrucciones []string
 	var tabla globals_memoria.TablaPaginas
 
-	// Si el proceso no ocupa espacio, no se le asignan paginas
 	if indicesNecesarios != 0 {
 		// Asigno los frames en la memoria
 		asignarFramesAProceso(indicesDisponibles)
 
-		// Creo la tabla de paginas
 		tabla = crearTabla(pid, indicesDisponibles)
 	} else {
-		// Si no necesita espacio, igual inicializo la tabla vacía
 		tabla = globals_memoria.TablaPaginas{
 			Entradas: []globals_memoria.EntradaTP{},
 		}
 	}
 
-	// Obtengo las instrucciones
 	instrucciones = ObtenerInstruccionesDesdeArchivo(filename)
 
-	// Creo el proceso
 	proceso := globals_memoria.Proceso{
 		Pseudocodigo:      instrucciones,
 		Suspendido:        false,
@@ -259,7 +244,6 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 		CantidadDePaginas: len(indicesDisponibles),
 	}
 
-	// Lo aniado al mapa de procesos
 	m, ok := globals_memoria.ProcesosMutex[pid]
 	if !ok {
 		m = &sync.Mutex{}
@@ -269,7 +253,6 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 	globals_memoria.Procesos[pid] = proceso
 	globals_memoria.ProcesosMutex[pid].Unlock()
 
-	// Aniado metricas del proceso
 	var metrica globals_memoria.Memoria_Metrica
 	globals_memoria.MetricasMutex.Lock()
 	globals_memoria.MetricasMap[pid] = metrica
@@ -284,8 +267,6 @@ func AlmacenarProceso(pid int, tamanio int, filename string) int {
 }
 
 func obtenerMarcoDesdeTabla(pid int, entradas []int64) int {
-	//(*globals_memoria.Metricas)[pid].AccesosTablas++
-
 	var NUMBER_OF_LEVELS int = int(globals_memoria.MemoriaConfig.Number_of_levels)
 	globals_memoria.ProcesosMutex[pid].Lock()
 	defer globals_memoria.ProcesosMutex[pid].Unlock()
@@ -314,14 +295,11 @@ func obtenerMarcoDesdeTabla(pid int, entradas []int64) int {
 
 func eliminarMarcosFisicos(pid int) []globals_memoria.Pagina {
 
-	// Lista para devolver las páginas leídas
 	var paginas []globals_memoria.Pagina
 
-	// Obtener la tabla de páginas multinivel del proceso
 	globals_memoria.ProcesosMutex[pid].Lock()
 	tabla := globals_memoria.Procesos[pid].TablaDePaginas
 
-	// Obtengo las paginas
 	recorrerTablaYLiberarMarcos(pid, tabla, &paginas)
 	globals_memoria.ProcesosMutex[pid].Unlock()
 
@@ -338,33 +316,27 @@ func recorrerTablaYLiberarMarcos(pid int, tabla globals_memoria.TablaPaginas, pa
 		entrada := tabla.Entradas[i]
 
 		if entrada.SiguienteNivel != nil {
-			// Si hay siguiente nivel, seguimos recorriendo recursivamente
 			recorrerTablaYLiberarMarcos(pid, *entrada.SiguienteNivel, paginas)
 		} else {
-			// Último nivel: obtener frame asignado
 			frame := entrada.NumeroDeFrame
 			if frame >= 0 && frame < len(globals_memoria.MemoriaMarcosOcupados) && globals_memoria.MemoriaMarcosOcupados[frame] {
 				inicio := frame * pageSize
 
-				// Leer contenido de la memoria en ese marco
 				globals_memoria.MemoriaMutex.Lock()
 				contenido := make([]byte, pageSize)
 				copy(contenido, globals_memoria.Memoria[inicio:inicio+pageSize])
 
-				// Guardar página con su contenido
 				pagina := globals_memoria.Pagina{
 					NumeroDePagina: entrada.NumeroDePagina,
 					Contenido:      contenido,
 				}
 				*paginas = append(*paginas, pagina)
 
-				// Sobrescribir con ceros la memoria para liberar el marco
 				for j := 0; j < pageSize; j++ {
 					globals_memoria.Memoria[inicio+j] = 0
 				}
 				globals_memoria.MemoriaMutex.Unlock()
 
-				// Marcar marco como libre
 				globals_memoria.MemoriaMarcosOcupadosMutex.Lock()
 				globals_memoria.MemoriaMarcosOcupados[frame] = false
 				globals_memoria.MemoriaMarcosOcupadosMutex.Unlock()
@@ -389,7 +361,6 @@ func generarMemoryDump(pid int) int {
 	timestamp := time.Now().Format("20060102-150405")
 	nombreArchivo := fmt.Sprintf("%s/%d-%s.dmp", directorio, pid, timestamp)
 
-	// Crear carpeta si no existe
 	err := os.MkdirAll(directorio, os.ModePerm)
 	if err != nil {
 		slog.Debug(fmt.Sprintf("Error al crear directorio de dump: %v", err))
