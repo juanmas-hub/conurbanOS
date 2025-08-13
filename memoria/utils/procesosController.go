@@ -22,10 +22,8 @@ func IniciarProceso(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//slog.Info(fmt.Sprint("Me llego para iniciar un proceso"))
 	slog.Debug(fmt.Sprintf("%+v\n", mensaje))
 
-	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
 	var tamanio int = int(mensaje.Tamanio)
 
@@ -52,8 +50,6 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 
 	slog.Debug(fmt.Sprintf("Me llego para suspender el proceso de pid: %d", mensaje.Pid))
 
-	// Aca empieza la logica
-
 	var pid int = int(mensaje.Pid)
 	var delay int64 = globals_memoria.MemoriaConfig.Swap_delay
 
@@ -61,13 +57,10 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 
 	proceso := globals_memoria.Procesos[pid]
 
-	// Marco proceso suspendido
 	proceso.Suspendido = true
 
-	// Eliminas de memoria
 	paginas := eliminarMarcosFisicos(pid)
 
-	// Escribis en swap
 	if escribirEnSWAP(pid, paginas) < 0 {
 		slog.Debug(fmt.Sprintf("Proceso %d no se pudo suspender por fallo al escribir en SWAP", mensaje.Pid))
 		w.WriteHeader(http.StatusInternalServerError)
@@ -78,8 +71,6 @@ func SuspenderProceso(w http.ResponseWriter, r *http.Request) {
 	globals_memoria.Procesos[pid] = proceso
 
 	IncrementarMetrica("BAJADAS_SWAP", pid, 1)
-
-	//time.Sleep(time.Duration(delay) * time.Millisecond) // PRUEBA
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
@@ -98,7 +89,6 @@ func FinalizarProceso(w http.ResponseWriter, r *http.Request) {
 
 	slog.Debug(fmt.Sprintf("Me llego para finalizar el proceso de pid: %d", mensaje.Pid))
 
-	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
 
 	if globals_memoria.Procesos[pid].Suspendido {
@@ -135,14 +125,9 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//log.Printf("Me llego para reanudar proceso ")
-	//log.Printf("%+v\n", mensaje.Pid)
-
-	// Aca empieza la logica
 	var pid int = int(mensaje.Pid)
 
 	if globals_memoria.Procesos[pid].Suspendido == false {
-		//log.Printf("Proceso %d no se renaudo porque no estaba suspendido", mensaje.Pid)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("El proceso no estaba suspendido"))
 		return
@@ -158,7 +143,6 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 
 		var marcosDisponibles []int = buscarMarcosDisponibles(cantidadPaginas)
 		if marcosDisponibles == nil {
-			//log.Printf("Proceso %d no se renaudo por falta de espacio", mensaje.Pid)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("Proceso no se renaudo por falta de espacio"))
 			return
@@ -166,12 +150,10 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 
 		paginas := eliminarPaginasSWAP(pid)
 		if paginas == nil {
-			//log.Printf("Proceso %d no se renaudo por error al eliminar paginas swap", mensaje.Pid)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("No se renaudo por error al eliminar paginas swap"))
 			return
 		}
-		//log.Print("Paginas en ReanudarProceso", paginas)
 		paginasLinkeadas := *escribirPaginas(pid, paginas, marcosDisponibles)
 		actualizarTablaPaginas(pid, paginasLinkeadas)
 
@@ -183,7 +165,6 @@ func ReanudarProceso(w http.ResponseWriter, r *http.Request) {
 
 	IncrementarMetrica("SUBIDAS_MEMORIA", pid, 1)
 
-	//log.Printf("Proceso %d reanudado correctamente", mensaje.Pid)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
