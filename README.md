@@ -1,6 +1,6 @@
 # OS Simulation in Go
 
-Full Operating System simulation developed in Go, structured around four main modules: **Kernel**, **Memory**, **CPU**, and **IO**. The simulation replicates fundamental behaviors of a modern OS, including process scheduling, memory management, inter-module communication, and synchronization — all implemented using Go's powerful concurrency features.
+Full Operating System simulation developed in Go as part of the Operating Systems course at Universidad Tecnológica Nacional (UTN), structured around four main modules: Kernel, Memory, CPU, and IO. The simulation replicates fundamental behaviors of a modern OS, including process scheduling, memory management, inter-module communication, and synchronization — all implemented using Go’s powerful concurrency features.
 
 Each module is implemented as a standalone **HTTP API** using Go’s standard `net/http` package, allowing for clean inter-module communication and loose coupling. The system follows a **microservices-style architecture** where services run independently and interact over the network.
 
